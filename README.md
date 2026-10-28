@@ -26,8 +26,6 @@ Most switches start off, so a freshly patched Instagram looks like Instagram unt
 
 The latest release is [v0.0.17](https://github.com/SysAdminDoc/HushGram/releases/tag/v0.0.17), with 123 patches. Add it to Morphe Manager with [this link](https://morphe.software/add-source?github=SysAdminDoc%2FHushGram).
 
-The source on main is HushGram v0.0.17. It hasn't been released yet.
-
 What changed in each version is in the [changelog](CHANGELOG.md).
 
 This project has no connection to Meta or to the Morphe project. Neither endorses it, and neither wrote it.
@@ -217,7 +215,7 @@ Inside Instagram, long-press the Instagram logo at the top of your feed. A tap s
   <img src="assets/settings-about.png" alt="HushGram About section expanded beneath its button" width="270">
 </p>
 
-Search is at the top of settings, with **Show all settings as a list** directly below it. Tap a category to expand its controls underneath. Tap it again to collapse them. You can keep several sections open on the same page, or show every setting at once. The controls you see depend on the patches you picked. The screenshots show a native rendering preview of the unreleased v0.0.17 settings.
+Search is at the top of settings, with **Show all settings as a list** directly below it. Tap a category to expand its controls underneath. Tap it again to collapse them. You can keep several sections open on the same page, or show every setting at once. The controls you see depend on the patches you picked. The screenshots show a native rendering preview of the v0.0.17 settings.
 
 **Search settings** finds controls across all categories by their labels in your phone's language or their English patch names. Clearing the search restores the sections you had open. Rotation keeps those sections and your position. A change that needs a restart shows the action below the list. Place and sharing-domain editors keep an invalid entry open so you can correct it.
 
