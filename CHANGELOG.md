@@ -4,6 +4,10 @@ Every HushGram release, newest first.
 
 ## Unreleased
 
+### Bug Fixes
+
+* **Tooling:** Patching for a phone without `-Apk` takes the declared Instagram build from the fixture folder the way the release gate does, split `.apks` bundles included. It used to skip an `.apks` and could pick up any file with the version in its name.
+
 ## 0.0.17 (2026-10-28)
 
 ### Features
