@@ -300,7 +300,7 @@ public final class SettingsEntry {
                 .putExtra(EXTRA_OPEN_SETTINGS, true)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         return new ShortcutInfo.Builder(app, SHORTCUT_ID)
-                .setShortLabel("HushGram")
+                .setShortLabel("InstaPrime")
                 .setLongLabel(longLabel)
                 .setIcon(Icon.createWithAdaptiveBitmap(shortcutIcon()))
                 .setIntent(intent)
@@ -870,7 +870,7 @@ public final class SettingsEntry {
 
     /** A magenta disc with an "H", drawn so the shortcut needs no resource in Instagram's APK. */
     private static Bitmap shortcutIcon() {
-        return mark(432, Color.BLACK, 0.30f); // Adaptive icon canvas: 108dp at xxxhdpi.
+        return InstaPrimeIcon.bitmap();
     }
 
     /** The HushGram mark, [size] pixels square on [background], the disc [radius] of the size across. */
