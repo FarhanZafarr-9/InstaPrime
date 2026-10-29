@@ -4,6 +4,7 @@
  */
 package app.morphe.patches.instagram.misc.theme
 
+import app.morphe.patches.instagram.misc.icon.INSTA_PRIME_LAUNCH_XML
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
@@ -32,7 +33,7 @@ import org.w3c.dom.Element
 import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
 
-private const val PATCH = "HushGram launch screen"
+private const val PATCH = "InstaPrime launch screen"
 
 /** The theme Instagram's launcher activities wear, whose Android 12 version names the launch screen's icon. */
 internal const val INSTAGRAM_LAUNCH_THEME = "Base.Theme.Launcher"
@@ -72,24 +73,7 @@ private const val BOXED_INT = "Ljava/lang/Integer;"
  * a 160dp square, masked to the middle two thirds, and Instagram's own glyph is 61.333dp across, so
  * the mark is 64dp, centered.
  */
-internal val LAUNCH_MARK_XML = """
-<?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:gravity="center" android:width="64dp" android:height="64dp">
-        <shape android:shape="rectangle">
-            <corners android:radius="15dp" />
-            <gradient android:type="linear" android:angle="315" android:startColor="#FFF0186C" android:endColor="#FF3B0A3D" />
-        </shape>
-    </item>
-    <item android:gravity="center" android:width="64dp" android:height="64dp">
-        <vector android:width="64dp" android:height="64dp" android:viewportWidth="100" android:viewportHeight="100">
-            <path android:fillColor="#FFFFFFFF" android:pathData="M22,15h15a3,3 0 0 1 3,3v64a3,3 0 0 1 -3,3h-15a3,3 0 0 1 -3,-3v-64a3,3 0 0 1 3,-3z" />
-            <path android:fillColor="#FFFFFFFF" android:pathData="M63,15h15a3,3 0 0 1 3,3v64a3,3 0 0 1 -3,3h-15a3,3 0 0 1 -3,-3v-64a3,3 0 0 1 3,-3z" />
-            <path android:fillColor="#FFFF7A9E" android:pathData="M11,38C22,36 30,46 42,45C54,44 66,36 80,40C84,41 87,44 88,48L88,58C85,53 82,52 78,52C66,50 54,57 42,57C30,57 22,49 11,50Z" />
-        </vector>
-    </item>
-</layer-list>
-""".trimStart()
+internal val LAUNCH_MARK_XML = INSTA_PRIME_LAUNCH_XML
 
 private fun refuse(why: String): Nothing = throw PatchException("$PATCH: $why")
 
@@ -289,9 +273,9 @@ private fun Method.where(): String = "$definingClass->$name"
  */
 @Suppress("unused")
 val launchScreenPatch = bytecodePatch(
-    name = "HushGram launch screen",
-    description = "Shows HushGram's logo instead of Instagram's on the screen you see while Instagram starts, on " +
-        "Android 13 and newer. Starts off. Turn it on in HushGram settings > Layout.",
+    name = "InstaPrime launch screen",
+    description = "Shows InstaPrime's logo instead of Instagram's on the screen you see while Instagram starts, on " +
+        "Android 13 and newer. Starts off. Turn it on in InstaPrime settings > Layout.",
     default = true,
 ) {
     category("Interface")
