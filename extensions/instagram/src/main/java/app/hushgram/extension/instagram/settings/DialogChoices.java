@@ -50,45 +50,30 @@ final class DialogChoices extends BaseAdapter {
             choice.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
             choice.setSingleLine(false);
             choice.setMaxLines(Integer.MAX_VALUE);
+            boolean multiple = parent instanceof android.widget.ListView
+                    && ((android.widget.ListView) parent).getChoiceMode() == android.widget.ListView.CHOICE_MODE_MULTIPLE;
             if (choice instanceof CheckedTextView) {
-                choice.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
-                choice.setMinHeight(Math.round(48 * density));
-                choice.setMinimumHeight(Math.round(48 * density));
-                ColorStateList indicator = new ColorStateList(new int[][]{
-                        {-android.R.attr.state_enabled, android.R.attr.state_checked},
-                        {-android.R.attr.state_enabled}, {android.R.attr.state_checked}, {}},
-                        new int[]{ScreenColors.half(colors.heading), ScreenColors.half(colors.summary),
-                                colors.heading, colors.summary});
-                ((CheckedTextView) choice).setCheckMarkTintList(indicator);
-                // Material's framework layout uses a start drawable for its radio indicator.
-                for (android.graphics.drawable.Drawable drawable : choice.getCompoundDrawablesRelative()) {
-                    if (drawable != null) drawable.mutate().setTintList(indicator);
-                }
-                GradientDrawable background = new GradientDrawable();
-                background.setColor(colors.choiceFill(android.graphics.Color.TRANSPARENT));
-                background.setStroke(Math.round(density), colors.interactionOutline(android.graphics.Color.TRANSPARENT));
-                background.setCornerRadius(Math.round(8 * density));
-                choice.setBackground(new RippleDrawable(ScreenColors.interactionRipple(colors.heading),
-                        background, null).mutate());
-                // A native choice is a compact full-width row, with room to grow when text wraps.
-                int verticalPadding = (int) (8 * density);
-                choice.setPaddingRelative(Math.round(24 * density), verticalPadding,
-                        Math.round(24 * density), verticalPadding);
-                return row;
+                CheckedTextView checked = (CheckedTextView) choice;
+                checked.setCheckMarkTintList(null);
+                checked.setCompoundDrawablesRelative(null, null, null, null);
+                checked.setCheckMarkDrawable(new SelectionIndicator(choice.getContext(), colors, multiple));
             }
-            int gap = Math.round(4 * density);
+            int gap = Math.round(3 * density);
             int side = Math.round(18 * density);
-            choice.setMinHeight(Math.round(48 * density) + 2 * gap);
+            choice.setMinHeight(Math.round(64 * density) + gap);
+            choice.setMinimumHeight(Math.round(64 * density) + gap);
+            choice.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
             GradientDrawable surface = new GradientDrawable();
-            surface.setColor(colors.choiceFill(colors.card));
-            surface.setStroke(Math.round(density), colors.interactionOutline(colors.outline));
-            surface.setCornerRadius(Math.round(12 * density));
-            choice.setBackground(new RippleDrawable(ScreenColors.interactionRipple(colors.heading),
-                    new InsetDrawable(surface, side, gap, side, gap), null).mutate());
-            // Rounding both sides up at densities such as 450dpi exceeds the measured 48dp row.
-            int verticalPadding = (int) (12 * density) + gap;
-            choice.setPaddingRelative(side + Math.round(16 * density), verticalPadding,
-                    side + Math.round(16 * density), verticalPadding);
+            surface.setColor(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}},
+                    new int[]{colors.choiceSelected(), colors.iconSurface}));
+            float top = Math.round((position == 0 ? 12 : 4) * density);
+            float bottom = Math.round((position == getCount() - 1 ? 12 : 4) * density);
+            surface.setCornerRadii(new float[]{top, top, top, top, bottom, bottom, bottom, bottom});
+            InsetDrawable inset = new InsetDrawable(surface, side, 0, side, gap);
+            InsetDrawable mask = new InsetDrawable(surface.getConstantState().newDrawable().mutate(), side, 0, side, gap);
+            choice.setBackground(ScreenColors.boundedRipple(ScreenColors.interactionRipple(colors.heading), inset, mask).mutate());
+            choice.setPaddingRelative(side + Math.round(20 * density), Math.round(14 * density),
+                    side + Math.round(16 * density), Math.round(14 * density) + gap);
         }
         return row;
     }
