@@ -384,7 +384,7 @@ public class SettingsCardsTest {
         tap(page.findPreference("primegram_developer"));
         assertEquals("https://github.com/FarhanZafarr-9", org.robolectric.Shadows.shadowOf(controller.get()).getNextStartedActivity().getDataString());
         tap(page.findPreference("primegram_source"));
-        assertEquals("https://github.com/FarhanZafarr-9/HushGram", org.robolectric.Shadows.shadowOf(controller.get()).getNextStartedActivity().getDataString());
+        assertEquals("https://github.com/FarhanZafarr-9/InstaPrime", org.robolectric.Shadows.shadowOf(controller.get()).getNextStartedActivity().getDataString());
         assertTrue(page.findPreference("primegram_upstream_developer").getSummary().toString().contains("HushGram"));
         assertTrue(page.findPreference("primegram_version").getSummary().toString().startsWith("InstaPrime"));
         assertEquals("InstaPrime settings", app.hushgram.extension.shared.L10n.t("HushGram settings"));
