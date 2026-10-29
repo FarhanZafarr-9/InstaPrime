@@ -88,11 +88,14 @@ final class ChoiceCards extends BaseAdapter {
             int gap = dp(context, GAP_INSET_DP);
             GradientDrawable surface = new GradientDrawable();
             // The shared row surface, with its outline separating it from the dialog.
-            surface.setColor(colors.card);
-            surface.setStroke(dp(context, 1), colors.interactionOutline(colors.outline));
+            surface.setColor(new android.content.res.ColorStateList(
+                    new int[][]{{android.R.attr.state_activated}, {}},
+                    new int[]{colors.choiceSelected(), colors.iconSurface}));
+
             surface.setCornerRadius(dp(context, 12));
-            setBackground(new RippleDrawable(ScreenColors.interactionRipple(colors.heading),
-                    new InsetDrawable(surface, side, gap, side, gap), null).mutate());
+            setBackground(ScreenColors.boundedRipple(ScreenColors.interactionRipple(colors.heading),
+                    new InsetDrawable(surface, side, gap, side, gap),
+                    new InsetDrawable(surface.getConstantState().newDrawable().mutate(), side, gap, side, gap)).mutate());
             // Set after the background, which puts its insets in as the padding.
             setPaddingRelative(side + dp(context, 16), gap + dp(context, 14),
                     side + dp(context, 16), gap + dp(context, 14));
@@ -117,6 +120,8 @@ final class ChoiceCards extends BaseAdapter {
             detail.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
             detail.setTextColor(ScreenColors.dimmedWhenDisabled(colors.summary));
             detail.setLineSpacing(dp(context, 2), 1);
+            detail.setMaxLines(Integer.MAX_VALUE);
+            detail.setEllipsize(null);
             LayoutParams under = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
             under.topMargin = dp(context, 2);
             text.addView(detail, under);
