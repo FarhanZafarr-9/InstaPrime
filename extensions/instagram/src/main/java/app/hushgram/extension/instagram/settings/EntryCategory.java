@@ -44,7 +44,5 @@ final class EntryCategory {
                 wayInSummary(Settings.SETTINGS_LOGO_PRESS)));
         entry.addPreference(toggle(context, Settings.HIDE_MENU_ROW, L10n.t("Hide the HushGram row in Instagram's menu"),
                 wayInSummary(Settings.HIDE_MENU_ROW)));
-        entry.addPreference(toggle(context, Settings.CATEGORY_PAGES, L10n.t("Expandable categories"),
-                L10n.t("Tap a category to show or hide its settings on this page.")));
     }
 }
