@@ -106,7 +106,12 @@ public final class L10n {
         if (english == null || english.isEmpty()) {
             return english;
         }
-        return lookUp(tags(context), english);
+        return displayBrand(lookUp(tags(context), english));
+    }
+
+    /** Keep existing translation keys and saved-file compatibility while displaying the fork's name. */
+    private static String displayBrand(String text) {
+        return text == null ? null : text.replace("HushGram", "InstaPrime").replace("PrimeGram", "InstaPrime");
     }
 
     /** {@link String#format} over the translated form of {@code english}. */
@@ -194,9 +199,9 @@ public final class L10n {
      */
     private static String format(Context context, String translated, String english, Object... args) {
         try {
-            return String.format(locale(context), translated, args);
+            return String.format(locale(context), displayBrand(translated), args);
         } catch (Throwable ignored) {
-            return String.format(Locale.ROOT, english, args);
+            return String.format(Locale.ROOT, displayBrand(english), args);
         }
     }
 
