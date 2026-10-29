@@ -928,7 +928,7 @@ public final class MessagesLock {
         TextView title = new TextView(activity);
         title.setText(SETTINGS.equals(screen) ? L10n.t("HushGram settings are locked")
                 : wholeApp ? L10n.t("Instagram is locked") : L10n.t("Your messages are locked"));
-        ShimmerTitle.wear(title);
+        title.setTextColor(colors.title);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
         title.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         title.setGravity(Gravity.CENTER);
