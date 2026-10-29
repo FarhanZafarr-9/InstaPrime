@@ -112,9 +112,7 @@ public class Settings extends BaseSettings {
             new BooleanSetting("hushgram_profile_menu_long_press", FALSE);
 
     /**
-     * Categories expand inline on the main settings screen. Off shows every setting in one list.
-     * Keep the existing stored key and default for upgrades and backups. Read the saved value
-     * because Pause doesn't change how settings are displayed.
+     * Legacy preference retained for backup compatibility. Settings always use expandable categories.
      */
     public static final BooleanSetting CATEGORY_PAGES =
             new BooleanSetting("hushgram_category_pages", TRUE);
