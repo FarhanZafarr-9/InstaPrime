@@ -4,19 +4,29 @@
 
 # InstaPrime
 
-A settings UI and branding rework of [HushGram](https://github.com/SysAdminDoc/HushGram), the Instagram patch project created by [SysAdminDoc](https://github.com/SysAdminDoc).
+I made InstaPrime as a personal settings UI and branding rework of [HushGram](https://github.com/SysAdminDoc/HushGram), the Instagram patch project created by [SysAdminDoc](https://github.com/SysAdminDoc).
 
-**The Instagram patches, their underlying functionality, research, compatibility work, and ongoing upstream maintenance are the work of SysAdminDoc and the upstream contributors. This fork does not claim credit for that work.**
+**The Instagram patches, their underlying functionality, research, compatibility work, and ongoing upstream maintenance are the work of SysAdminDoc and the upstream contributors. I do not claim credit for that work.**
 
-> I made this fork to rework the settings interface and give it the InstaPrime name and icon. I do not claim authorship of HushGram's patches or the work that keeps them working as Instagram changes. That credit belongs to the original creator, SysAdminDoc, and the contributors credited by the upstream project.
->
-> — [FarhanZafarr-9](https://github.com/FarhanZafarr-9)
+My contribution is the settings interface rework and the InstaPrime name and icon. I do not claim authorship of HushGram's patches or the work that keeps them working as Instagram changes. That credit belongs to SysAdminDoc and the contributors credited by the original project.
+
+I started this out of personal interest in interface design. It is not a critique of HushGram's original UI: everyone has their own preferences and likes different interfaces. I wanted to try a layout that suits mine, and I am sharing it for anyone who likes the same approach.
 
 [Original project](https://github.com/SysAdminDoc/HushGram) · [Original creator](https://github.com/SysAdminDoc) · [Support the original creator](https://ko-fi.com/X8K126YVER) · [Upstream guide](docs/upstream/README.md) · [License](LICENSE) · [Notices and attribution](NOTICE)
 
-## What this fork changes
+[**Add InstaPrime to Morphe**](https://morphe.software/add-source?github=FarhanZafarr-9%2FInstaPrime) · [Add original HushGram to Morphe](https://morphe.software/add-source?github=SysAdminDoc%2FHushGram)
 
-InstaPrime builds on HushGram's existing settings and patch infrastructure. Its changes focus on how those settings are presented and used:
+The InstaPrime link registers my repository as a source. Its current source index still points to the upstream HushGram release, so use a local InstaPrime bundle for my UI rework until I publish a fork release and update that index. Registering the source alone does not install my redesigned interface.
+
+## Updates and maintenance
+
+I work on this out of personal interest and in my available time. Adapting the UI rework to new upstream patches takes time, testing, and maintenance, so updates here may sometimes be significantly delayed. I cannot promise to keep pace with every HushGram release.
+
+If you need the latest available patches and compatibility updates promptly, please stick with [the original HushGram project](https://github.com/SysAdminDoc/HushGram), or [add its source directly to Morphe](https://morphe.software/add-source?github=SysAdminDoc%2FHushGram). SysAdminDoc and the upstream contributors do the ongoing patch development and maintenance that this fork depends on.
+
+## What I changed
+
+I built on HushGram's existing settings and patch infrastructure, focusing on how its settings are presented and used:
 
 - **Category navigation:** the settings home shows category rows that open their own pages. Larger categories have another level of grouping, with a back action and restored scroll positions.
 - **Row layout:** borderless grouped rows, rounded corners, more horizontal padding, space below search and at the bottom, and fully readable descriptions. Ripples stay inside the visible row.
@@ -24,10 +34,10 @@ InstaPrime builds on HushGram's existing settings and patch infrastructure. Its 
 - **Switches:** rounded tracks and circular thumbs, an on-state checkmark, animations that survive row replacement, and clearer disabled states. Temporarily unavailable options retain their saved choices.
 - **Dialogs:** rounded selection indicators, tonal backgrounds for selected and unselected choices, borderless text fields, vertically stacked full-width actions, and a redesigned restart notice.
 - **Section controls:** an **Enable all** switch on pages containing direct toggle options, respecting each option's availability and validation. Category pages containing further subcategories do not show it.
-- **Fork information:** a section at the top with this fork's details, the original project and creator, licenses, reporting, and upstream support links.
+- **Fork information:** a section at the top with my fork's details, the original project and creator, licenses, reporting, and upstream support links.
 - **Branding:** the InstaPrime name and rounded camera icon in the settings entry, shortcut, launcher option, launch screen, and optional clone badge. The clone defaults to `InstaPrime` with package `com.instagram.android.prime`.
 
-The Instagram features exposed by these settings come from HushGram. Reorganizing their controls does not make them new patches created by this fork. Existing setting keys and the backup format are retained for compatibility.
+The Instagram features exposed by these settings come from HushGram. I reorganized their controls; I did not create the patches behind them. I retained the existing setting keys and backup format for compatibility.
 
 ## Before and after
 
@@ -61,9 +71,9 @@ The original screenshot files are kept in [docs/screenshots/settings](docs/scree
 
 ## Patches and compatibility
 
-This fork is based on HushGram **0.0.17**, whose catalog contains **123 patches** for Instagram. Features such as ad hiding, privacy controls, downloads, playback controls, and tab bar customization are inherited from upstream.
+I based this rework on HushGram **0.0.17**, whose catalog contains **123 patches** for Instagram. Features such as ad hiding, privacy controls, downloads, playback controls, and tab bar customization are inherited from upstream.
 
-| Item | Base supported by this fork |
+| Item | Inherited compatibility target |
 | --- | --- |
 | Android | Android 9 / API 28 or newer |
 | Instagram package | `com.instagram.android` |
@@ -73,21 +83,21 @@ This fork is based on HushGram **0.0.17**, whose catalog contains **123 patches*
 | x86 / x86_64 builds | `385914284` / `385914285` |
 | Morphe Manager | `2.2.0` or newer |
 
-These are the inherited compatibility targets, not a claim that this fork has independently repeated every upstream device test. See the [upstream guide](docs/upstream/README.md#supported-instagram-builds) and [upstream changelog](CHANGELOG.md) for the original feature and compatibility history. The changelog records HushGram's work; the fork-specific changes are listed above.
+I inherited these compatibility targets from upstream; I have not independently repeated every upstream device test. See the [upstream guide](docs/upstream/README.md#supported-instagram-builds) and [upstream changelog](CHANGELOG.md) for the original feature and compatibility history. The changelog records HushGram's work; my changes are listed above.
 
 ## Install the UI rework
 
 1. Install [Morphe Manager](https://github.com/MorpheApp/morphe-manager) 2.2.0 or newer.
-2. Obtain an **InstaPrime `.mpp` bundle built from this fork**, or build one using the instructions below. A `.mpp` is a patch bundle, not an Instagram APK. An upstream HushGram bundle contains the upstream interface.
+2. [Add my source to Morphe](https://morphe.software/add-source?github=FarhanZafarr-9%2FInstaPrime). Until I publish an InstaPrime release and update the source index, obtain a local **InstaPrime `.mpp` bundle built from this repository**, or build one using the instructions below. A `.mpp` is a patch bundle, not an Instagram APK. The current remote index delivers the original HushGram interface.
 3. Add the bundle in Manager through **Sources → + → Local**. Use it as the only enabled Instagram patch source for this patch run.
 4. Select a stock Instagram APK matching the version and build above, choose the patches you want, then patch and install.
 5. Open **InstaPrime** at the top of Instagram's **Settings and activity**, or long-press the Instagram logo on Home. Choose a category to open its settings.
 
-For a separate installation, select **Install next to Instagram**. This fork defaults to the label **InstaPrime** and package **`com.instagram.android.prime`**. Keep the same package name and signing key for subsequent updates.
+For a separate installation, select **Install next to Instagram**. I set the clone defaults to the label **InstaPrime** and package **`com.instagram.android.prime`**. Keep the same package name and signing key for subsequent updates.
 
 Keep a backup of your Morphe signing key. Android requires the same key to update an existing patched installation while preserving its data. A differently signed installation may require uninstalling the existing app, which deletes its local data. See the [upstream signing-key guide](docs/upstream/README.md#keep-your-signing-key).
 
-The original HushGram releases and patch source remain available from [SysAdminDoc/HushGram](https://github.com/SysAdminDoc/HushGram). They are maintained by the original project and should not be confused with this fork's UI build.
+The original HushGram releases and patch source remain available from [SysAdminDoc/HushGram](https://github.com/SysAdminDoc/HushGram). SysAdminDoc and the upstream contributors maintain those releases; my UI build is separate.
 
 ## Build from source
 
@@ -104,19 +114,19 @@ On Windows, set the variables using `$env:GITHUB_ACTOR` and `$env:GITHUB_TOKEN`,
 
 Run the two build commands in the order shown. The bundle is written to `patches/build/release/patches-<version>.mpp`, alongside build verification artifacts. The documentation screenshots live outside that generated build directory so a clean build will not remove them.
 
-The focused settings checks used for this rework are:
+I used these focused settings checks for the rework:
 
 ```bash
 ./gradlew :extensions:instagram:testDebugUnitTest --tests 'app.hushgram.extension.instagram.settings.SettingsCardsTest' --max-workers=1
 ```
 
-The latest local run passed **44 settings tests** across Android API 28 and 37, including navigation, selection behavior, animation across row replacement, dependent options, and rendered disabled-switch contrast. The generated bundle also passed its integrity checks for 123 patches and all three non-empty DEX payloads. These checks do not replace testing a patched APK on your own device.
+My latest local run passed **44 settings tests** across Android API 28 and 37, including navigation, selection behavior, animation across row replacement, dependent options, and rendered disabled-switch contrast. The generated bundle also passed its integrity checks for 123 patches and all three non-empty DEX payloads. These checks do not replace testing a patched APK on your own device.
 
 For the full upstream build workflow, fixture-based patch tests, and release checks, see the [upstream build guide](docs/upstream/README.md#building-from-source) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Reporting problems
 
-Report issues with this fork's settings navigation, visuals, switches, dialogs, or branding in [this fork's issue tracker](https://github.com/FarhanZafarr-9/HushGram/issues).
+Report issues with my settings navigation, visuals, switches, dialogs, or branding in [my issue tracker](https://github.com/FarhanZafarr-9/InstaPrime/issues).
 
 For an underlying patch problem, first check whether it also happens with the original HushGram build. If it does, follow the [upstream reporting guide](docs/upstream/README.md#getting-help), identify the build you used, and include the requested diagnostics. Please do not ask the original creator to support changes specific to this fork.
 
@@ -124,7 +134,7 @@ For an underlying patch problem, first check whether it also happens with the or
 
 **SysAdminDoc deserves the credit for creating HushGram and for the continuing research, development, testing, compatibility updates, and maintenance behind its patches.** The upstream contributors and the projects HushGram builds on retain their own authorship and attribution.
 
-FarhanZafarr-9's contribution here is the settings UI rework, navigation and control presentation, fork documentation, and InstaPrime branding described in this README. This is a derivative UI fork, not a claim to have created the patch collection. The separate name identifies the fork and does not imply endorsement by SysAdminDoc.
+My contribution is the settings UI rework, navigation and control presentation, documentation, and InstaPrime branding described here. I do not take credit for creating the patch collection or for upstream maintenance. I chose a separate name to identify my fork; it does not imply endorsement by SysAdminDoc.
 
 If the patches are useful to you, please [support the original creator on Ko-fi](https://ko-fi.com/X8K126YVER) and visit the [original project](https://github.com/SysAdminDoc/HushGram).
 
