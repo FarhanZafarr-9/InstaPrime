@@ -7,7 +7,7 @@
 I made InstaPrime as a personal settings UI and branding rework of HushGram, the Instagram patch project created by SysAdminDoc.
 
 <p align="center">
-  <a href="https://morphe.software/add-source?github=FarhanZafarr-9%2FInstaPrime"><img src="https://img.shields.io/badge/Add_InstaPrime_to_Morphe-6750A4?style=for-the-badge" alt="Add InstaPrime to Morphe"></a>
+  <a href="https://morphe.software/add-source?github=FarhanZafarr-9%2FInstaPrime"><img src="https://img.shields.io/badge/Add_InstaPrime_to_Morphe-FFFFFF?style=for-the-badge" alt="Add InstaPrime to Morphe"></a>
 </p>
 
 <p align="center"><a href="https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.17">Download InstaPrime v0.0.17</a></p>
