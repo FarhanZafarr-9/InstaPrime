@@ -48,20 +48,13 @@ private const val PLUM = "#FF3B0A3D"
 private fun solid(color: String) = """
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="15dp" />
     <solid android:color="$color" />
 </shape>
 """.trimStart()
 
-/** The pink to plum of the launch screen's tile, corner to corner. */
-private val GRADIENT = """
-<?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <gradient android:type="linear" android:angle="315" android:startColor="#FFF0186C" android:endColor="$PLUM" />
-</shape>
-""".trimStart()
-
 internal val HUSHGRAM_ICONS = listOf(
-    HushgramIcon("hushgram", GRADIENT, instagramGlyph = false),
+    HushgramIcon("hushgram", solid("#FFFFFFFF"), instagramGlyph = false),
     HushgramIcon("dark", solid("#FF000000"), instagramGlyph = true),
     HushgramIcon("plum", solid(PLUM), instagramGlyph = true),
     HushgramIcon("light", solid("#FFFFFFFF"), instagramGlyph = true, glyphTint = "#FF000000"),
@@ -78,19 +71,8 @@ internal const val ICON_MARK_MONO = "hushgram_icon_mark_mono"
  * 108dp layer. Their corners sit 29dp from the middle at most, inside the 66dp circle every launcher
  * shape keeps.
  */
-private fun mark(ribbon: String) = """
-<?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <group android:translateX="26.3" android:translateY="26" android:scaleX="0.56" android:scaleY="0.56">
-        <path android:fillColor="#FFFFFFFF" android:pathData="M22,15h15a3,3 0 0 1 3,3v64a3,3 0 0 1 -3,3h-15a3,3 0 0 1 -3,-3v-64a3,3 0 0 1 3,-3z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M63,15h15a3,3 0 0 1 3,3v64a3,3 0 0 1 -3,3h-15a3,3 0 0 1 -3,-3v-64a3,3 0 0 1 3,-3z" />
-        <path android:fillColor="$ribbon" android:pathData="M11,38C22,36 30,46 42,45C54,44 66,36 80,40C84,41 87,44 88,48L88,58C85,53 82,52 78,52C66,50 54,57 42,57C30,57 22,49 11,50Z" />
-    </group>
-</vector>
-""".trimStart()
-
-internal val ICON_MARK_XML = mark("#FFFF7A9E")
-internal val ICON_MARK_MONO_XML = mark("#FFFFFFFF")
+internal val ICON_MARK_XML = instaPrimeForeground("#FF000000")
+internal val ICON_MARK_MONO_XML = instaPrimeForeground("#FFFFFFFF")
 
 /** An adaptive icon of [background], [foreground] and [monochrome], each a drawable reference. */
 internal fun adaptiveXml(background: String, foreground: String, monochrome: String) = """
