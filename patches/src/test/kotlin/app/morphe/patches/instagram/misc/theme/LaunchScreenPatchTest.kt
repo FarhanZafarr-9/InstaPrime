@@ -4,6 +4,8 @@
  */
 package app.morphe.patches.instagram.misc.theme
 
+import app.morphe.patches.instagram.misc.icon.INSTA_PRIME_CAMERA_PATH
+
 import app.morphe.Fixtures
 import app.morphe.patcher.Patcher
 import app.morphe.patcher.PatcherConfig
@@ -100,10 +102,12 @@ class LaunchScreenPatchTest {
             assertEquals("64dp", item.getAttribute("android:width"))
             assertEquals("64dp", item.getAttribute("android:height"))
         }
-        assertEquals(1, items[0].elements("gradient").size)
+        assertEquals("#FFFFFFFF", items[0].elements("solid").single().getAttribute("android:color"))
+        assertEquals("9dp", items[0].elements("corners").single().getAttribute("android:radius"))
         val vector = items[1].elements("vector").single()
         assertEquals("100", vector.getAttribute("android:viewportWidth"))
-        assertEquals(3, vector.elements("path").size)
+        assertEquals(INSTA_PRIME_CAMERA_PATH, vector.elements("path").single().getAttribute("android:pathData"))
+        assertEquals("#FF000000", vector.elements("path").single().getAttribute("android:fillColor"))
     }
 
     /**
