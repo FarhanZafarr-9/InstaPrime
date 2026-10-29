@@ -11,7 +11,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings",
+        "InstaPrime settings",
         "ResourcePatch"
       ],
       "compatiblePackages": {
@@ -52,7 +52,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -92,7 +92,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -132,7 +132,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -172,7 +172,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -212,7 +212,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -252,7 +252,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -292,7 +292,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -332,7 +332,7 @@
       "use": false,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -372,7 +372,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -412,7 +412,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -452,7 +452,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -492,7 +492,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -534,7 +534,7 @@
         "BytecodePatch",
         "Default playback quality",
         "Full resolution photos",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -574,7 +574,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -614,7 +614,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -654,7 +654,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -694,7 +694,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -734,7 +734,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings",
+        "InstaPrime settings",
         "ResourcePatch"
       ],
       "compatiblePackages": {
@@ -775,7 +775,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -815,7 +815,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings",
+        "InstaPrime settings",
         "ResourcePatch"
       ],
       "compatiblePackages": {
@@ -856,7 +856,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -896,7 +896,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -936,7 +936,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -976,7 +976,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1016,7 +1016,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1056,7 +1056,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1096,7 +1096,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1136,7 +1136,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1176,7 +1176,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1216,7 +1216,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1256,7 +1256,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1296,7 +1296,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1336,7 +1336,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1376,7 +1376,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1416,7 +1416,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1456,7 +1456,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1496,7 +1496,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1536,7 +1536,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1576,7 +1576,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1616,7 +1616,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1656,7 +1656,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1696,7 +1696,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1736,7 +1736,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1776,7 +1776,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1816,7 +1816,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1856,7 +1856,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1896,7 +1896,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1936,7 +1936,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -1976,7 +1976,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2016,7 +2016,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2056,7 +2056,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2096,7 +2096,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2136,7 +2136,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2176,7 +2176,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2216,7 +2216,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2256,7 +2256,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2296,7 +2296,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2336,7 +2336,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2376,7 +2376,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2410,13 +2410,13 @@
       "options": []
     },
     {
-      "name": "HushGram launch screen",
-      "description": "Shows HushGram's logo instead of Instagram's on the screen you see while Instagram starts, on Android 13 and newer. Starts off. Turn it on in HushGram settings > Layout.",
+      "name": "InstaPrime launch screen",
+      "description": "Shows InstaPrime's logo instead of Instagram's on the screen you see while Instagram starts, on Android 13 and newer. Starts off. Turn it on in InstaPrime settings > Layout.",
       "category": "Interface",
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings",
+        "InstaPrime settings",
         "ResourcePatch"
       ],
       "compatiblePackages": {
@@ -2451,8 +2451,8 @@
       "options": []
     },
     {
-      "name": "HushGram settings",
-      "description": "Adds a HushGram settings page to Instagram. Open it by long-pressing the Instagram logo at the top of your feed or Instagram's icon, or from the top of Settings and activity. Turn features on or off there, pause HushGram and save diagnostics. Works as soon as you patch it in, with no switch.",
+      "name": "InstaPrime settings",
+      "description": "Adds a InstaPrime settings page to Instagram. Open it by long-pressing the Instagram logo at the top of your feed or Instagram's icon, or from the top of Settings and activity. Turn features on or off there, pause InstaPrime and save diagnostics. Works as soon as you patch it in, with no switch.",
       "category": "Settings",
       "use": true,
       "dependencies": [
@@ -2534,7 +2534,7 @@
           "description": "The second Instagram's package. Each part starts with a letter, with dots between the parts, and it can't be Instagram's own.",
           "required": true,
           "type": "kotlin.String",
-          "default": "com.instagram.android.hush",
+          "default": "com.instagram.android.prime",
           "values": null
         },
         {
@@ -2543,7 +2543,7 @@
           "description": "The name under the second Instagram's icon. It starts with a letter and holds up to 50 characters.",
           "required": true,
           "type": "kotlin.String",
-          "default": "Instagram Clone",
+          "default": "InstaPrime",
           "values": null
         },
         {
@@ -2564,7 +2564,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2604,7 +2604,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2644,7 +2644,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2684,7 +2684,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2724,7 +2724,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2764,7 +2764,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2804,7 +2804,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2844,7 +2844,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2884,7 +2884,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2924,7 +2924,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2964,7 +2964,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -2999,12 +2999,12 @@
     },
     {
       "name": "Pick the app icon",
-      "description": "Lets you pick the icon Instagram shows on your home screen: Instagram's own, HushGram's, or Instagram's glyph on black, on plum, or in black on white. The new icon shows once you leave Instagram, and you may need to add it to your home screen again from the app drawer. Starts on Instagram's own. Pick one in HushGram settings > Layout.",
+      "description": "Lets you pick the icon Instagram shows on your home screen: Instagram's own, InstaPrime's, or Instagram's glyph on black, on plum, or in black on white. The new icon shows once you leave Instagram, and you may need to add it to your home screen again from the app drawer. Starts on Instagram's own. Pick one in InstaPrime settings > Layout.",
       "category": "Interface",
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings",
+        "InstaPrime settings",
         "ResourcePatch"
       ],
       "compatiblePackages": {
@@ -3045,7 +3045,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3085,7 +3085,7 @@
       "use": false,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings",
+        "InstaPrime settings",
         "ResourcePatch"
       ],
       "compatiblePackages": {
@@ -3126,7 +3126,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3166,7 +3166,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3206,7 +3206,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings",
+        "InstaPrime settings",
         "ResourcePatch"
       ],
       "compatiblePackages": {
@@ -3247,7 +3247,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3287,7 +3287,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3327,7 +3327,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3367,7 +3367,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3407,7 +3407,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3447,7 +3447,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3487,7 +3487,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3527,7 +3527,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3567,7 +3567,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3607,7 +3607,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3647,7 +3647,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3687,7 +3687,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3727,7 +3727,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3767,7 +3767,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3807,7 +3807,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3847,7 +3847,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3887,7 +3887,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3927,7 +3927,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -3967,7 +3967,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4007,7 +4007,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4047,7 +4047,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4087,7 +4087,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4127,7 +4127,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4167,7 +4167,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4207,7 +4207,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4247,7 +4247,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4287,7 +4287,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4327,7 +4327,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4367,7 +4367,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4407,7 +4407,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4447,7 +4447,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4487,7 +4487,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4527,7 +4527,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4567,7 +4567,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4607,7 +4607,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4647,7 +4647,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4687,7 +4687,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4727,7 +4727,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4767,7 +4767,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4807,7 +4807,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4847,7 +4847,7 @@
       "use": false,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4887,7 +4887,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
@@ -4927,7 +4927,7 @@
       "use": true,
       "dependencies": [
         "BytecodePatch",
-        "HushGram settings"
+        "InstaPrime settings"
       ],
       "compatiblePackages": {
         "com.instagram.android": [
