@@ -44,6 +44,7 @@ import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
@@ -274,16 +275,16 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     /** Keep the actual row objects, including their values and listeners, while filtering. */
     private final Map<PreferenceCategory, List<Preference>> searchableRows = new LinkedHashMap<>();
     private final Map<Preference, String> searchAliases = new HashMap<>();
-    /** The order each section and row was built with, kept while a search has it further down. */
-    private final Map<Preference, Integer> builtOrders = new HashMap<>();
-    /** Past every section's and row's own order, and far short of the rows that close the page. */
-    private static final int RANKED_LATER = 100_000;
     /** Stable category keys, retained while search temporarily reveals other settings. */
-    private final Set<String> expandedCategories = new java.util.LinkedHashSet<>();
-    /** The last expanded section, used to return to it after a restart. */
+    private final SettingsNavigation navigation = new SettingsNavigation();
+    private final Map<String, int[]> pagePositions = new HashMap<>();
+    private boolean projectingNavigation;
+    private boolean navigationReady;
+    private boolean bulkChanging;
+    static final String ENABLE_ALL_KEY = "primegram_enable_all";
+    private final Map<String, Toggle> bulkRows = new HashMap<>();
+    /** The current category or nested page, also used after restart and recreation. */
     @Nullable private String lastCategory;
-    /** The button at the top that switches between the list of categories and one long list. */
-    @Nullable private Row viewToggle;
     /** Before you sign in, while no tap has hidden it. The home page's, like the status card. */
     @Nullable private Preference beforeSignIn;
     @Nullable private String restoredCategory;
@@ -316,8 +317,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     public void onCreate(Bundle state) {
         if (state != null) {
             restoredCategory = state.getString("hushgram_open_category");
-            List<String> expanded = state.getStringArrayList("hushgram_expanded_categories");
-            if (expanded != null) expandedCategories.addAll(expanded);
+            Bundle positions = state.getBundle("hushgram_page_positions");
+            if (positions != null) for (String key : positions.keySet()) pagePositions.put(key, positions.getIntArray(key));
             restoredPosition = state.getInt("hushgram_category_position", -1);
             restoredTop = state.getInt("hushgram_category_top", 0);
             documentRequest = state.getInt("hushgram_document_request", 0);
@@ -358,7 +359,10 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         state.putString("hushgram_font_process", Fonts.importProcess());
         state.putInt("hushgram_document_sequence", documentSequence);
         state.putString("hushgram_configuration_export", configurationExportToken);
-        state.putStringArrayList("hushgram_expanded_categories", new ArrayList<>(expandedCategories));
+        rememberPosition();
+        Bundle positions = new Bundle();
+        for (Map.Entry<String, int[]> entry : pagePositions.entrySet()) positions.putIntArray(entry.getKey(), entry.getValue());
+        state.putBundle("hushgram_page_positions", positions);
         if (lastCategory != null) state.putString("hushgram_open_category", lastCategory);
         ListView list = listView();
         boolean searching = !searchQuery.trim().isEmpty();
@@ -377,7 +381,11 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             list.setItemsCanFocus(true);
             list.setDivider(null);
             list.setDividerHeight(0);
-            list.setBackgroundColor(Color.BLACK);
+            int bottomSpace = Math.round(32 * list.getResources().getDisplayMetrics().density);
+            list.setPaddingRelative(0, 0, 0, bottomSpace);
+            list.setClipToPadding(false);
+            list.setSelector(new ColorDrawable(Color.TRANSPARENT));
+            list.setBackgroundColor(ScreenColors.current().background);
         }
         showTitle(null);
     }
@@ -391,18 +399,6 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             restoredPosition = -1;
             list.post(() -> {
                 if (list == listView()) list.setSelectionFromTop(position, top);
-            });
-        } else if (list != null && categoryPages() && lastCategory != null) {
-            String category = lastCategory;
-            list.post(() -> {
-                if (list != listView()) return;
-                for (int i = 0; i < list.getCount(); i++) {
-                    Object item = list.getItemAtPosition(i);
-                    if (item instanceof Heading && category.equals(((Heading) item).getKey())) {
-                        list.setSelectionFromTop(i, 0);
-                        break;
-                    }
-                }
             });
         }
     }
@@ -449,11 +445,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         exportConfiguration = importConfiguration = undoConfiguration = null;
         recovery = null;
         interruptedSaves = null;
-        // The rows outlive this view, and a search left on them would be read as how they were built.
-        restoreOrders();
-        if (!categoryPages()) NewRowDots.leftEverything();
-        else for (PreferenceCategory group : searchableRows.keySet()) {
-            if (expandedCategories.contains(group.getKey())) NewRowDots.left(group);
+        for (PreferenceCategory group : searchableRows.keySet()) {
+            if (navigation.find(lastCategory) != null && navigation.find(lastCategory).category == group) NewRowDots.left(group);
         }
         super.onDestroyView();
     }
@@ -470,12 +463,14 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
 
     @Override
     protected void initialize() {
+        navigationReady = false;
+        bulkRows.clear();
         // Loads the switches before the shared fragment syncs them to the screen.
         Settings.HIDE_ADS.get();
 
         // Every row inflates with the theme of the context it was built with. Instagram's activity
         // theme can be light, and its near-black text would vanish on this screen's black page.
-        ScreenColors.shown = null;
+        ScreenColors.shown = ScreenColors.forScreen(getContext());
         Context context = themed(getContext());
         PreferenceScreen screen = getPreferenceManager().createPreferenceScreen(context);
         screen.setKey(SCREEN_KEY);
@@ -485,32 +480,16 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         // The rows are built again, so the old ones' greying is no longer anyone's to undo.
         lockedRows.clear();
 
-        viewToggle = new Row(context);
-        viewToggle.setKey("hushgram_view_toggle");
-        viewToggle.setPersistent(false);
-        viewToggle.setOnPreferenceClickListener(tapped -> {
-            Preference own = findPreference(Settings.CATEGORY_PAGES.key);
-            if (own == null ? !allowMutation() : !allowMutation(own, true)) return true;
-            if (own instanceof TwoStatePreference) {
-                ((TwoStatePreference) own).setChecked(!Settings.CATEGORY_PAGES.savedValue());
-            } else {
-                Settings.CATEGORY_PAGES.save(!Settings.CATEGORY_PAGES.savedValue());
-                filterSettings();
-            }
-            return true;
-        });
         Preference status = statusCard(context);
         status.setOrder(-40);
         screen.addPreference(status);
-        // Search and the list switch lead the page; notices and recovery follow them.
+        // Search leads the page; notices and recovery follow them.
         beforeSignIn = null;
         if (!Settings.SIGN_IN_NOTICE_HIDDEN.savedValue()) {
             Preference notice = beforeSignIn = signInNotice(context, screen);
             notice.setOrder(-30);
             screen.addPreference(notice);
         }
-        viewToggle.setOrder(-45);
-        screen.addPreference(viewToggle);
         search = new SearchRow(context);
         search.setOrder(-50);
         search.setKey("hushgram_settings_search");
@@ -531,6 +510,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         PatchFamily.registerDiagnostics();
         Set<PatchFamily> build = PatchFamily.inThisBuild();
         // Everyday controls first; settings access and upkeep follow them.
+        AboutCategory.add(this, screen, context, build);
         PrivacyCategory.add(this, screen, context, build);
         FeedCategory.add(this, screen, context, build);
         MetaAiCategory.add(this, screen, context, build);
@@ -553,7 +533,6 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         PatchTimeCategory.add(this, screen, context, build);
         BackupCategory.add(this, screen, context, build);
         PauseCategory.add(this, screen, context, build);
-        AboutCategory.add(this, screen, context, build);
 
         // Outside every category, like Support HushGram below it. Every row counts toward the
         // switches it lists, the ones a folded category or a search keeps off the screen too.
@@ -574,7 +553,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         Row donate = support = new Row(context);
         donate.setKey(SUPPORT_ROW_KEY);
         // Its name alone, with no line under it.
-        donate.setTitle(L10n.t("Support HushGram"));
+        donate.setTitle(L10n.t("Support the original project"));
+        donate.setSummary("SysAdminDoc on Ko-fi");
         donate.setPersistent(false);
         // Native Preference.compareTo subtracts orders, so leave room for negative header orders.
         donate.setOrder(Integer.MAX_VALUE / 2);
@@ -583,6 +563,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             return true;
         });
         mark(donate, SettingsIcons.OPENING);
+        about.addPreference(bug);
+        about.addPreference(donate);
         for (int i = 0; i < screen.getPreferenceCount(); i++) {
             Preference section = screen.getPreference(i);
             if (!(section instanceof PreferenceCategory)) continue;
@@ -708,16 +690,14 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         }
         // After every row is known: a first open counts them all as seen, so a fresh install has no dots.
         NewRowDots.start(context, searchableRows);
-        Set<String> available = new HashSet<>();
-        for (PreferenceCategory group : searchableRows.keySet()) {
-            available.add(group.getKey());
-            NewRowDots.opens(group, group);
-        }
-        expandedCategories.retainAll(available);
-        if (restoredCategory != null && available.contains(restoredCategory)) {
-            expandedCategories.add(restoredCategory);
+        navigation.build(context, searchableRows, this::openPage);
+        navigationReady = true;
+        if (restoredCategory != null && navigation.find(restoredCategory) != null) {
             lastCategory = restoredCategory;
-        } else if (restoredCategory != null) restoredPosition = -1;
+        } else if (restoredCategory != null) {
+            lastCategory = null;
+            restoredPosition = -1;
+        }
         restoredCategory = null;
         filterSettings();
     }
@@ -726,45 +706,43 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         return group instanceof Heading ? ((Heading) group).icon : SettingsIcons.SETTINGS;
     }
 
-    /** Whether the page lists its categories. A choice about the page, so Pause doesn't turn it off. */
-    private static boolean categoryPages() {
-        return Settings.CATEGORY_PAGES.savedValue();
+    private void toggleCategory(PreferenceCategory group) {
+        SettingsNavigation.Node page = navigation.find(group.getKey());
+        if (page != null) openPage(page);
     }
 
-    /** Expand in place. Keep the visible anchor instead of scrolling to the top of settings. */
-    private void toggleCategory(PreferenceCategory group) {
-        if (!categoryPages() || !searchQuery.trim().isEmpty()) return;
+    private void rememberPosition() {
+        if (!searchQuery.trim().isEmpty()) return;
         ListView list = listView();
-        int position = list == null ? -1 : list.getFirstVisiblePosition();
-        Object anchor = list == null || position < 0 || position >= list.getCount()
-                ? null : list.getItemAtPosition(position);
-        View first = list == null ? null : list.getChildAt(0);
-        int top = first == null ? 0 : first.getTop() - list.getPaddingTop();
-        if (expandedCategories.remove(group.getKey())) {
-            NewRowDots.left(group);
-            if (group.getKey().equals(lastCategory)) lastCategory = null;
-        } else {
-            expandedCategories.add(group.getKey());
-            lastCategory = group.getKey();
-        }
+        if (list == null) return;
+        View first = list.getChildAt(0);
+        pagePositions.put(currentPage(), new int[]{list.getFirstVisiblePosition(),
+                first == null ? 0 : first.getTop() - list.getPaddingTop()});
+    }
+
+    private void openPage(SettingsNavigation.Node page) { openPage(page, true); }
+
+    private void openPage(SettingsNavigation.Node page, boolean remember) {
+        if (remember) rememberPosition();
+        lastCategory = page == null ? null : page.id;
         focusPage();
         filterSettings();
-        if (list != null && anchor != null) {
-            list.post(() -> {
-                if (list != listView()) return;
-                for (int i = 0; i < list.getCount(); i++) {
-                    if (list.getItemAtPosition(i) == anchor) {
-                        list.setSelectionFromTop(i, top);
-                        break;
-                    }
-                }
-            });
-        }
+        ListView list = listView();
+        int[] position = pagePositions.get(currentPage());
+        if (list != null) list.post(() -> {
+            if (list == listView()) list.setSelectionFromTop(position == null ? 0 : position[0],
+                    position == null ? 0 : position[1]);
+        });
     }
 
-    /** Back clears a search first. Expanded sections do not add a navigation level. */
+    /** Search clears first; Back then steps through subpage and category to home. */
     boolean closeCategory() {
-        return endSearch();
+        if (endSearch()) return true;
+        SettingsNavigation.Node page = navigation.find(lastCategory);
+        if (page == null) return false;
+        NewRowDots.left(page.category);
+        openPage(page.parent);
+        return true;
     }
 
     /**
@@ -781,7 +759,9 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         if (field != null) field.setText("");
         if (!searchQuery.isEmpty()) searchSettings("");
         ListView list = listView();
-        if (list != null) list.post(() -> list.setSelection(0));
+        int[] position = pagePositions.get(currentPage());
+        if (list != null) list.post(() -> list.setSelectionFromTop(position == null ? 0 : position[0],
+                position == null ? 0 : position[1]));
         return true;
     }
 
@@ -815,16 +795,6 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         }
     }
 
-    /** Hidden rows still participate in the shared preference synchronization contract. */
-    @Override public Preference findPreference(CharSequence key) {
-        Preference visible = super.findPreference(key);
-        if (visible != null || key == null) return visible;
-        for (List<Preference> rows : searchableRows.values()) {
-            for (Preference row : rows) if (key.toString().equals(row.getKey())) return row;
-        }
-        return null;
-    }
-
     /**
      * A plain row tied to a setting (Tab order) shows its own summary and saves its own value, so
      * there's nothing to sync. The shared sync would log every one as a patch error each time
@@ -842,7 +812,11 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         for (Map.Entry<PreferenceCategory, List<Preference>> section : searchableRows.entrySet()) {
             PreferenceCategory group = section.getKey();
             if (group.getParent() != screen) screen.addPreference(group);
-            for (Preference row : section.getValue()) if (row.getParent() != group) group.addPreference(row);
+            for (Preference row : section.getValue()) {
+                if (row.getParent() == group) continue;
+                if (row.getParent() != null) row.getParent().removePreference(row);
+                group.addPreference(row);
+            }
         }
     }
 
@@ -1170,6 +1144,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
 
     void searchSettings(String query) {
         boolean starting = searchText(searchQuery).trim().isEmpty();
+        if (starting) rememberPosition();
         searchQuery = query == null ? "" : query;
         filterSettings();
         if (starting && !searchText(searchQuery).trim().isEmpty()) searchToTop();
@@ -1200,91 +1175,160 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
 
     void filterSettings() {
         PreferenceScreen screen = getPreferenceScreen();
-        if (screen == null || search == null || screen.findPreference(search.getKey()) != search) return;
-        String normalized = searchText(searchQuery).trim();
-        String[] terms = normalized.isEmpty() ? new String[0] : normalized.split("\\s+");
-        boolean pages = categoryPages();
-        NewRowDots.searching(terms.length > 0);
-        rankForSearch(terms);
-        // Search reveals matching rows without changing the sections the person expanded.
-        boolean listing = pages && terms.length == 0;
-        showTitle(terms.length > 0 ? L10n.t("Search settings") : null);
-        for (Preference top : new Preference[]{statusCard, beforeSignIn, viewToggle, search}) {
-            if (top == null) continue;
-            // A tap hid the notice for good and took it off the screen. It stays off.
-            if (top == beforeSignIn && Settings.SIGN_IN_NOTICE_HIDDEN.savedValue()) continue;
-            boolean hidden = top == statusCard && !HushgramPause.isPaused();
-            if (hidden) {
-                if (top.getParent() == screen) screen.removePreference(top);
-            } else if (top.getParent() != screen) screen.addPreference(top);
-        }
-        if (viewToggle != null) {
-            CharSequence label = pages ? L10n.t("Show all settings as a list") : L10n.t("Show settings by category");
-            if (!label.equals(viewToggle.getTitle())) {
-                viewToggle.setTitle(label);
-                // A list for the long list, stacked cards for the categories: what a tap shows.
-                mark(viewToggle, pages ? SettingsIcons.MENU : SettingsIcons.FEED);
-            }
-        }
-        int matches = 0;
-        for (Map.Entry<PreferenceCategory, List<Preference>> section : searchableRows.entrySet()) {
-            PreferenceCategory group = section.getKey();
-            // Pause, the lock and an interrupted save stay in reach: their section opens and can't fold,
-            // and stays open after, so unlocking doesn't fold the row just tapped.
-            boolean held = listing && group == recovery && recoveryHeldOpen();
-            if (held) expandedCategories.add(group.getKey());
-            boolean expanded = !listing || expandedCategories.contains(group.getKey());
-            boolean filled = false;
-            for (Preference row : section.getValue()) {
-                String text = searchText(group.getTitle()) + " " + searchText(row.getTitle()) + " "
-                        + searchText(row.getSummary()) + " " + searchText(searchAliases.get(row));
-                boolean match = true;
-                for (String term : terms) if (!text.contains(term)) { match = false; break; }
-                if (match) matches++;
-                filled |= match || group == recovery;
-                if (expanded && (match || group == recovery)) {
-                    if (row.getParent() != group) group.addPreference(row);
-                } else if (row.getParent() == group) group.removePreference(row);
-            }
-            // Keep live row objects. A query never hides a running save's Cancel button.
-            if (group == downloads) {
-                for (SaveRow save : saveRows.values()) {
-                    filled = true;
-                    if (expanded && save.getParent() != group) group.addPreference(save);
-                    else if (!expanded && save.getParent() == group) group.removePreference(save);
+        if (screen == null || search == null || projectingNavigation || bulkChanging || !navigationReady) return;
+        projectingNavigation = true;
+        try {
+            String normalized = searchText(searchQuery).trim();
+            String[] terms = normalized.isEmpty() ? new String[0] : normalized.split("\\s+");
+            boolean searching = terms.length > 0;
+            NewRowDots.searching(searching);
+            SettingsNavigation.Node page = navigation.find(lastCategory);
+            List<Preference> visible = new ArrayList<>();
+            visible.add(search);
+            if (HushgramPause.isPaused() && statusCard != null) visible.add(statusCard);
+            if (searching) {
+                showTitle(L10n.t("Search settings"));
+                List<Preference> matches = new ArrayList<>();
+                for (Map.Entry<PreferenceCategory, List<Preference>> section : searchableRows.entrySet()) {
+                    for (Preference row : section.getValue()) {
+                        SettingsNavigation.Node destination = navigation.destination(row);
+                        String path = destination == null ? "" : destination.title.toString();
+                        String text = searchText(section.getKey().getTitle()) + " " + searchText(path) + " "
+                                + searchText(row.getTitle()) + " " + searchText(row.getSummary()) + " "
+                                + searchText(searchAliases.get(row));
+                        if (holdsAll(text, terms)) matches.add(row);
+                    }
                 }
-                if (lastCarouselSave != null && SaveControl.batchOutcome() != null) {
-                    filled = true;
-                    if (expanded && lastCarouselSave.getParent() != group) group.addPreference(lastCarouselSave);
-                    else if (!expanded && lastCarouselSave.getParent() == group) group.removePreference(lastCarouselSave);
+                matches.sort((left, right) -> Boolean.compare(
+                        !holdsAll(searchText(left.getTitle()), terms), !holdsAll(searchText(right.getTitle()), terms)));
+                for (Preference match : matches) visible.add(searchResult(match));
+                if (visible.size() == (HushgramPause.isPaused() && statusCard != null ? 2 : 1)) visible.add(noSearchResults);
+            } else if (page == null) {
+                showTitle(null);
+                if (beforeSignIn != null && !Settings.SIGN_IN_NOTICE_HIDDEN.savedValue()) visible.add(beforeSignIn);
+                for (SettingsNavigation.Node category : navigation.categories) visible.add(category.opener);
+            } else {
+                showTitle(page.title);
+                Toggle all = enableAllRow(page);
+                if (all != null) visible.add(all);
+                for (SettingsNavigation.Node child : page.children) visible.add(child.opener);
+                for (Preference row : page.rows) {
+                    if (row instanceof TwoStatePreference && row.isPersistent()) {
+                        Setting<?> setting = Setting.getSettingFromPath(row.getKey());
+                        if (setting instanceof BooleanSetting) ((TwoStatePreference) row).setChecked(((BooleanSetting) setting).savedValue());
+                    }
+                    visible.add(row);
+                }
+                if (page.category == recovery && interruptedSaves != null) visible.add(interruptedSaves);
+                if (page.category == downloads && page.parent == null) {
+                    visible.addAll(saveRows.values());
+                    if (lastCarouselSave != null && SaveControl.batchOutcome() != null) visible.add(lastCarouselSave);
                 }
             }
-            if (group instanceof Heading) ((Heading) group).display(listing && !held, expanded);
-            if (filled) {
-                if (group.getParent() != screen) screen.addPreference(group);
-            } else if (group.getParent() == screen) screen.removePreference(group);
+            // Reconcile rather than clearing: Search keeps focus and live controls keep their state.
+            for (int i = screen.getPreferenceCount() - 1; i >= 0; i--) {
+                Preference existing = screen.getPreference(i);
+                if (!visible.contains(existing)) screen.removePreference(existing);
+            }
+            for (int i = 0; i < visible.size(); i++) {
+                Preference row = visible.get(i);
+                if (row.getOrder() != i) row.setOrder(i);
+                if (row.getParent() != screen) {
+                    if (row.getParent() != null) row.getParent().removePreference(row);
+                    screen.addPreference(row);
+                }
+            }
+        } finally {
+            projectingNavigation = false;
         }
-        // Actions below the categories remain on the same page.
-        Row[] loose = {report, support};
-        String[] looseAliases = {" github bug issue", " ko-fi kofi donate coffee"};
-        for (int i = 0; i < loose.length; i++) {
-            Row row = loose[i];
-            if (row == null) continue;
-            String text = searchText(row.getTitle()) + " " + searchText(row.getSummary()) + looseAliases[i];
-            boolean match = true;
-            for (String term : terms) if (!text.contains(term)) { match = false; break; }
-            boolean shown = match;
-            if (terms.length > 0 && match) matches++;
-            if (shown) {
-                if (row.getParent() != screen) screen.addPreference(row);
-            } else if (row.getParent() == screen) screen.removePreference(row);
-        }
-        // removePreference notifies even when absent. No-op changes mustn't rebind live Cancel.
-        if (terms.length > 0 && matches == 0) {
-            if (noSearchResults.getParent() != screen) screen.addPreference(noSearchResults);
-        } else if (noSearchResults.getParent() == screen) screen.removePreference(noSearchResults);
-        // Last, after every row that sets its own state has: a locked page greys them all again.
         showLock();
+    }
+
+    private Toggle enableAllRow(SettingsNavigation.Node page) {
+        if (!page.children.isEmpty()) return null;
+        List<TwoStatePreference> toggles = page.toggles();
+        if (toggles.isEmpty()) return null;
+        Toggle all = bulkRows.get(page.id);
+        if (all == null) {
+            all = new Toggle(search.getContext());
+            all.setPersistent(false);
+            all.setKey(ENABLE_ALL_KEY);
+            all.setTitle(L10n.t("Enable all"));
+            all.setSummary(L10n.t("Turn this section's switches on or off together."));
+            mark(all, SettingsIcons.SETTINGS);
+            all.setOnPreferenceChangeListener((row, value) -> {
+                if (!allowMutation()) return false;
+                changeAll(page, Boolean.TRUE.equals(value));
+                return false;
+            });
+            bulkRows.put(page.id, all);
+        }
+        boolean checked = true;
+        for (TwoStatePreference toggle : toggles) checked &= toggle.isChecked();
+        all.setChecked(checked);
+        all.setEnabled(!SettingsLock.locked());
+        return all;
+    }
+
+    /** Use each switch's listener so validation, dependent controls and side effects apply. */
+    private void changeAll(SettingsNavigation.Node page, boolean on) {
+        if (bulkChanging || !allowMutation()) return;
+        List<TwoStatePreference> toggles = page.toggles();
+        if (!on) java.util.Collections.reverse(toggles);
+        Set<TwoStatePreference> attempted = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        bulkChanging = true;
+        try {
+            for (int pass = 0; pass < toggles.size(); pass++) {
+                boolean progressed = false;
+                for (TwoStatePreference toggle : toggles) {
+                    if (toggle.isChecked() == on || !toggle.isEnabled() || attempted.contains(toggle)) continue;
+                    if (!allowMutation()) return;
+                    attempted.add(toggle);
+                    progressed = true;
+                    Preference.OnPreferenceChangeListener listener = toggle.getOnPreferenceChangeListener();
+                    if (listener == null || listener.onPreferenceChange(toggle, on)) toggle.setChecked(on);
+                }
+                if (!progressed) break;
+            }
+        } finally {
+            bulkChanging = false;
+            showGhostMode();
+            filterSettings();
+            showRestart();
+        }
+    }
+
+    private Preference searchResult(Preference setting) {
+        Row result = new Row(search.getContext());
+        result.setPersistent(false);
+        result.setKey("hushgram_search_result_" + setting.getKey());
+        result.setTitle(setting.getTitle());
+        SettingsNavigation.Node destination = navigation.destination(setting);
+        CharSequence path = destination == null ? "" : destination.parent == null ? destination.title
+                : destination.parent.title + " › " + destination.title;
+        result.setSummary(path + " · " + (setting.getSummary() == null ? "" : setting.getSummary()));
+        result.setIcon(setting.getIcon());
+        result.setOnPreferenceClickListener(clicked -> {
+            searchQuery = "";
+            View view = getView();
+            EditText field = view == null ? null : view.findViewWithTag("hushgram-settings-search");
+            if (field != null) field.setText("");
+            openPage(destination, false);
+            ListView list = listView();
+            if (list != null) list.post(() -> {
+                for (int i = 0; i < list.getCount(); i++) {
+                    if (list.getItemAtPosition(i) != setting) continue;
+                    list.setSelectionFromTop(i, 0);
+                    list.post(() -> {
+                        View focused = list.getChildAt(0);
+                        if (focused != null) { focused.setPressed(true); focused.postDelayed(() -> focused.setPressed(false), 900); }
+                    });
+                    break;
+                }
+            });
+            return true;
+        });
+        return result;
     }
 
     /**
@@ -1313,22 +1357,13 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                 showClearPositions();
                 showConfiguration();
             }
+            for (Toggle all : bulkRows.values()) all.setEnabled(!SettingsLock.locked());
             long left = SettingsLock.left();
             if (left > 0 && isResumed()) lockRefresh.postDelayed(lockTick, Math.min(left, 60_000L));
         } finally {
             showingLock = false;
         }
-        // The lock can close on its own clock, and a save can stop while the page is away: refold.
-        if (recovery instanceof Heading && recovery.getParent() != null && categoryPages()
-                && searchQuery.trim().isEmpty() && ((Heading) recovery).collapsible == recoveryHeldOpen()) {
-            filterSettings();
-        }
-    }
 
-    /** Whether Pause and diagnostics must stay open: HushGram is paused, the lock holds, or a save was interrupted. */
-    private boolean recoveryHeldOpen() {
-        return HushgramPause.isPaused() || BaseSettings.PAUSED.savedValue() || SettingsLock.locked()
-                || interruptedSaves != null;
     }
 
     /** Greys out [row] while the settings are locked, unless it changes nothing or it's the lock itself. */
@@ -1536,55 +1571,20 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         Utils.showToastLong(L10n.t("The setting couldn't finish updating. Its saved value is shown."));
     }
 
-    /**
-     * Puts what a search is most likely after first: a row whose title holds every term comes
-     * before the rows that only mention it, and a section with such a row before the others.
-     * "Start tab" used to list most of the Tab bar page ahead of Start tab itself, since each
-     * summary there says "Restart Instagram" (S25, 2026-10-13). What matches stays as it was,
-     * anywhere in a word, because German and Korean write compounds as one word. Rows only ever
-     * move down, so Search stays first, and with no terms everything is back where it was built.
-     */
-    private void rankForSearch(String[] terms) {
-        if (terms.length == 0) {
-            restoreOrders();
-            return;
-        }
-        for (Map.Entry<PreferenceCategory, List<Preference>> section : searchableRows.entrySet()) {
-            boolean named = holdsAll(searchText(section.getKey().getTitle()), terms);
-            for (Preference row : section.getValue()) {
-                boolean inTitle = holdsAll(searchText(row.getTitle()), terms);
-                named |= inTitle;
-                rank(row, !inTitle);
-            }
-            rank(section.getKey(), !named);
-        }
-    }
-
-    /**
-     * Puts back every order a search moved. It goes by what was moved, not by what a search can
-     * still find, so a row that left the search doesn't keep its moved place.
-     */
-    private void restoreOrders() {
-        for (Map.Entry<Preference, Integer> moved : builtOrders.entrySet()) {
-            if (moved.getKey().getOrder() != moved.getValue()) moved.getKey().setOrder(moved.getValue());
-        }
-        builtOrders.clear();
-    }
-
-    private void rank(Preference item, boolean later) {
-        Integer built = builtOrders.get(item);
-        if (built == null) {
-            if (!later) return;
-            built = item.getOrder();
-            builtOrders.put(item, built);
-        }
-        int order = later ? built + RANKED_LATER : built;
-        if (item.getOrder() != order) item.setOrder(order);
-    }
-
     private static boolean holdsAll(String text, String[] terms) {
         for (String term : terms) if (!text.contains(term)) return false;
         return true;
+    }
+
+    /** Hidden pages still participate in preference synchronization and dependency updates. */
+    @Override public Preference findPreference(CharSequence key) {
+        Preference visible = super.findPreference(key);
+        if (visible != null || key == null) return visible;
+        for (Map.Entry<PreferenceCategory, List<Preference>> entry : searchableRows.entrySet()) {
+            if (key.equals(entry.getKey().getKey())) return entry.getKey();
+            for (Preference row : entry.getValue()) if (key.equals(row.getKey())) return row;
+        }
+        return null;
     }
 
     /** Every row in the categories, on the screen or kept off it by a folded category or a search. */
@@ -2254,7 +2254,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             recovery.addPreference(mark(interruptedSaves, SettingsIcons.DOWNLOADS));
         }
         PreferenceCategory group = downloads;
-        if (group == null) return;
+        if (group == null) { filterSettings(); return; }
         String outcome = SaveControl.batchOutcome();
         if (outcome != null) {
             if (lastCarouselSave == null) {
@@ -2267,7 +2267,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                 mark(lastCarouselSave, SettingsIcons.DOWNLOADS);
             }
             lastCarouselSave.setSummary(outcome);
-            if (lastCarouselSave.getParent() != group) group.addPreference(lastCarouselSave);
+            if (lastCarouselSave.getParent() == null) group.addPreference(lastCarouselSave);
         } else if (lastCarouselSave != null && lastCarouselSave.getParent() == group) {
             group.removePreference(lastCarouselSave);
         }
@@ -2277,7 +2277,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         for (java.util.Iterator<Map.Entry<Integer, SaveRow>> rows = saveRows.entrySet().iterator(); rows.hasNext(); ) {
             Map.Entry<Integer, SaveRow> row = rows.next();
             if (now.contains(row.getKey())) continue;
-            group.removePreference(row.getValue());
+            if (row.getValue().getParent() != null) row.getValue().getParent().removePreference(row.getValue());
             rows.remove();
         }
         for (SaveControl.Running save : running) {
@@ -2309,9 +2309,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             android.graphics.drawable.StateListDrawable states = new android.graphics.drawable.StateListDrawable();
             for (boolean focused : new boolean[]{true, false}) {
                 android.graphics.drawable.GradientDrawable surface = new android.graphics.drawable.GradientDrawable();
-                surface.setColor(ScreenColors.DEFAULT.card);
-                surface.setCornerRadius(Math.round(10 * density));
-                surface.setStroke(Math.round(density), focused ? ScreenColors.DEFAULT.heading : ScreenColors.DEFAULT.outline);
+                surface.setColor(ScreenColors.current().card);
+                surface.setCornerRadius(Math.round(12 * density));
                 states.addState(focused ? new int[]{android.R.attr.state_focused} : new int[]{},
                         new android.graphics.drawable.InsetDrawable(surface, inset, gap, inset, gap));
             }
@@ -2332,14 +2331,14 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             // The whole search row owns the surface, including its clear action.
             field.setBackground(null);
             field.setPaddingRelative(0, Math.round(10 * density), 0, Math.round(10 * density));
-            field.setTextColor(ScreenColors.DEFAULT.title);
-            field.setHintTextColor(ScreenColors.DEFAULT.summary);
+            field.setTextColor(ScreenColors.current().title);
+            field.setHintTextColor(ScreenColors.current().summary);
             field.setHint(L10n.t("Search settings"));
             field.setContentDescription(L10n.t("Search settings"));
             // A magnifier at the field's start, as every row starts with an icon. A screen reader
             // already hears the field's name, and a compound drawable isn't read.
             android.graphics.drawable.Drawable glass = SettingsIcons.icon(context, SettingsIcons.SEARCH,
-                    ScreenColors.DEFAULT.summary);
+                    ScreenColors.current().summary);
             int glassSize = Math.round(20 * context.getResources().getDisplayMetrics().density);
             glass.setBounds(0, 0, glassSize, glassSize);
             field.setCompoundDrawablesRelative(glass, null, null, null);
@@ -2354,9 +2353,9 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             clear.setText("");
             clear.setAllCaps(false);
             clear.setTextSize(24);
-            clear.setTextColor(ScreenColors.DEFAULT.heading);
+            clear.setTextColor(ScreenColors.current().heading);
             android.graphics.drawable.Drawable cross = SettingsIcons.icon(context, SettingsIcons.CLOSE,
-                    ScreenColors.DEFAULT.heading);
+                    ScreenColors.current().heading);
             int crossSize = Math.round(20 * density);
             cross.setBounds(0, 0, crossSize, crossSize);
             clear.setCompoundDrawablesRelative(cross, null, null, null);
@@ -2464,7 +2463,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         card.setPersistent(false);
         card.setEnabled(!resumingFromOverview);
         boolean paused = HushgramPause.isPaused();
-        ScreenColors palette = ScreenColors.DEFAULT;
+        ScreenColors palette = ScreenColors.current();
         card.setIcon(SettingsIcons.icon(context, paused ? SettingsIcons.PAUSE : SettingsIcons.PATCHED,
                 paused ? palette.summary : palette.heading));
         statusCard = card;
@@ -2495,7 +2494,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         Row notice = new Row(context);
         notice.setPersistent(false);
         notice.setKey(SIGN_IN_NOTICE_KEY);
-        notice.setIcon(SettingsIcons.icon(context, SettingsIcons.ABOUT, ScreenColors.DEFAULT.heading));
+        notice.setIcon(SettingsIcons.icon(context, SettingsIcons.ABOUT, ScreenColors.current().heading));
         notice.setTitle(L10n.t("Before you sign in"));
         notice.setSummary(L10n.t("Nobody outside Meta knows what gets an account suspended. A patched Instagram "
                 + "can't pass Google's check that it came from the Play Store, and no patch changes that. If you'd "
@@ -2613,7 +2612,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
 
     /** The last expanded section to reveal after restarting, or the top of the main list. */
     String currentPage() {
-        return categoryPages() && expandedCategories.contains(lastCategory) ? lastCategory : "";
+        return lastCategory == null ? "" : lastCategory;
     }
 
     /**
@@ -3778,7 +3777,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     /** What the list calls [icon]. HushGram's own name isn't translated. */
     static String appIconLabel(AppIconChoice icon) {
         switch (icon) {
-            case HUSHGRAM: return "HushGram";
+            case HUSHGRAM: return "InstaPrime";
             case DARK: return L10n.t("Instagram on black");
             case PLUM: return L10n.t("Instagram on plum");
             case LIGHT: return L10n.t("Instagram in black on white");
@@ -5184,7 +5183,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     }
 
     static Preference mark(Preference row, String icon) {
-        row.setIcon(SettingsIcons.icon(row.getContext(), icon, ScreenColors.DEFAULT.heading));
+        row.setIcon(SettingsIcons.icon(row.getContext(), icon, ScreenColors.current().heading));
         return row;
     }
 
@@ -5258,8 +5257,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     }
 
     /**
-     * Lets a row's title and summary wrap to as many lines as they need. Android draws a row's
-     * title on one line and cuts its summary at ten.
+     * Lets titles and descriptions wrap to their full length.
      *
      * <p>Every line starts at the row's start edge. In a right-to-left layout, English text is a
      * left-to-right paragraph, which the row's start gravity sets flush left inside a text block
@@ -5276,6 +5274,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         TextView summary = row.findViewById(android.R.id.summary);
         if (summary != null) {
             summary.setMaxLines(Integer.MAX_VALUE);
+            summary.setEllipsize(null);
             summary.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
         }
     }
@@ -5357,13 +5356,33 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
 
     /** A switch row, which a screen reader calls a switch and reads as on or off. */
     static final class Toggle extends SwitchPreference {
+        final AnimatedSettingsSwitch.Motion motion = new AnimatedSettingsSwitch.Motion();
         Toggle(Context context) {
             super(context);
         }
 
+        @Override protected View onCreateView(ViewGroup parent) {
+            View row = super.onCreateView(parent);
+            View original = row.findViewById(android.R.id.switch_widget);
+            if (original != null && original.getParent() instanceof ViewGroup) {
+                ViewGroup frame = (ViewGroup) original.getParent();
+                int index = frame.indexOfChild(original);
+                AnimatedSettingsSwitch toggle = new AnimatedSettingsSwitch(getContext());
+                toggle.setId(android.R.id.switch_widget);
+                toggle.setFocusable(false);
+                toggle.setClickable(false);
+                frame.removeView(original);
+                frame.addView(toggle, index, original.getLayoutParams());
+            }
+            return row;
+        }
+
         @Override
         protected void onBindView(View view) {
+            View widget = view.findViewById(android.R.id.switch_widget);
+            if (widget instanceof AnimatedSettingsSwitch) ((AnimatedSettingsSwitch) widget).unbindMotion();
             super.onBindView(view);
+            if (widget instanceof AnimatedSettingsSwitch) ((AnimatedSettingsSwitch) widget).bindMotion(motion);
             showAllText(view);
             ScreenColors.row(view, this);
             view.setAccessibilityDelegate(new RowSemantics(this, Switch.class));
@@ -5425,7 +5444,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             cancel.setContentDescription(cancelDescription);
             cancel.setAllCaps(false);
             cancel.setTextSize(14);
-            ScreenColors colors = ScreenColors.shown == null ? ScreenColors.DEFAULT : ScreenColors.shown;
+            ScreenColors colors = ScreenColors.current();
             cancel.setTextColor(ScreenColors.dimmedWhenDisabled(colors.heading));
             ScreenColors.styleIconAction(cancel);
             int touch = Math.round(48 * view.getResources().getDisplayMetrics().density);
@@ -5461,7 +5480,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     /** Compact edit forms keep the input first and let their help scroll above the actions. */
     private static View editDialogBody(EditTextPreference preference) {
         Context context = preference.getContext();
-        ScreenColors colors = ScreenColors.shown == null ? ScreenColors.DEFAULT : ScreenColors.shown;
+        ScreenColors colors = ScreenColors.current();
         int pad = Math.round(20 * context.getResources().getDisplayMetrics().density);
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -5857,7 +5876,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
 
         @Override protected View onCreateDialogView() {
             Context context = getContext();
-            ScreenColors colors = ScreenColors.shown == null ? ScreenColors.DEFAULT : ScreenColors.shown;
+            ScreenColors colors = ScreenColors.current();
             int pad = Math.round(20 * context.getResources().getDisplayMetrics().density);
             android.widget.LinearLayout content = new android.widget.LinearLayout(context);
             content.setOrientation(android.widget.LinearLayout.VERTICAL);
@@ -7115,7 +7134,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         /** The two choices as cards, each saying what it does under its name. */
         @Override
         protected ListAdapter choices(Context dialogContext) {
-            return new ChoiceCards(ScreenColors.DEFAULT,
+            return new ChoiceCards(ScreenColors.current(),
                     new CharSequence[]{L10n.t(getContext(), "Copy quick report"),
                             L10n.t(getContext(), "Save full report")},
                     new CharSequence[]{L10n.t(getContext(), "Copy a short report to the clipboard."),
@@ -7287,8 +7306,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         text.setLineSpacing(Math.round(2 * context.getResources().getDisplayMetrics().density), 1.04f);
         ScrollView scroll = new ScrollView(context);
         scroll.addView(text);
-        text.setTextColor(ScreenColors.DEFAULT.summary);
-        text.setLinkTextColor(ScreenColors.DEFAULT.heading);
+        text.setTextColor(ScreenColors.current().summary);
+        text.setLinkTextColor(ScreenColors.current().heading);
         Linkify.addLinks(text, Linkify.WEB_URLS);
         show(new AlertDialog.Builder(context)
                 .setTitle(L10n.t("Licenses"))
