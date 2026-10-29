@@ -27,6 +27,7 @@ import android.preference.PreferenceCategory;
 import android.preference.PreferenceGroup;
 import android.preference.PreferenceScreen;
 import android.preference.TwoStatePreference;
+import android.text.TextUtils;
 import android.util.SparseBooleanArray;
 import android.util.TypedValue;
 import android.view.View;
@@ -43,7 +44,7 @@ import androidx.annotation.Nullable;
 
 import app.hushgram.extension.shared.settings.preference.ImmediateAction;
 
-/** Shared black and charcoal surfaces, in Instagram's own blues, for HushGram's settings and runtime controls. */
+/** Wallpaper-derived Material tonal surfaces for settings and runtime controls. */
 public final class ScreenColors {
     public final boolean light;
     /** The page, behind the title bar and every row. */
@@ -60,7 +61,7 @@ public final class ScreenColors {
     public final int accent;
     /** A switch that's off. */
     public final int switchOff;
-    /** Grouped preference rows and their edge. */
+    /** Grouped preference surfaces and control outlines. */
     public final int card;
     public final int outline;
     /** Tonal surface used by secondary controls. */
@@ -75,28 +76,47 @@ public final class ScreenColors {
     static volatile ScreenColors shown;
     public static final ScreenColors DEFAULT = new ScreenColors();
 
+    int choiceSelected() {
+        return android.graphics.Color.rgb(
+                (Color.red(iconSurface) * 9 + Color.red(accent)) / 10,
+                (Color.green(iconSurface) * 9 + Color.green(accent)) / 10,
+                (Color.blue(iconSurface) * 9 + Color.blue(accent)) / 10);
+    }
+
+    static ScreenColors current() {
+        return shown == null ? DEFAULT : shown;
+    }
+
     private ScreenColors() {
+        this(null);
+    }
+
+    private ScreenColors(@Nullable Context context) {
         light = false;
-        background = Color.BLACK;
-        dialog = 0xFF18161D;
-        title = 0xFFF8F5F8;
-        summary = 0xFFAAA5AF;
-        // Instagram's own blues (AccentColor.role): its link on a dark screen, 7:1 on the charcoal,
-        // and its Prism indigo button fill, which white text reads on at 5:1.
-        heading = 0xFF85A1FF;
-        accent = 0xFF4A5DF9;
-        // At least 3:1 against either charcoal surface, with a white thumb above 5:1.
-        switchOff = 0xFF696370;
-        card = 0xFF151419;
-        outline = 0xFF2D2832;
-        iconSurface = 0xFF211D27;
-        onAccent = Color.WHITE;
+        // System tonal palettes follow the wallpaper without requesting wallpaper access.
+        background = tone(context, "system_neutral1_1000", Color.BLACK);
+        dialog = tone(context, "system_neutral1_900", 0xFF211F26);
+        title = tone(context, "system_neutral1_100", 0xFFE6E0E9);
+        summary = tone(context, "system_neutral2_200", 0xFFCAC4D0);
+        heading = tone(context, "system_accent1_200", 0xFFD0BCFF);
+        accent = heading;
+        switchOff = tone(context, "system_neutral2_700", 0xFF49454F);
+        card = tone(context, "system_neutral1_900", 0xFF211F26);
+        outline = tone(context, "system_neutral2_500", 0xFF79747E);
+        iconSurface = tone(context, "system_neutral2_800", 0xFF322F35);
+        onAccent = tone(context, "system_accent1_800", 0xFF381E72);
         error = 0xFFFFB4AB;
     }
 
-    /** A switch's white thumb remains distinct from either track. */
+    private static int tone(@Nullable Context context, String name, int fallback) {
+        if (context == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return fallback;
+        int id = context.getResources().getIdentifier(name, "color", "android");
+        return id == 0 ? fallback : context.getColor(id);
+    }
+
+    /** The unchecked thumb uses the on-surface token. */
     int offThumb() {
-        return light ? title : onAccent;
+        return title;
     }
 
     /**
@@ -123,6 +143,13 @@ public final class ScreenColors {
                         focused, focused, focused, focused, focused, normal});
     }
 
+    /** Content and mask share bounds; nesting would apply an inset twice to the ripple mask. */
+    static RippleDrawable boundedRipple(ColorStateList colors, Drawable content, Drawable mask) {
+        RippleDrawable ripple = new RippleDrawable(colors, content, mask);
+        ripple.setPaddingMode(android.graphics.drawable.LayerDrawable.PADDING_MODE_STACK);
+        return ripple;
+    }
+
     static ColorStateList interactionRipple(int color) {
         return new ColorStateList(new int[][]{{-android.R.attr.state_enabled}, {}},
                 new int[]{Color.TRANSPARENT, (color & 0x00FFFFFF) | 0x33000000});
@@ -133,15 +160,15 @@ public final class ScreenColors {
                 new int[]{(accent & 0x00FFFFFF) | 0x22000000, normal});
     }
 
-    /** The lighter blue passes text contrast on charcoal, unlike the filled action's accent. */
+    /** Secondary actions use the primary text token. */
     int secondaryActionText() {
         return heading;
     }
 
-    /** The colours for a screen shown in this context. HushGram has one page, black, so always null. */
+    /** Wallpaper-derived Material tones, refreshed when opening the screen. */
     @Nullable
     static ScreenColors forScreen(Context context) {
-        return null;
+        return new ScreenColors(context);
     }
 
     /** The framework theme rows and dialogs are built with, so what this class doesn't paint still reads. */
@@ -162,7 +189,7 @@ public final class ScreenColors {
         if (title != null) {
             title.setTextColor(dimmedWhenDisabled(this.title));
             title.setTextSize(TypedValue.COMPLEX_UNIT_SP,
-                    "hushgram_status".equals(preference.getKey()) ? 14 : overview ? 15 : 16);
+                    "hushgram_status".equals(preference.getKey()) ? 14 : 16);
             title.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
             if (title.getParent() instanceof View) {
                 View text = (View) title.getParent();
@@ -173,29 +200,17 @@ public final class ScreenColors {
         TextView summary = row.findViewById(android.R.id.summary);
         if (summary != null) {
             summary.setTextColor(dimmedWhenDisabled(this.summary));
-            summary.setTextSize(TypedValue.COMPLEX_UNIT_SP, overview ? 12 : 13);
+            summary.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
             summary.setLineSpacing(0, 1);
+            summary.setMaxLines(Integer.MAX_VALUE);
+            summary.setEllipsize(null);
         }
         View widget = row.findViewById(android.R.id.switch_widget);
         if (widget instanceof Switch) {
-            int[][] states = {{-android.R.attr.state_enabled, android.R.attr.state_checked},
-                    {-android.R.attr.state_enabled}, {android.R.attr.state_checked}, {}};
-            Switch toggle = (Switch) widget;
-            GradientDrawable thumb = new GradientDrawable();
-            thumb.setShape(GradientDrawable.RECTANGLE);
-            thumb.setCornerRadius(dp(row, 4));
-            thumb.setSize(dp(row, 20), dp(row, 20));
-            thumb.setColor(Color.WHITE);
-            GradientDrawable track = new GradientDrawable();
-            track.setCornerRadius(dp(row, 6));
-            track.setSize(dp(row, 40), dp(row, 24));
-            track.setColor(Color.WHITE);
-            toggle.setThumbDrawable(thumb);
-            toggle.setTrackDrawable(track);
-            toggle.setSwitchMinWidth(dp(row, 40));
-            toggle.setSplitTrack(false);
-            toggle.setThumbTintList(new ColorStateList(states, new int[]{half(onAccent), half(offThumb()), onAccent, offThumb()}));
-            toggle.setTrackTintList(new ColorStateList(states, new int[]{half(accent), half(switchOff), accent, switchOff}));
+            if (widget instanceof AnimatedSettingsSwitch) {
+                ((AnimatedSettingsSwitch) widget).setColors(this);
+            }
+
         }
         paintChevron(row, preference);
         ImageView icon = row.findViewById(android.R.id.icon);
@@ -249,7 +264,15 @@ public final class ScreenColors {
      * last rows (Report a problem, Support HushGram) follows a page's row or the other one.
      */
     private static boolean sharesCard(Preference above, Preference below) {
-        return (opensPage(above) && (opensPage(below) || closesPage(below))) || (closesPage(above) && closesPage(below));
+        if (isTopControl(above) || isTopControl(below)) return false;
+        return true;
+    }
+
+    private static boolean isTopControl(Preference row) {
+        String key = row.getKey();
+        return "hushgram_settings_search".equals(key) || HushgramPreferenceFragment.ENABLE_ALL_KEY.equals(key)
+                || "hushgram_status".equals(key)
+                || HushgramPreferenceFragment.SIGN_IN_NOTICE_KEY.equals(key);
     }
 
     /** Report a problem and Support HushGram, which end the page. */
@@ -275,28 +298,34 @@ public final class ScreenColors {
      */
     void paintSurface(View row, Preference preference, boolean first, boolean last) {
         boolean overview = preference.getParent() instanceof PreferenceScreen;
-        float radius = overview ? 0 : dp(row, 10);
+        boolean category = preference instanceof HushgramPreferenceFragment.Heading;
+        boolean expanded = category && ((HushgramPreferenceFragment.Heading) preference).expanded;
+        float top = dp(row, category || first ? 12 : 4);
+        float bottom = dp(row, category || last ? 12 : 4);
         GradientDrawable surface = new GradientDrawable();
-        surface.setColor(card);
-        surface.setStroke(dp(row, 1), preference.isSelectable() ? interactionOutline(outline)
-                : ColorStateList.valueOf(outline));
-        surface.setCornerRadii(new float[]{
-                first ? radius : 0, first ? radius : 0,
-                first ? radius : 0, first ? radius : 0,
-                last ? radius : 0, last ? radius : 0,
-                last ? radius : 0, last ? radius : 0});
-        int side = overview ? 0 : dp(row, 18);
-        Drawable inset = new InsetDrawable(surface, side, overview ? -dp(row, 1) : first ? dp(row, 4) : -dp(row, 1),
-                side, !overview && last ? dp(row, 4) : 0);
+        surface.setColor(expanded ? iconSurface : card);
+        surface.setCornerRadii(new float[]{top, top, top, top, bottom, bottom, bottom, bottom});
+        int side = dp(row, 18);
+        boolean afterSearch = false;
+        PreferenceGroup parent = preference.getParent();
+        if (parent != null) {
+            int at = indexIn(parent, preference);
+            afterSearch = at > 0 && ("hushgram_settings_search".equals(parent.getPreference(at - 1).getKey())
+                    || HushgramPreferenceFragment.ENABLE_ALL_KEY.equals(parent.getPreference(at - 1).getKey()));
+        }
+        int above = category || afterSearch ? dp(row, 16) : 0;
+        Drawable inset = new InsetDrawable(surface, side, above, side, dp(row, 3));
+        Drawable mask = new InsetDrawable(surface.getConstantState().newDrawable().mutate(),
+                side, above, side, dp(row, 3));
         row.setBackground(preference.isSelectable()
-                ? new RippleDrawable(interactionRipple(heading), inset, null).mutate() : inset);
+                ? boundedRipple(interactionRipple(heading), inset, mask).mutate() : inset);
         // Explicit padding after the inset background prevents its padding from moving the text.
-        int horizontal = overview ? 20 : 30;
-        int vertical = overview ? 6 : 10;
-        row.setPaddingRelative(dp(row, horizontal), dp(row, vertical + (!overview && first ? 4 : 0)),
-                dp(row, horizontal), dp(row, vertical + (!overview && last ? 4 : 0)));
+        int horizontal = 36;
+        int vertical = 12;
+        row.setPaddingRelative(dp(row, horizontal), dp(row, vertical) + above,
+                dp(row, horizontal), dp(row, vertical + 3));
         row.setMinimumHeight(dp(row, "hushgram_view_toggle".equals(preference.getKey()) ? 48
-                : "hushgram_status".equals(preference.getKey()) ? 56 : overview ? 52 : 64));
+                : "hushgram_status".equals(preference.getKey()) ? 56 : opensPage(preference) ? 76 : 68));
     }
 
     /** A section title. */
@@ -488,7 +517,7 @@ public final class ScreenColors {
         surface.setCornerRadius(dp(row, 12));
         surface.setStroke(dp(row, 2), interactionOutline(primary ? accent : outline,
                 primary ? onAccent : heading));
-        row.setBackground(new RippleDrawable(interactionRipple(primary ? onAccent : heading),
+        row.setBackground(boundedRipple(interactionRipple(primary ? onAccent : heading),
                 new InsetDrawable(surface, dp(row, 18), dp(row, 4), dp(row, 18), dp(row, 4)), null).mutate());
         row.setMinimumHeight(dp(row, 56));
         row.setPadding(dp(row, 32), dp(row, 8), dp(row, 32), dp(row, 8));
@@ -507,7 +536,7 @@ public final class ScreenColors {
             // Centred by gravity, which a start alignment from showAllText would override.
             title.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
             title.setTextSize(22);
-            ShimmerTitle.wear(title);
+            title.setTextColor(palette.title);
             title.setTypeface(Typeface.create("sans-serif-medium", 0));
             Drawable icon = SettingsIcons.icon(row.getContext(), SettingsIcons.ABOUT, palette.heading);
             icon.setBounds(0, 0, dp(row, 56), dp(row, 56));
@@ -540,7 +569,6 @@ public final class ScreenColors {
             GradientDrawable panel = new GradientDrawable();
             panel.setColor(this.dialog);
             panel.setCornerRadius(dp(window.getDecorView(), 12));
-            panel.setStroke(dp(window.getDecorView(), 1), outline);
             window.setBackgroundDrawable(panel);
             int width = Math.min(dialog.getContext().getResources().getDisplayMetrics().widthPixels
                     - dp(window.getDecorView(), 32), dp(window.getDecorView(), 560));
@@ -551,7 +579,7 @@ public final class ScreenColors {
         TextView title = titleId == 0 ? null : dialog.findViewById(titleId);
         if (title != null) {
             // In the gradient, as every HushGram title is.
-            ShimmerTitle.wear(title);
+            title.setTextColor(this.title);
             title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
             title.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
             title.setSingleLine(false);
@@ -572,16 +600,40 @@ public final class ScreenColors {
             }
             choices.setDivider(null);
         }
-        for (int which : new int[]{AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEGATIVE, AlertDialog.BUTTON_NEUTRAL}) {
-            Button button = dialog.getButton(which);
-            if (button == null) continue;
-            paintAction(button, which == AlertDialog.BUTTON_POSITIVE);
-            // Keep the framework's 48dp touch area clear of the dialog's edges.
-            ((RippleDrawable) button.getBackground()).setLayerInsetRelative(
-                    0, dp(button, 4), dp(button, 6), dp(button, 4), dp(button, 6));
+        if (choices != null) {
+            choices.setSelector(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            choices.setDivider(null);
+            choices.setDividerHeight(0);
         }
+        stackDialogActions(dialog);
         View field = dialog.findViewById(android.R.id.edit);
         if (field instanceof EditText) paintField((EditText) field);
+    }
+
+    /** Reuse the framework buttons to preserve listeners, enabled states and dismissal. */
+    private void stackDialogActions(AlertDialog dialog) {
+        int panelId = dialog.getContext().getResources().getIdentifier("buttonPanel", "id", "android");
+        View panel = panelId == 0 ? null : dialog.findViewById(panelId);
+        if (!(panel instanceof ViewGroup)) return;
+        ViewGroup host = (ViewGroup) panel;
+        LinearLayout column = new LinearLayout(dialog.getContext());
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setPadding(dp(host, 20), dp(host, 8), dp(host, 20), dp(host, 16));
+        for (int which : new int[]{AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEUTRAL, AlertDialog.BUTTON_NEGATIVE}) {
+            Button button = dialog.getButton(which);
+            if (button == null || button.getVisibility() == View.GONE) continue;
+            if (button.getParent() instanceof ViewGroup) ((ViewGroup) button.getParent()).removeView(button);
+            paintAction(button, which == AlertDialog.BUTTON_POSITIVE);
+            LinearLayout.LayoutParams size = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            size.topMargin = column.getChildCount() == 0 ? 0 : dp(host, 8);
+            column.addView(button, size);
+        }
+        host.removeAllViews();
+        host.setPadding(0, 0, 0, 0);
+        if (host instanceof LinearLayout) ((LinearLayout) host).setOrientation(LinearLayout.VERTICAL);
+        host.addView(column, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
 
     /**
@@ -591,9 +643,8 @@ public final class ScreenColors {
     void paintField(EditText field) {
         field.setHintTextColor(dimmedWhenDisabled(summary));
         GradientDrawable outline = new GradientDrawable();
-        outline.setColor(dialog);
+        outline.setColor(iconSurface);
         outline.setCornerRadius(dp(field, 12));
-        outline.setStroke(dp(field, 2), interactionOutline(switchOff));
         field.setBackgroundTintList(null);
         field.setBackground(outline);
         field.setPaddingRelative(dp(field, 12), dp(field, 10), dp(field, 12), dp(field, 10));
@@ -680,17 +731,16 @@ public final class ScreenColors {
         (colors == null ? DEFAULT : colors).paintAction(action, primary);
     }
 
-    private void paintAction(TextView action, boolean primary) {
+    void paintAction(TextView action, boolean primary) {
         GradientDrawable surface = new GradientDrawable();
         surface.setColor(dimmedWhenDisabled(primary ? accent : card));
         surface.setCornerRadius(dp(action, 12));
-        surface.setStroke(dp(action, 2), interactionOutline(primary ? accent : outline,
-                primary ? onAccent : heading));
         action.setBackgroundTintList(null);
         // View's tint pass mutates the background after setting its state. Mutate first so
         // that pass cannot replace enabled children with fresh, empty-state copies.
-        action.setBackground(new RippleDrawable(
-                interactionRipple(primary ? onAccent : heading), surface, null).mutate());
+        action.setBackground(boundedRipple(
+                interactionRipple(primary ? onAccent : heading), surface,
+                surface.getConstantState().newDrawable().mutate()).mutate());
         action.setTextColor(dimmedWhenDisabled(primary ? onAccent : secondaryActionText()));
         action.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         action.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
@@ -716,7 +766,7 @@ public final class ScreenColors {
         surface.setCornerRadius(dp(action, 8));
         surface.setStroke(dp(action, 2), colors.interactionOutline(Color.TRANSPARENT));
         action.setBackgroundTintList(null);
-        action.setBackground(new RippleDrawable(interactionRipple(colors.heading), surface, null).mutate());
+        action.setBackground(boundedRipple(interactionRipple(colors.heading), surface, null).mutate());
     }
 
     private static int dp(View view, int value) {
