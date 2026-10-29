@@ -4,7 +4,13 @@
 
 # InstaPrime
 
-I made InstaPrime as a personal settings UI and branding rework of [HushGram](https://github.com/SysAdminDoc/HushGram), the Instagram patch project created by [SysAdminDoc](https://github.com/SysAdminDoc).
+I made InstaPrime as a personal settings UI and branding rework of HushGram, the Instagram patch project created by SysAdminDoc.
+
+<p align="center">
+  <a href="https://morphe.software/add-source?github=FarhanZafarr-9%2FInstaPrime"><img src="https://img.shields.io/badge/Add_InstaPrime_to_Morphe-6750A4?style=for-the-badge" alt="Add InstaPrime to Morphe"></a>
+</p>
+
+<p align="center"><a href="https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.17">Download InstaPrime v0.0.17</a></p>
 
 **The Instagram patches, their underlying functionality, research, compatibility work, and ongoing upstream maintenance are the work of SysAdminDoc and the upstream contributors. I do not claim credit for that work.**
 
@@ -12,17 +18,13 @@ My contribution is the settings interface rework and the InstaPrime name and ico
 
 I started this out of personal interest in interface design. It is not a critique of HushGram's original UI: everyone has their own preferences and likes different interfaces. I wanted to try a layout that suits mine, and I am sharing it for anyone who likes the same approach.
 
-[Original project](https://github.com/SysAdminDoc/HushGram) · [Original creator](https://github.com/SysAdminDoc) · [Support the original creator](https://ko-fi.com/X8K126YVER) · [Upstream guide](docs/upstream/README.md) · [License](LICENSE) · [Notices and attribution](NOTICE)
-
-[**Add InstaPrime to Morphe**](https://morphe.software/add-source?github=FarhanZafarr-9%2FInstaPrime) · [Add original HushGram to Morphe](https://morphe.software/add-source?github=SysAdminDoc%2FHushGram)
-
-My first release is [InstaPrime v0.0.17](https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.17), based on HushGram 0.0.17 with 123 patches. The link adds my source to Morphe; patch and install Instagram with that source to use my redesigned interface.
+My first release is InstaPrime v0.0.17, based on HushGram 0.0.17 with 123 patches. The link adds my source to Morphe; patch and install Instagram with that source to use my redesigned interface.
 
 ## Updates and maintenance
 
 I work on this out of personal interest and in my available time. Adapting the UI rework to new upstream patches takes time, testing, and maintenance, so updates here may sometimes be significantly delayed. I cannot promise to keep pace with every HushGram release.
 
-If you need the latest available patches and compatibility updates promptly, please stick with [the original HushGram project](https://github.com/SysAdminDoc/HushGram), or [add its source directly to Morphe](https://morphe.software/add-source?github=SysAdminDoc%2FHushGram). SysAdminDoc and the upstream contributors do the ongoing patch development and maintenance that this fork depends on.
+If you need the latest available patches and compatibility updates promptly, please stick with the original HushGram project. Its project and Morphe source links are grouped under [Original project and support](#original-project-and-support) below. SysAdminDoc and the upstream contributors do the ongoing patch development and maintenance that this fork depends on.
 
 ## What I changed
 
@@ -138,9 +140,21 @@ For an underlying patch problem, first check whether it also happens with the or
 
 My contribution is the settings UI rework, navigation and control presentation, documentation, and InstaPrime branding described here. I do not take credit for creating the patch collection or for upstream maintenance. I chose a separate name to identify my fork; it does not imply endorsement by SysAdminDoc.
 
-If the patches are useful to you, please [support the original creator on Ko-fi](https://ko-fi.com/X8K126YVER) and visit the [original project](https://github.com/SysAdminDoc/HushGram).
+### Original project and support
 
-HushGram also carries work and foundations from Hushfacebook, Hushfeed, HushPinterest, Andrew Liang's patches, Morphe, ReVanced, and other credited contributors. The [upstream attribution section](docs/upstream/README.md#where-the-patches-come-from), [source ledger](sources/instagram-sources.json), and [NOTICE](NOTICE) preserve that provenance. The original notices and copyright headers remain in place.
+- [HushGram source and releases](https://github.com/SysAdminDoc/HushGram)
+- [SysAdminDoc, the original creator](https://github.com/SysAdminDoc)
+- [Support SysAdminDoc on Ko-fi](https://ko-fi.com/X8K126YVER)
+- [Add original HushGram to Morphe](https://morphe.software/add-source?github=SysAdminDoc%2FHushGram)
+
+### Documentation and attribution
+
+- [Original HushGram guide](docs/upstream/README.md)
+- [Upstream project credits](docs/upstream/README.md#where-the-patches-come-from)
+- [Source and license ledger](sources/instagram-sources.json)
+- [License](LICENSE) and [notices](NOTICE)
+
+HushGram also carries work and foundations from Hushfacebook, Hushfeed, HushPinterest, Andrew Liang's patches, Morphe, ReVanced, and other credited contributors. The references above preserve that provenance. The original notices and copyright headers remain in place.
 
 ## License
 
