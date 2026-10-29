@@ -49,6 +49,7 @@ public final class SettingsDialog extends DialogFragment {
     static final int CONTAINER_ID = 0x48474301;
     /** The bar under the page that restarts Instagram while a change waits on it. */
     static final int RESTART_ID = 0x48474302;
+    static final int RESTART_ACTION_ID = 0x48474303;
     private static final String PAGE_FAILED = "hushgram.page_failed";
     /** The argument naming the inline section to expand after Restart now. */
     static final String START_PAGE = "hushgram_start_page";
@@ -58,7 +59,7 @@ public final class SettingsDialog extends DialogFragment {
     private boolean closing;
     private Button retry;
     private TextView heading;
-    private TextView restart;
+    private View restart;
     /** The lock's checks on this dialog's window while it's started. */
     private Window lockWindow;
     private ViewTreeObserver.OnPreDrawListener lockDraw;
@@ -135,7 +136,7 @@ public final class SettingsDialog extends DialogFragment {
             closing = true;
             return new FrameLayout(getContext());
         }
-        ScreenColors palette = ScreenColors.DEFAULT;
+        ScreenColors palette = ScreenColors.forScreen(getContext());
         LinearLayout root = new LinearLayout(getContext()) {
             /**
              * Focus that arrives from nowhere (the first key press, a field giving its focus up) goes
@@ -186,8 +187,8 @@ public final class SettingsDialog extends DialogFragment {
 
         TextView title = new TextView(getContext());
         heading = title;
-        title.setText("HushGram");
-        ShimmerTitle.wear(title);
+        title.setText("InstaPrime");
+        title.setTextColor(palette.title);
         title.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
         title.setPaddingRelative(dp(8), 0, 0, 0);
@@ -227,56 +228,67 @@ public final class SettingsDialog extends DialogFragment {
      * row under the finger (S25, 2026-10-13). Down here it's in view on every page, and the page
      * only gets shorter from the bottom.
      */
-    private TextView restartBar(ScreenColors palette) {
-        TextView bar = new TextView(getContext());
-        restart = bar;
-        bar.setId(RESTART_ID);
-        bar.setText(L10n.t(getContext(), "Some changes apply when Instagram restarts. Tap to restart it now."));
-        bar.setTextColor(palette.title);
-        bar.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setMinHeight(dp(56));
-        bar.setPaddingRelative(dp(20), dp(12), dp(20), dp(12));
+    private View restartBar(ScreenColors palette) {
+        LinearLayout card = new LinearLayout(getContext());
+        restart = card;
+        card.setId(RESTART_ID);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(14), dp(16), dp(14));
         android.graphics.drawable.GradientDrawable surface = new android.graphics.drawable.GradientDrawable();
-        surface.setColor(palette.card);
+        surface.setColor(palette.iconSurface);
         surface.setCornerRadius(dp(16));
-        surface.setStroke(dp(1), palette.outline);
-        bar.setBackground(new android.graphics.drawable.RippleDrawable(
-                android.content.res.ColorStateList.valueOf(ScreenColors.half(palette.heading)), surface, surface));
-        bar.setFocusable(true);
-        bar.setClickable(true);
-        bar.setAccessibilityDelegate(new View.AccessibilityDelegate() {
-            @Override
-            public void onInitializeAccessibilityNodeInfo(View host, AccessibilityNodeInfo info) {
-                super.onInitializeAccessibilityNodeInfo(host, info);
-                info.setClassName(Button.class.getName());
-            }
-        });
-        bar.setOnClickListener(v -> {
+        card.setBackground(surface);
+
+        TextView title = new TextView(getContext());
+        title.setText(L10n.t("Restart to apply changes"));
+        title.setTextColor(palette.title);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        title.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        title.setAccessibilityHeading(true);
+        card.addView(title);
+
+        TextView detail = new TextView(getContext());
+        detail.setText(L10n.t("Your changes are saved. Restart Instagram when you're ready."));
+        detail.setTextColor(palette.summary);
+        detail.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        LinearLayout.LayoutParams description = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        description.topMargin = dp(4);
+        card.addView(detail, description);
+
+        Button action = new Button(getContext());
+        action.setId(RESTART_ACTION_ID);
+        action.setText(L10n.t("Restart now"));
+        palette.paintAction(action, true);
+        action.setOnClickListener(v -> {
             Fragment page = getChildFragmentManager().findFragmentById(CONTAINER_ID);
             if (page instanceof HushgramPreferenceFragment) ((HushgramPreferenceFragment) page).restartNow();
         });
-        bar.setVisibility(View.GONE);
-        return bar;
+        LinearLayout.LayoutParams button = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        button.topMargin = dp(12);
+        card.addView(action, button);
+        card.setVisibility(View.GONE);
+        return card;
     }
 
     private LinearLayout.LayoutParams restartBarSpace() {
         LinearLayout.LayoutParams space = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        space.setMargins(dp(12), dp(8), dp(12), dp(8));
+        space.setMargins(dp(18), dp(8), dp(18), dp(12));
         return space;
     }
 
     /** Shows the bar that restarts Instagram while [owed], and takes it off once nothing waits. */
     void showRestart(boolean owed) {
-        TextView bar = restart;
+        View bar = restart;
         if (bar != null) bar.setVisibility(owed ? View.VISIBLE : View.GONE);
     }
 
     /** Shows the search title, and HushGram again for null. */
     void showTitle(@androidx.annotation.Nullable CharSequence title) {
         TextView bar = heading;
-        if (bar != null) bar.setText(title == null ? "HushGram" : title);
+        if (bar != null) bar.setText(title == null ? "InstaPrime" : title);
     }
 
     /** Clears a search before Back closes the dialog. Expanding a section adds no Back level. */
@@ -488,7 +500,7 @@ public final class SettingsDialog extends DialogFragment {
     }
 
     private void showFailure(View owner) {
-        ScreenColors palette = ScreenColors.DEFAULT;
+        ScreenColors palette = ScreenColors.forScreen(getContext());
         ScrollView scroll = new ScrollView(getContext());
         LinearLayout content = new LinearLayout(getContext());
         content.setOrientation(LinearLayout.VERTICAL);
@@ -502,7 +514,7 @@ public final class SettingsDialog extends DialogFragment {
         content.addView(icon, iconSize);
         TextView title = new TextView(getContext());
         title.setText(L10n.t(getContext(), "Settings couldn't open"));
-        ShimmerTitle.wear(title);
+        title.setTextColor(palette.title);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
         title.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         title.setGravity(Gravity.CENTER);
