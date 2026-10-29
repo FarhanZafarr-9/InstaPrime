@@ -84,7 +84,7 @@ final class SettingsScreenRow {
 
         ImageView mark = new ImageView(context);
         int size = dp(context, 28);
-        Bitmap drawn = SettingsEntry.mark(size, 0, 0.5f);
+        Bitmap drawn = InstaPrimeIcon.bitmap();
         mark.setImageDrawable(new BitmapDrawable(context.getResources(), drawn));
         mark.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         LinearLayout.LayoutParams markSize = new LinearLayout.LayoutParams(size, size);
