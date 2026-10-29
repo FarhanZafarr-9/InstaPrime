@@ -32,15 +32,24 @@ final class AboutCategory {
     private AboutCategory() { }
 
     static void add(HushgramPreferenceFragment page, PreferenceScreen screen, Context context, Set<PatchFamily> build) {
-        PreferenceCategory about = category(screen, L10n.t("About"), SettingsIcons.ABOUT,
-                L10n.t("Your version, the source code and licenses."));
+        PreferenceCategory about = category(screen, L10n.t("Fork info"), SettingsIcons.ABOUT,
+                L10n.t("InstaPrime, its developer, the original project and support."));
         page.about = about;
-        about.addPreference(mark(info(context, L10n.t("Version"), L10n.f("HushGram %1$s on Instagram %2$s",
+        Preference version = info(context, L10n.t("Version"), L10n.f("InstaPrime %1$s on Instagram %2$s",
                 L10n.isolate(Utils.getPatchesReleaseVersion()), L10n.isolate(Utils.getAppVersionName()))
-                + "\n" + L10n.isolate(Utils.getSourceBuildIdentity())), SettingsIcons.ABOUT));
+                + "\n" + L10n.isolate(Utils.getSourceBuildIdentity()));
+        version.setKey("primegram_version");
+        about.addPreference(mark(version, SettingsIcons.ABOUT));
+        about.addPreference(link(page, context, "primegram_developer", "FarhanZafarr-9",
+                "InstaPrime developer", "https://github.com/FarhanZafarr-9"));
+        about.addPreference(link(page, context, "primegram_source", "InstaPrime on GitHub",
+                "Source code for this fork", "https://github.com/FarhanZafarr-9/HushGram"));
+        about.addPreference(link(page, context, "primegram_upstream_developer", "Original developer",
+                "SysAdminDoc · HushGram", "https://github.com/SysAdminDoc"));
 
         Preference source = new Row(context);
-        source.setTitle(L10n.t("Source code and issues"));
+        source.setKey("primegram_upstream");
+        source.setTitle(L10n.t("Original project and issues"));
         source.setSummary(SOURCE_ADDRESS);
         source.setPersistent(false);
         source.setOnPreferenceClickListener(p -> {
@@ -59,6 +68,7 @@ final class AboutCategory {
         // Section 7b asks that its notice reach the person using the software, and a file in the
         // repository does not reach them.
         Preference licenses = new Row(context);
+        licenses.setKey("primegram_licenses");
         licenses.setTitle(L10n.t("Licenses"));
         licenses.setSummary(L10n.t("GPL-3.0, with the notices of the projects this is built on"));
         licenses.setPersistent(false);
@@ -68,4 +78,21 @@ final class AboutCategory {
         });
         about.addPreference(mark(licenses, SettingsIcons.LICENSE));
     }
+    private static Preference link(HushgramPreferenceFragment page, Context context, String key,
+                                   String title, String summary, String url) {
+        Row row = new Row(context);
+        row.setKey(key);
+        row.setPersistent(false);
+        row.setTitle(L10n.t(title));
+        row.setSummary(summary.startsWith("SysAdminDoc") ? summary : L10n.t(summary));
+        row.setOnPreferenceClickListener(clicked -> {
+            try { page.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
+            catch (ActivityNotFoundException | SecurityException unavailable) {
+                Utils.showToastLong(L10n.f("No app on this phone can open the link. The address is %1$s.", url));
+            }
+            return true;
+        });
+        return mark(row, SettingsIcons.OPENING);
+    }
+
 }
