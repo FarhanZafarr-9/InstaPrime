@@ -64,7 +64,7 @@ public final class ConfigurationBackup {
 
     /** The suggested document name, with optional local time in safe, locale-independent digits. */
     static String fileName(Date when, boolean dated) {
-        return "HushGram-settings" + (dated
+        return "InstaPrime-settings" + (dated
                 ? "-" + new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(when) : "") + ".json";
     }
 
