@@ -4,6 +4,8 @@
  */
 package app.morphe.patches.instagram.coexist
 
+import app.morphe.patches.instagram.misc.icon.INSTA_PRIME_CAMERA_PATH
+import app.morphe.patches.instagram.misc.icon.INSTA_PRIME_BADGE_CUTOUT_PATH
 import app.morphe.patcher.patch.ResourcePatchContext
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -38,11 +40,9 @@ internal val CLONE_BADGE_XML = """
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
     <path android:fillColor="#FFFFFFFF" android:pathData="M66,51.5a14.5,14.5 0 1,1 0,29a14.5,14.5 0 1,1 0,-29z" />
-    <path android:fillColor="#FF3B0A3D" android:pathData="M66,53a13,13 0 1,1 0,26a13,13 0 1,1 0,-26z" />
-    <group android:translateX="56" android:translateY="56" android:scaleX="0.2" android:scaleY="0.2">
-        <path android:fillColor="#FFFFFFFF" android:pathData="M22,15h15a3,3 0 0 1 3,3v64a3,3 0 0 1 -3,3h-15a3,3 0 0 1 -3,-3v-64a3,3 0 0 1 3,-3z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M63,15h15a3,3 0 0 1 3,3v64a3,3 0 0 1 -3,3h-15a3,3 0 0 1 -3,-3v-64a3,3 0 0 1 3,-3z" />
-        <path android:fillColor="#FFFF7A9E" android:pathData="M11,38C22,36 30,46 42,45C54,44 66,36 80,40C84,41 87,44 88,48L88,58C85,53 82,52 78,52C66,50 54,57 42,57C30,57 22,49 11,50Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M66,53a13,13 0 1,1 0,26a13,13 0 1,1 0,-26z" />
+    <group android:translateX="52" android:translateY="52" android:scaleX="0.28" android:scaleY="0.28">
+        <path android:fillColor="#FF000000" android:fillType="evenOdd" android:pathData="$INSTA_PRIME_CAMERA_PATH" />
     </group>
 </vector>
 """.trimStart()
@@ -54,7 +54,7 @@ internal val CLONE_BADGE_XML = """
 internal val CLONE_BADGE_MONO_XML = """
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M66,51.5a14.5,14.5 0 1,1 0,29a14.5,14.5 0 1,1 0,-29z M59.8,59h4.2v5.6h4v-5.6h4.2v14h-4.2v-5.6h-4v5.6h-4.2z" />
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M66,51.5a14.5,14.5 0 1,1 0,29a14.5,14.5 0 1,1 0,-29z $INSTA_PRIME_BADGE_CUTOUT_PATH" />
 </vector>
 """.trimStart()
 
