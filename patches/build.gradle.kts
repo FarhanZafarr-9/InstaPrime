@@ -642,12 +642,12 @@ group = "app.morphe"
 
 patches {
     about {
-        name = "HushGram"
-        description = "HushGram patches for the Instagram app, built for Morphe. Hides ads, cleans tracking keys off the links you share, keeps usage events on your phone, and keeps a patched build from locking you out."
-        source = "https://github.com/SysAdminDoc/HushGram"
-        author = "SysAdminDoc"
-        contact = "https://github.com/SysAdminDoc/HushGram/issues"
-        website = "https://github.com/SysAdminDoc/HushGram"
+        name = "InstaPrime"
+        description = "InstaPrime, a fork of HushGram patches for the Instagram app, built for Morphe. Hides ads, cleans tracking keys off the links you share, keeps usage events on your phone, and keeps a patched build from locking you out."
+        source = "https://github.com/FarhanZafarr-9/HushGram"
+        author = "FarhanZafarr-9 (based on SysAdminDoc/HushGram)"
+        contact = "https://github.com/FarhanZafarr-9/HushGram/issues"
+        website = "https://github.com/FarhanZafarr-9/HushGram"
         license = "GNU General Public License v3.0, with additional GPL section 7 requirements"
     }
 }
