@@ -43,7 +43,7 @@ final class AboutCategory {
         about.addPreference(link(page, context, "primegram_developer", "FarhanZafarr-9",
                 "InstaPrime developer", "https://github.com/FarhanZafarr-9"));
         about.addPreference(link(page, context, "primegram_source", "InstaPrime on GitHub",
-                "Source code for this fork", "https://github.com/FarhanZafarr-9/HushGram"));
+                "Source code for this fork", "https://github.com/FarhanZafarr-9/InstaPrime"));
         about.addPreference(link(page, context, "primegram_upstream_developer", "Original developer",
                 "SysAdminDoc · HushGram", "https://github.com/SysAdminDoc"));
 
