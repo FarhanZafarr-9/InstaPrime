@@ -162,11 +162,13 @@ class AppIconsTest {
         assertEquals("#FF000000", black.documentElement.getAttribute("android:tint"))
         assertEquals("the glyph's own shape", parse(GLYPH).elements("path").map { it.getAttribute("android:pathData") },
             black.elements("path").map { it.getAttribute("android:pathData") })
-        assertEquals("linear", parse(files.getValue("drawable/hushgram_icon_hushgram_background.xml")).elements("gradient").single().getAttribute("android:type"))
+        assertEquals("#FFFFFFFF", parse(files.getValue("drawable/hushgram_icon_hushgram_background.xml")).elements("solid").single().getAttribute("android:color"))
         assertEquals("#FF000000", parse(files.getValue("drawable/hushgram_icon_dark_background.xml")).elements("solid").single().getAttribute("android:color"))
         val mark = parse(files.getValue("drawable/$ICON_MARK.xml"))
         assertEquals("108dp", mark.documentElement.getAttribute("android:width"))
-        assertEquals(3, mark.elements("path").size)
+        assertEquals(INSTA_PRIME_CAMERA_PATH, mark.elements("path").single().getAttribute("android:pathData"))
+        assertEquals("#FF000000", mark.elements("path").single().getAttribute("android:fillColor"))
+        assertEquals("evenOdd", mark.elements("path").single().getAttribute("android:fillType"))
         assertEquals(setOf("#FFFFFFFF"), parse(files.getValue("drawable/$ICON_MARK_MONO.xml")).elements("path").map { it.getAttribute("android:fillColor") }.toSet())
     }
 
