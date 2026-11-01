@@ -15,6 +15,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.hardware.biometrics.BiometricManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
@@ -59,7 +60,9 @@ import android.widget.ImageView;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 
@@ -90,6 +93,7 @@ import java.util.regex.Pattern;
 import app.hushgram.extension.instagram.direct.ChatAccounts;
 import app.hushgram.extension.instagram.direct.ChatLocks;
 import app.hushgram.extension.instagram.direct.HiddenChats;
+import app.hushgram.extension.instagram.direct.PinnedChats;
 import app.hushgram.extension.instagram.direct.LockDelay;
 import app.hushgram.extension.instagram.direct.MessageBox;
 import app.hushgram.extension.instagram.direct.MessagesLock;
@@ -100,9 +104,12 @@ import app.hushgram.extension.instagram.media.PlaybackQuality;
 import app.hushgram.extension.instagram.media.TapToPlayScope;
 import app.hushgram.extension.instagram.media.ResumePlayback;
 import app.hushgram.extension.instagram.feed.HiddenAccounts;
+import app.hushgram.extension.instagram.feed.AmbientSpeed;
+import app.hushgram.extension.instagram.feed.AmbientSpread;
 import app.hushgram.extension.instagram.feed.CornerSize;
 import app.hushgram.extension.instagram.feed.LikeAnimation;
 import app.hushgram.extension.instagram.misc.MediaCache;
+import app.hushgram.extension.instagram.misc.NotificationGroups;
 import app.hushgram.extension.instagram.misc.SettingsRows;
 import app.hushgram.extension.instagram.misc.SpoofLocation;
 import app.hushgram.extension.instagram.share.ShareSheetActions;
@@ -121,12 +128,13 @@ import app.hushgram.extension.instagram.misc.GlassHeight;
 import app.hushgram.extension.instagram.misc.GlassLift;
 import app.hushgram.extension.instagram.misc.GlassReelsHide;
 import app.hushgram.extension.instagram.misc.AccentHue;
+import app.hushgram.extension.instagram.misc.AppProxy;
 import app.hushgram.extension.instagram.misc.MaterialYou;
 import app.hushgram.extension.instagram.misc.AppIconChoice;
+import app.hushgram.extension.instagram.misc.EmojiChoice;
+import app.hushgram.extension.instagram.misc.EmojiFonts;
 import app.hushgram.extension.instagram.misc.FontChoice;
 import app.hushgram.extension.instagram.misc.Fonts;
-import app.hushgram.extension.instagram.misc.GlassBlur;
-import app.hushgram.extension.instagram.misc.GlassOpacity;
 import app.hushgram.extension.instagram.misc.HapticStyle;
 import app.hushgram.extension.instagram.reels.BurnInMode;
 import app.hushgram.extension.instagram.reels.BurnInWait;
@@ -149,12 +157,14 @@ import app.hushgram.extension.instagram.download.SaveControl;
 import app.hushgram.extension.instagram.download.SaveLeftovers;
 import app.hushgram.extension.instagram.download.SaveFolder;
 import app.hushgram.extension.instagram.download.SaveTree;
+import app.hushgram.extension.instagram.download.ViewingHistory;
 import app.hushgram.extension.shared.L10n;
 import app.hushgram.extension.shared.Logger;
 import app.hushgram.extension.shared.Utils;
 import app.hushgram.extension.shared.settings.BaseSettings;
 import app.hushgram.extension.shared.settings.BooleanSetting;
 import app.hushgram.extension.shared.settings.HushgramPause;
+import app.hushgram.extension.shared.settings.IntegerSetting;
 import app.hushgram.extension.shared.settings.Setting;
 import app.hushgram.extension.shared.settings.EnumSetting;
 import app.hushgram.extension.shared.settings.preference.AbstractPreferenceFragment;
@@ -194,11 +204,15 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     static final String CLEAR_DOWNLOAD_HISTORY = "hushgram_clear_download_history";
     /** The row listing who left your Followers list, and the row that forgets them. */
     static final String UNFOLLOWERS_ROW = "hushgram_unfollowers_row";
+    static final String VIEWING_HISTORY_ROW = "hushgram_viewing_history_row";
+    static final String CLEAR_VIEWING_HISTORY = "hushgram_clear_viewing_history";
     static final String CLEAR_UNFOLLOWERS = "hushgram_clear_unfollowers";
     /** The row that lists the chats locked one at a time. */
     static final String LOCKED_CHATS_ROW = "hushgram_locked_chats_row";
     /** The row that lists the chats hidden one at a time. */
     static final String HIDDEN_CHATS_ROW = "hushgram_hidden_chats_row";
+    /** The row that lists the chats pinned to the top of the inbox. */
+    static final String PINNED_CHATS_ROW = "hushgram_pinned_chats_row";
     /** The row that sets or changes the HushGram PIN. */
     static final String CHANGE_PIN_ROW = "hushgram_change_pin_row";
     static final String HIDDEN_ACCOUNTS_ROW = "hushgram_hidden_accounts_row";
@@ -228,6 +242,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     private static final int PICK_STORY_FONT = 0x484e;
     private static final int PICK_STORY_EMOJI = 0x484f;
     private static final int PICK_SAVE_FOLDER = 0x4850;
+    private static final int PICK_EMOJI = 0x4851;
     /** Framework fragment callbacks run on the main thread. Never reuse a code across pages. */
     private static int documentSequence = PICK_FONT;
     private int documentRequest;
@@ -372,6 +387,16 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     }
 
     @Override
+    public View onCreateView(android.view.LayoutInflater inflater, android.view.ViewGroup container,
+                             Bundle savedInstanceState) {
+        View root = super.onCreateView(inflater, container, savedInstanceState);
+        ListView list = root == null ? null : root.findViewById(android.R.id.list);
+        // The search field keeps the focus while its typing filters the rows (TypingFocusHold).
+        if (list != null) TypingFocusHold.around(list);
+        return root;
+    }
+
+    @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         ListView list = view.findViewById(android.R.id.list);
@@ -458,6 +483,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             ExportStatus.CONFIGURATION.finish(configurationExportToken, L10n.t("Settings export canceled."));
         }
         NewRowDots.stop();
+        DescriptionInfo.searching = false;
         super.onDestroy();
     }
 
@@ -604,12 +630,16 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                     belongs |= family == PatchFamily.STORY_RING && (Settings.STORY_RING_SCALE.key.equals(key)
                             || Settings.STORY_RING_COLOR.key.equals(key));
                     belongs |= family == PatchFamily.ROUNDED_POST_CORNERS && Settings.ROUNDED_CORNER_SIZE.key.equals(key);
+                    belongs |= family == PatchFamily.AMBIENT_LIGHT && (Settings.AMBIENT_LIGHT_SPREAD.key.equals(key)
+                            || Settings.AMBIENT_LIGHT_SPEED.key.equals(key));
                     belongs |= family == PatchFamily.STORY_PROGRESS_BAR && Settings.STORY_BAR_THICKNESS.key.equals(key);
                     belongs |= family == PatchFamily.STORIES_TRAY && Settings.TRAY_BADGE.key.equals(key);
                     belongs |= family == PatchFamily.REEL_TAP_AND_VOLUME && Settings.REEL_TAP_CHOICE.key.equals(key);
                     belongs |= family == PatchFamily.REEL_DECLUTTER && (Settings.BURN_IN_GUARD.key.equals(key)
-                            || Settings.BURN_IN_WAIT.key.equals(key) || Settings.BURN_IN_STAY_DIM.key.equals(key));
-                    belongs |= family == PatchFamily.REEL_SCROLLING && Settings.SCROLL_BREAK.key.equals(key);
+                            || Settings.BURN_IN_WAIT.key.equals(key) || Settings.BURN_IN_STAY_DIM.key.equals(key)
+                            || Settings.START_REEL_CLEAR_MODE.key.equals(key));
+                    belongs |= family == PatchFamily.REEL_SCROLLING && (Settings.SCROLL_BREAK.key.equals(key)
+                            || Settings.REEL_CAP_COUNT.key.equals(key) || Settings.REEL_CAP_BREAK.key.equals(key));
                     belongs |= family == PatchFamily.PLAYBACK_QUALITY && Settings.PLAYBACK_QUALITY.key.equals(key);
                     belongs |= family == PatchFamily.PLAYBACK_QUALITY && Settings.QUALITY_TAB_TARGET.key.equals(key);
                     belongs |= family == PatchFamily.TAP_TO_PLAY && (Settings.TAP_TO_PLAY_SCOPE.key.equals(key)
@@ -621,7 +651,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                     belongs |= family == PatchFamily.FULL_SCREEN_BARS && Settings.FULL_SCREEN_HIDES.key.equals(key);
                     belongs |= family == PatchFamily.GLASS_TAB_BAR && Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key.equals(key);
                     belongs |= family == PatchFamily.GLASS_TAB_BAR && (Settings.GLASS_TAB_BAR_OPACITY.key.equals(key)
-                            || Settings.GLASS_TAB_BAR_BLUR_STRENGTH.key.equals(key)
+                            || Settings.GLASS_TAB_BAR_BLUR_RADIUS.key.equals(key)
                             || Settings.GLASS_TAB_BAR_HEIGHT.key.equals(key) || Settings.GLASS_TAB_BAR_LIFT.key.equals(key)
                             || Settings.GLASS_TAB_BAR_CORNERS.key.equals(key) || Settings.GLASS_TAB_BAR_REELS_HIDE.key.equals(key));
                     belongs |= family == PatchFamily.VIDEO_DOWNLOAD && (Settings.HOLD_TO_DOWNLOAD.key.equals(key)
@@ -631,13 +661,16 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                     belongs |= family == PatchFamily.REEL_DOWNLOAD && Settings.REEL_DOWNLOAD_BUTTON.key.equals(key);
                     belongs |= family == PatchFamily.REEL_DOWNLOAD && Settings.REEL_NOT_INTERESTED_BUTTON.key.equals(key);
                     belongs |= family == PatchFamily.REEL_DOWNLOAD && Settings.REEL_BLOCK_BUTTON.key.equals(key);
+                    belongs |= family == PatchFamily.REEL_DOWNLOAD && Settings.TEXT_BUTTON_ON_REELS.key.equals(key);
                     belongs |= family == PatchFamily.REEL_DOWNLOAD && (Settings.HIDE_SOUND_REELS.key.equals(key)
                             || HIDDEN_SOUNDS_ROW.equals(key));
                     belongs |= family == PatchFamily.ACCENT_COLOR && Settings.ACCENT_HUE.key.equals(key);
                     belongs |= family == PatchFamily.FONT && Settings.FONT.key.equals(key);
+                    belongs |= family == PatchFamily.EMOJI_STYLE && Settings.EMOJI_FONT.key.equals(key);
                     belongs |= family == PatchFamily.STORY_FONTS && STORY_FONTS_ROW.equals(key);
                     belongs |= family == PatchFamily.APP_ICON && Settings.APP_ICON.key.equals(key);
                     belongs |= family == PatchFamily.SETTINGS_ROWS && Settings.HIDDEN_SETTINGS_ROWS.key.equals(key);
+                    belongs |= family == PatchFamily.NOTIFICATION_GROUPS && Settings.MUTED_NOTIFICATION_CHANNELS.key.equals(key);
                     belongs |= family == PatchFamily.SHARE_SHEET && Settings.HIDDEN_SHARE_SHEET_BUTTONS.key.equals(key);
                     belongs |= family == PatchFamily.PROFILE_TABS && (Settings.HIDDEN_PROFILE_TABS.key.equals(key)
                             || Settings.HIDDEN_OWN_PROFILE_TABS.key.equals(key));
@@ -650,7 +683,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                             || Settings.HIDE_CAPTION_WORD_HOME.key.equals(key));
                     belongs |= family == PatchFamily.MESSAGES_LOCK
                             && (Settings.LOCK_AGAIN.key.equals(key) || LOCKED_CHATS_ROW.equals(key)
-                            || HIDDEN_CHATS_ROW.equals(key) || Settings.UNLOCK_WITH.key.equals(key)
+                            || HIDDEN_CHATS_ROW.equals(key) || PINNED_CHATS_ROW.equals(key) || Settings.UNLOCK_WITH.key.equals(key)
                             || CHANGE_PIN_ROW.equals(key));
                     belongs |= family == PatchFamily.RESUME_LONG_VIDEOS && row == clearPositions;
                     belongs |= (family == PatchFamily.REEL_DOWNLOAD || family == PatchFamily.STORY_DOWNLOAD
@@ -662,6 +695,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                     belongs |= (family == PatchFamily.REEL_DOWNLOAD || family == PatchFamily.STORY_DOWNLOAD)
                             && (Settings.DOWNLOAD_SKIP_SAVED.key.equals(key) || CLEAR_DOWNLOAD_HISTORY.equals(key));
                     belongs |= family == PatchFamily.VIDEO_DOWNLOAD && CLEAR_DOWNLOAD_HISTORY.equals(key);
+                    belongs |= family == PatchFamily.VIDEO_DOWNLOAD && (Settings.VIEWING_HISTORY.key.equals(key)
+                            || VIEWING_HISTORY_ROW.equals(key) || CLEAR_VIEWING_HISTORY.equals(key));
                     belongs |= family == PatchFamily.RESTORE_TRUST && L10n.t("Instagram accepts this build").equals(row.getTitle());
                     belongs |= family == PatchFamily.REMOVE_AD_ID && L10n.t("Advertising ID removed").equals(row.getTitle());
                     belongs |= family == PatchFamily.PURE_BLACK && L10n.t("Pure black dark mode").equals(row.getTitle());
@@ -670,6 +705,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                     aliases.append(' ').append(family.patchName);
                     if (family == PatchFamily.FOLLOWING_FEED) aliases.append(" following home feed");
                     if (Settings.REEL_AUTO_ADVANCE.key.equals(key)) aliases.append(" auto advance autoloop loop next reels");
+                    if (Settings.STOP_VIDEO_LOOPING.key.equals(key)) aliases.append(" autoloop loop replay repeat reels");
                     if (family == PatchFamily.REEL_DECLUTTER || family == PatchFamily.REEL_DOWNLOAD
                             || family == PatchFamily.REEL_WATCH_HISTORY || family == PatchFamily.REELS_TAB
                             || family == PatchFamily.KEEP_REEL_SPEED || family == PatchFamily.TAP_TO_PLAY
@@ -768,6 +804,12 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     @Nullable private ListView listView() {
         View view = getView();
         return view == null ? null : view.findViewById(android.R.id.list);
+    }
+
+    /** Binds the rows on show again, for a choice about how every row looks. */
+    void rebindRows() {
+        ListView list = listView();
+        if (list != null) list.invalidateViews();
     }
 
     /** Page entry shouldn't focus the search field or move a restored viewport to show it. */
@@ -1182,6 +1224,10 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             String[] terms = normalized.isEmpty() ? new String[0] : normalized.split("\\s+");
             boolean searching = terms.length > 0;
             NewRowDots.searching(searching);
+            if (DescriptionInfo.searching != searching) {
+                DescriptionInfo.searching = searching;
+                rebindRows();
+            }
             SettingsNavigation.Node page = navigation.find(lastCategory);
             List<Preference> visible = new ArrayList<>();
             visible.add(search);
@@ -1653,7 +1699,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
 
     private void refreshFontRows() {
         boolean busy = Fonts.importActive() || documentRequest != 0;
-        for (String key : new String[]{Settings.FONT.key, Settings.STORY_FONTS.key, Settings.STORY_EMOJI.key, STORY_FONTS_ROW}) {
+        for (String key : new String[]{Settings.FONT.key, Settings.STORY_FONTS.key, Settings.STORY_EMOJI.key, STORY_FONTS_ROW,
+                Settings.EMOJI_FONT.key}) {
             Preference row = findPreference(key);
             if (row == null) continue;
             Setting<?> setting = Setting.getSettingFromPath(key);
@@ -1868,14 +1915,16 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     }
 
     private static boolean isFontRequest(int request) {
-        return request == PICK_FONT || request == PICK_STORY_FONT || request == PICK_STORY_EMOJI;
+        return request == PICK_FONT || request == PICK_STORY_FONT || request == PICK_STORY_EMOJI || request == PICK_EMOJI;
     }
 
     private static Setting<?> fontSetting(int request) {
-        return request == PICK_FONT ? Settings.FONT : request == PICK_STORY_FONT ? Settings.STORY_FONTS : Settings.STORY_EMOJI;
+        return request == PICK_FONT ? Settings.FONT : request == PICK_STORY_FONT ? Settings.STORY_FONTS
+                : request == PICK_EMOJI ? Settings.EMOJI_FONT : Settings.STORY_EMOJI;
     }
 
-    private enum FontVerdict { SAVED, INVALID, HELD, STALE, SAVE_FAILED }
+    /** UNREACHED: an emoji pack that couldn't be downloaded, or wasn't the exact file it names. */
+    private enum FontVerdict { SAVED, INVALID, UNREACHED, HELD, STALE, SAVE_FAILED }
 
     private static final class FontResult {
         final int request;
@@ -1919,12 +1968,13 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                     if (input != null) {
                         prepared = request == PICK_FONT ? Fonts.prepare(application, input)
                                 : request == PICK_STORY_FONT ? StoryFonts.prepare(application, input)
+                                : request == PICK_EMOJI ? EmojiFonts.prepare(application, input)
                                 : StoryEmoji.prepare(application, input);
                         if (request == PICK_STORY_FONT) shown = shownName(application, uri);
                     }
                 }
                 result = prepared == null ? new FontResult(request, FontVerdict.INVALID, null)
-                        : installPickedFont(application, request, token, expectedRevision, prepared, shown);
+                        : installPickedFont(application, request, EmojiChoice.FILE, token, expectedRevision, prepared, shown);
             } catch (Exception failure) {
                 Logger.printInfo(() -> "Font: couldn't finish reading the picked file", failure);
                 result = new FontResult(request, FontVerdict.INVALID, null);
@@ -1941,24 +1991,26 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         }
     }
 
-    private static FontResult installPickedFont(Context context, int request, long token, long revision,
+    /** [emoji] is what the Emoji pack row saves for PICK_EMOJI: the pack downloaded, or FILE for a picked file. */
+    private static FontResult installPickedFont(Context context, int request, EmojiChoice emoji, long token, long revision,
                                                 Fonts.Prepared prepared, @Nullable String shown) {
         if (!asyncChangesAllowed()) return new FontResult(request, FontVerdict.HELD, null);
         if (request == PICK_STORY_FONT) {
             synchronized (StoryFonts.class) {
                 String name = StoryFonts.prepareInstall(context, prepared, shown);
                 return name == null ? new FontResult(request, FontVerdict.INVALID, null)
-                        : commitPickedFont(request, token, revision, prepared, name);
+                        : commitPickedFont(request, emoji, token, revision, prepared, name);
             }
         }
         boolean ready = request == PICK_FONT ? Fonts.prepareInstall(context, prepared)
+                : request == PICK_EMOJI ? EmojiFonts.prepareInstall(context, prepared)
                 : StoryEmoji.prepareInstall(context, prepared);
-        return ready ? commitPickedFont(request, token, revision, prepared, null)
+        return ready ? commitPickedFont(request, emoji, token, revision, prepared, null)
                 : new FontResult(request, FontVerdict.INVALID, null);
     }
 
     /** Authorization and the setting revision are read again at the actual transaction boundary. */
-    private static FontResult commitPickedFont(int request, long token, long revision,
+    private static FontResult commitPickedFont(int request, EmojiChoice emoji, long token, long revision,
                                                Fonts.Prepared prepared, @Nullable String name) {
         synchronized (Setting.class) {
             if (!asyncChangesAllowed()) return new FontResult(request, FontVerdict.HELD, null);
@@ -1966,7 +2018,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             if (!Fonts.ownsImport(token) || setting.savedRevision() != revision) {
                 return new FontResult(request, FontVerdict.STALE, null);
             }
-            if (!prepared.recordSetting(setting, request == PICK_FONT ? FontChoice.FILE : true)) {
+            if (!prepared.recordSetting(setting, request == PICK_FONT ? FontChoice.FILE : request == PICK_EMOJI ? emoji : true)) {
                 return new FontResult(request, FontVerdict.SAVE_FAILED, null);
             }
             if (!prepared.install()) {
@@ -1976,7 +2028,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             Object before = setting.savedValue();
             AbstractPreferenceFragment.noteRunningValue(setting, before);
             boolean saved = request == PICK_FONT ? Settings.FONT.save(FontChoice.FILE)
-                    : request == PICK_STORY_FONT ? Settings.STORY_FONTS.save(true) : Settings.STORY_EMOJI.save(true);
+                    : request == PICK_STORY_FONT ? Settings.STORY_FONTS.save(true)
+                    : request == PICK_EMOJI ? Settings.EMOJI_FONT.save(emoji) : Settings.STORY_EMOJI.save(true);
             if (!saved) {
                 prepared.rollback();
                 return new FontResult(request, FontVerdict.SAVE_FAILED, null);
@@ -1986,6 +2039,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                     // This live transaction still owns Setting.class; no later choice can be lost.
                     boolean restored = request == PICK_FONT ? Settings.FONT.save((FontChoice) before)
                             : request == PICK_STORY_FONT ? Settings.STORY_FONTS.save((Boolean) before)
+                            : request == PICK_EMOJI ? Settings.EMOJI_FONT.save((EmojiChoice) before)
                             : Settings.STORY_EMOJI.save((Boolean) before);
                     if (!restored) Logger.printException(() -> "Font: couldn't restore the previous choice");
                 }
@@ -1993,6 +2047,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             }
             if (request == PICK_FONT) Fonts.fileInstalled();
             else if (request == PICK_STORY_FONT) StoryFonts.installed();
+            else if (request == PICK_EMOJI) EmojiFonts.installed();
             return new FontResult(request, FontVerdict.SAVED, name);
         }
     }
@@ -2001,12 +2056,18 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         if (result.verdict == FontVerdict.HELD) Utils.showToastLong(heldMessage());
         else if (result.verdict == FontVerdict.STALE || result.verdict == FontVerdict.SAVE_FAILED) {
             Utils.showToastShort(L10n.t("The setting couldn't finish updating. Its saved value is shown."));
+        } else if (result.verdict == FontVerdict.UNREACHED) {
+            Utils.showToastLong(L10n.t("Couldn't download the emoji. Try again."));
         } else if (result.verdict == FontVerdict.INVALID) {
             Utils.showToastLong(result.request == PICK_FONT
                     ? L10n.t("That file isn't a font HushGram can use. Your font hasn't changed.")
                     : result.request == PICK_STORY_FONT
                     ? L10n.t("That file isn't a font HushGram can use. Nothing was added.")
+                    : result.request == PICK_EMOJI
+                    ? L10n.t("No color emoji in that file. Nothing changed.")
                     : L10n.t("That file isn't a font HushGram can use. Story emoji haven't changed."));
+        } else if (result.request == PICK_EMOJI) {
+            Utils.showToastLong(L10n.t("Emoji saved. Restart Instagram to see them."));
         } else if (result.request == PICK_FONT) {
             Utils.showToastLong(L10n.t("Font saved. Restart Instagram to see it."));
         } else if (result.request == PICK_STORY_FONT) {
@@ -2648,7 +2709,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         if (context == null) return false;
         boolean pausedNext = HushgramPause.pausesNextStart(context);
         if (pausedNext != HushgramPause.isPaused()) return true;
-        return !pausedNext && (RestartNow.owed() || Fonts.restartPending());
+        return !pausedNext && (RestartNow.owed() || Fonts.restartPending() || EmojiFonts.restartPending());
     }
 
     /**
@@ -2775,9 +2836,10 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     }
 
     /**
-     * What unlocks the messages: the phone's lock or a HushGram PIN. Choosing the PIN asks for one
-     * first when none is set, and a change while the messages are locked asks the current lock, so
-     * the choice can't be used to get around it.
+     * What unlocks the messages: the phone's lock, a HushGram PIN, or on Android 11 and up the
+     * fingerprint or face alone. Choosing the PIN asks for one first when none is set, choosing the
+     * fingerprint or face is refused while the phone has none, and a change while the messages are
+     * locked asks the current lock, so the choice can't be used to get around it.
      */
     static UnlockWithRow unlockWithRow(Context context) {
         UnlockWithRow row = new UnlockWithRow(context);
@@ -2785,13 +2847,23 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         row.setTitle(L10n.t("Unlock with"));
         row.setDialogTitle(L10n.t("Unlock with"));
         row.setNegativeButtonText(L10n.t("Cancel"));
-        row.setEntries(new CharSequence[]{L10n.t("Phone lock"), L10n.t("HushGram PIN")});
-        row.setEntryValues(new CharSequence[]{UnlockWith.PHONE_LOCK.name(), UnlockWith.PIN.name()});
+        if (Build.VERSION.SDK_INT >= 30) {
+            row.setEntries(new CharSequence[]{L10n.t("Phone lock"), L10n.t("HushGram PIN"), L10n.t("Fingerprint or face only")});
+            row.setEntryValues(new CharSequence[]{UnlockWith.PHONE_LOCK.name(), UnlockWith.PIN.name(), UnlockWith.BIOMETRICS.name()});
+        } else {
+            row.setEntries(new CharSequence[]{L10n.t("Phone lock"), L10n.t("HushGram PIN")});
+            row.setEntryValues(new CharSequence[]{UnlockWith.PHONE_LOCK.name(), UnlockWith.PIN.name()});
+        }
         row.setValue(Settings.UNLOCK_WITH.savedValue().name());
         row.setOnPreferenceChangeListener((preference, value) -> {
+            UnlockWith target = UnlockWith.PIN.name().equals(value) ? UnlockWith.PIN
+                    : UnlockWith.BIOMETRICS.name().equals(value) ? UnlockWith.BIOMETRICS : UnlockWith.PHONE_LOCK;
+            if (target == UnlockWith.BIOMETRICS && !MessagesLock.biometricsReady(preference.getContext())) {
+                Utils.showToastLong(noBiometrics(MessagesLock.biometricsState(preference.getContext())));
+                return false;
+            }
             Activity activity = activityOf(preference.getContext());
             if (activity == null) return !PinLock.protects();
-            UnlockWith target = UnlockWith.PIN.name().equals(value) ? UnlockWith.PIN : UnlockWith.PHONE_LOCK;
             UnlockWithRow unlockRow = (UnlockWithRow) preference;
             Runnable change = () -> {
                 if (!allowMutation(unlockRow, true)) return;
@@ -2807,6 +2879,17 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             return false;
         });
         return row;
+    }
+
+    /** Why Fingerprint or face only can't be chosen, from BiometricManager's [state]. */
+    static String noBiometrics(int state) {
+        if (state == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED) {
+            return L10n.t("Add a fingerprint or face in your phone's settings first.");
+        }
+        if (state == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE) {
+            return L10n.t("This phone has no fingerprint or face unlock to use.");
+        }
+        return L10n.t("Your phone won't let HushGram use your fingerprint or face right now. Check its fingerprint and face settings.");
     }
 
     /** The row that sets or changes the HushGram PIN; changing it while locked asks the current lock first. */
@@ -3005,6 +3088,69 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                         return;
                     }
                     Utils.showToastShort(L10n.f("%1$s is shown again", L10n.isolate(chat.name)));
+                }
+            });
+        }
+        return builder.setPositiveButton(L10n.t("OK"), null);
+    }
+
+    /** The row that opens the list of chats pinned to the top of your inbox (#345). */
+    Row pinnedChatsRow(Context context) {
+        Row row = new Row(context);
+        row.setKey(PINNED_CHATS_ROW);
+        row.setPersistent(false);
+        row.setTitle(L10n.t("Pinned chats"));
+        row.setSummary(L10n.t("Keeps the chats you pick at the top of your inbox. The pins stay on this phone, "
+                + "and Instagram's own order holds for every other chat."));
+        row.setOnPreferenceClickListener(tapped -> {
+            Context host = getActivity();
+            if (host == null) return true;
+            show(pinnedChatsList(host, this::allowMutation));
+            return true;
+        });
+        return row;
+    }
+
+    /**
+     * The chats pinned on the account you're signed in to, each with a check, and the chat you opened
+     * last above them when it isn't pinned. Checking one pins it at once, below the ones pinned
+     * before it; unchecking one puts it back where Instagram has it. Each account keeps its own pins.
+     */
+    private static AlertDialog.Builder pinnedChatsList(Context context, BooleanSupplier allowMutation) {
+        String account = ChatAccounts.active();
+        List<ChatLocks.Chat> chats = new ArrayList<>(PinnedChats.saved(account));
+        ChatLocks.Chat last = PinnedChats.lastOpened(account);
+        int offered = last == null ? 0 : 1;
+        if (last != null) chats.add(0, last);
+        AlertDialog.Builder builder = new AlertDialog.Builder(context).setTitle(L10n.t("Pinned chats"));
+        if (chats.isEmpty()) {
+            builder.setMessage(L10n.t("Open a chat in Instagram, then come back here to pin it."));
+        } else {
+            CharSequence[] names = new CharSequence[chats.size()];
+            boolean[] pinned = new boolean[chats.size()];
+            for (int i = 0; i < names.length; i++) {
+                boolean offer = i < offered;
+                names[i] = offer ? L10n.f("%1$s (opened last)", chats.get(i).name) : chats.get(i).name;
+                pinned[i] = !offer;
+            }
+            builder.setMultiChoiceItems(names, pinned, (dialog, which, checked) -> {
+                if (!allowMutation.getAsBoolean()) {
+                    setChecked((AlertDialog) dialog, which, !checked);
+                    return;
+                }
+                ChatLocks.Chat chat = chats.get(which);
+                if (checked) {
+                    if (!PinnedChats.add(account, chat.id, chat.name)) {
+                        notSaved((AlertDialog) dialog, which, false);
+                        return;
+                    }
+                    Utils.showToastShort(L10n.f("%1$s is pinned", L10n.isolate(chat.name)));
+                } else {
+                    if (!PinnedChats.remove(account, chat.id)) {
+                        notSaved((AlertDialog) dialog, which, true);
+                        return;
+                    }
+                    Utils.showToastShort(L10n.f("%1$s is unpinned", L10n.isolate(chat.name)));
                 }
             });
         }
@@ -3598,6 +3744,82 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         }
     }
 
+    /** How many of the newest viewing history rows the list row shows. */
+    static final int VIEWING_HISTORY_SHOWN = 50;
+
+    /**
+     * The row listing what the viewing history kept, newest first. Read off the main thread, so it
+     * says so until it's read. It isn't tappable: the summary is the list.
+     */
+    static Preference viewingHistoryRow(Context context) {
+        Row row = new Row(context);
+        row.setKey(VIEWING_HISTORY_ROW);
+        row.setPersistent(false);
+        row.setSelectable(false);
+        row.setTitle(L10n.t("Viewing history"));
+        row.setSummary(L10n.t("Reading the list…"));
+        Context application = context.getApplicationContext() != null ? context.getApplicationContext() : context;
+        if (!Utils.runOnBackgroundThread(() -> {
+            String summary = viewingHistorySummary(ViewingHistory.entries(application), System.currentTimeMillis());
+            Utils.runOnMainThread(() -> row.setSummary(summary));
+        })) {
+            row.setSummary(viewingHistorySummary(ViewingHistory.entries(application), System.currentTimeMillis()));
+        }
+        return mark(row, SettingsIcons.PERSON);
+    }
+
+    /** What the viewing history row says for [rows], newest first, at [now]. */
+    static String viewingHistorySummary(List<ViewingHistory.Row> rows, long now) {
+        if (rows.isEmpty()) {
+            return L10n.t("Nothing here yet. With Keep a viewing history on, what you look at shows up here.");
+        }
+        StringBuilder text = new StringBuilder();
+        int shown = 0;
+        for (ViewingHistory.Row seen : rows) {
+            if (shown == VIEWING_HISTORY_SHOWN) break;
+            String who = seen.owner.isEmpty() ? "" : "@" + seen.owner + ", ";
+            String ago = android.text.format.DateUtils.getRelativeTimeSpanString(seen.time, now,
+                    android.text.format.DateUtils.MINUTE_IN_MILLIS).toString();
+            text.append(who).append(viewingKindLabel(seen.kind)).append(", ").append(ago).append('\n');
+            shown++;
+        }
+        if (rows.size() > VIEWING_HISTORY_SHOWN) text.append(L10n.t("Only the newest 50 are shown."));
+        return text.toString().trim();
+    }
+
+    /** What the list calls [kind]. */
+    static String viewingKindLabel(ViewingHistory.Kind kind) {
+        switch (kind) {
+            case POST: return L10n.t("Post");
+            case REEL: return L10n.t("Reel");
+            case STORY: return L10n.t("Story");
+            default: return L10n.t("Profile");
+        }
+    }
+
+    /** Forgets the viewing history off the main thread, says so, and empties [list]. */
+    static void clearViewingHistory(Preference row, Preference list) {
+        if (!allowMutation(row, true)) return;
+        Context context = row.getContext();
+        if (!Utils.runOnBackgroundThread(() -> {
+            if (!asyncChangesAllowed()) {
+                Utils.showToastLong(heldMessage());
+                return;
+            }
+            boolean cleared = ViewingHistory.clear(context);
+            Utils.runOnMainThread(() -> {
+                if (cleared) {
+                    Utils.showToastShort(L10n.t("Viewing history cleared."));
+                    list.setSummary(viewingHistorySummary(java.util.Collections.emptyList(), System.currentTimeMillis()));
+                } else {
+                    Utils.showToastLong(L10n.t("Couldn't clear the viewing history. Try again."));
+                }
+            });
+        })) {
+            Utils.showToastLong(L10n.t("Couldn't clear the viewing history. Try again."));
+        }
+    }
+
     static TapToPlayScopeRow tapToPlayScopeRow(Context context) {
         TapToPlayScopeRow row = new TapToPlayScopeRow(context);
         row.setKey(Settings.TAP_TO_PLAY_SCOPE.key);
@@ -3781,6 +4003,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             case DARK: return L10n.t("Instagram on black");
             case PLUM: return L10n.t("Instagram on plum");
             case LIGHT: return L10n.t("Instagram in black on white");
+            case SKETCH: return L10n.t("Hand-drawn Instagram");
             default: return L10n.t("Instagram's own");
         }
     }
@@ -3859,43 +4082,35 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         return row;
     }
 
-    /** How strongly the glass tab bar blurs what's behind it (#289). Its summary is the step chosen. */
-    static GlassBlurRow glassBlurRow(Context context) {
-        GlassBlurRow row = new GlassBlurRow(context);
-        row.setKey(Settings.GLASS_TAB_BAR_BLUR_STRENGTH.key);
+    /** How far the glass tab bar blurs what's behind it, from a slider in dp (#289, #391). */
+    static SliderRow glassBlurRow(Context context) {
+        SliderRow row = new SliderRow(context, Settings.GLASS_TAB_BAR_BLUR_RADIUS, 1, L10n.t("%1$d dp"));
         row.setTitle(L10n.t("Blur strength"));
-        row.setDialogTitle(L10n.t("Blur strength"));
-        row.setNegativeButtonText(L10n.t("Cancel"));
-        GlassBlur[] steps = GlassBlur.values();
-        CharSequence[] entries = new CharSequence[steps.length];
-        CharSequence[] values = new CharSequence[steps.length];
-        for (int i = 0; i < steps.length; i++) {
-            entries[i] = glassBlurLabel(steps[i]);
-            values[i] = steps[i].name();
-        }
-        row.setEntries(entries);
-        row.setEntryValues(values);
-        row.setValue(Settings.GLASS_TAB_BAR_BLUR_STRENGTH.savedValue().name());
+        row.setText(String.valueOf(Settings.GLASS_TAB_BAR_BLUR_RADIUS.savedValue()));
         return row;
     }
 
-    /** How see-through the glass tab bar's pill is. Its summary is the step chosen. */
-    static GlassOpacityRow glassOpacityRow(Context context) {
-        GlassOpacityRow row = new GlassOpacityRow(context);
-        row.setKey(Settings.GLASS_TAB_BAR_OPACITY.key);
+    /** How strong the glass tab bar's tint is, from a slider in percent of the bar's own look (#391). */
+    static SliderRow glassOpacityRow(Context context) {
+        SliderRow row = new SliderRow(context, Settings.GLASS_TAB_BAR_OPACITY, 5, L10n.t("%1$d%%"));
         row.setTitle(L10n.t("Tab bar opacity"));
-        row.setDialogTitle(L10n.t("Tab bar opacity"));
-        row.setNegativeButtonText(L10n.t("Cancel"));
-        GlassOpacity[] steps = GlassOpacity.values();
-        CharSequence[] entries = new CharSequence[steps.length];
-        CharSequence[] values = new CharSequence[steps.length];
-        for (int i = 0; i < steps.length; i++) {
-            entries[i] = glassOpacityLabel(steps[i]);
-            values[i] = steps[i].name();
-        }
-        row.setEntries(entries);
-        row.setEntryValues(values);
-        row.setValue(Settings.GLASS_TAB_BAR_OPACITY.savedValue().name());
+        row.setText(String.valueOf(Settings.GLASS_TAB_BAR_OPACITY.savedValue()));
+        return row;
+    }
+
+    /** How many reels play before Stop after a set number of reels stops the swiping, from a slider (#405). */
+    static SliderRow reelCapCountRow(Context context) {
+        SliderRow row = new SliderRow(context, Settings.REEL_CAP_COUNT, 5, L10n.t("%1$d reels"));
+        row.setTitle(L10n.t("Reels before swiping stops"));
+        row.setText(String.valueOf(Settings.REEL_CAP_COUNT.savedValue()));
+        return row;
+    }
+
+    /** How long Instagram stays in the background before the swiping comes back, from a slider (#405). */
+    static SliderRow reelCapBreakRow(Context context) {
+        SliderRow row = new SliderRow(context, Settings.REEL_CAP_BREAK, 5, L10n.t("%1$d minutes in the background"));
+        row.setTitle(L10n.t("Time away before swiping comes back"));
+        row.setText(String.valueOf(Settings.REEL_CAP_BREAK.savedValue()));
         return row;
     }
 
@@ -3925,6 +4140,122 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             return false;
         });
         return row;
+    }
+
+    /**
+     * Where Instagram's emoji draw from (#166): the phone's, a free pack or an emoji font file.
+     * Choosing a pack downloads it, and choosing a file opens the file picker. Either is kept only
+     * once the font has color emoji, and until then the row keeps what it had.
+     */
+    EmojiRow emojiRow(Context context) {
+        EmojiRow row = new EmojiRow(context);
+        row.setKey(Settings.EMOJI_FONT.key);
+        row.setTitle(L10n.t("Emoji pack"));
+        row.setDialogTitle(L10n.t("Emoji pack"));
+        row.setNegativeButtonText(L10n.t("Cancel"));
+        EmojiChoice[] choices = EmojiChoice.values();
+        CharSequence[] entries = new CharSequence[choices.length];
+        CharSequence[] values = new CharSequence[choices.length];
+        for (int i = 0; i < choices.length; i++) {
+            entries[i] = emojiLabel(choices[i]);
+            values[i] = choices[i].name();
+        }
+        row.setEntries(entries);
+        row.setEntryValues(values);
+        row.setValue(Settings.EMOJI_FONT.savedValue().name());
+        row.setOnPreferenceChangeListener((preference, value) -> {
+            EmojiChoice choice = emojiChoice(String.valueOf(value));
+            if (choice == EmojiChoice.FILE) {
+                pickFont(PICK_EMOJI);
+                return false;
+            }
+            if (!choice.pack()) return true;
+            downloadEmoji(choice);
+            return false;
+        });
+        return row;
+    }
+
+    static EmojiChoice emojiChoice(@Nullable String value) {
+        for (EmojiChoice candidate : EmojiChoice.values()) if (candidate.name().equals(value)) return candidate;
+        return EmojiChoice.PHONE;
+    }
+
+    /** What the emoji list calls [choice]. The packs keep their makers' names. */
+    static String emojiLabel(EmojiChoice choice) {
+        switch (choice) {
+            case TWEMOJI:
+                return "Twemoji";
+            case OPENMOJI:
+                return "OpenMoji";
+            case BLOBMOJI:
+                return "Blobmoji";
+            case FILE:
+                return L10n.t("An emoji font file");
+            default:
+                return L10n.t("Your phone's emoji");
+        }
+    }
+
+    /** The sentence under the emoji row for [choice]. */
+    static String emojiSummary(EmojiChoice choice) {
+        switch (choice) {
+            case PHONE:
+                return L10n.t("Your phone's emoji, or Google's with the switch above on. You can also download a free "
+                        + "emoji pack or pick a color emoji font file.");
+            case FILE:
+                return L10n.t("Emoji draw from the emoji font file you picked. Pick it again to change the file. "
+                        + "Restart Instagram to see a change.");
+            default:
+                return L10n.f("Emoji draw as %1$s, downloaded from its maker. Restart Instagram to see a change.",
+                        L10n.isolate(emojiLabel(choice)));
+        }
+    }
+
+    /**
+     * Downloads [choice]'s pack off the main thread and keeps it the way a picked file is kept, then
+     * saves the choice. The row keeps what it had until then. Choosing the pack already kept does nothing.
+     */
+    private void downloadEmoji(EmojiChoice choice) {
+        Context context = getContext();
+        if (context == null || documentRequest != 0 || changingConfiguration || ExportStatus.CONFIGURATION.active()
+                || Fonts.importActive()) return;
+        if (!allowMutation() || EmojiFonts.keeps(context, choice)) return;
+        if (MessagesLock.locked()) {
+            Activity activity = getActivity();
+            if (activity != null) MessagesLock.confirmThen(activity, () -> downloadEmoji(choice));
+            return;
+        }
+        long token = Fonts.beginImport();
+        if (token == 0) {
+            Utils.showToastLong(L10n.t("Couldn't start that. Try again."));
+            return;
+        }
+        Context application = context.getApplicationContext() == null ? context : context.getApplicationContext();
+        long revision = Settings.EMOJI_FONT.savedRevision();
+        Utils.showToastShort(L10n.t("Downloading the emoji..."));
+        showConfiguration();
+        if (!Utils.runOnBackgroundThread(() -> {
+            Fonts.Prepared prepared = null;
+            FontResult result;
+            try {
+                prepared = EmojiFonts.download(application, choice);
+                result = prepared == null ? new FontResult(PICK_EMOJI, FontVerdict.UNREACHED, null)
+                        : installPickedFont(application, PICK_EMOJI, choice, token, revision, prepared, null);
+            } catch (Exception failure) {
+                Logger.printInfo(() -> "Emoji: couldn't keep the " + choice + " pack", failure);
+                result = new FontResult(PICK_EMOJI, FontVerdict.UNREACHED, null);
+            } finally {
+                if (prepared != null) prepared.close();
+                Fonts.finishImport(token);
+            }
+            FontResult finished = result;
+            Utils.runOnMainThread(() -> fontFinished(finished));
+        })) {
+            Fonts.finishImport(token);
+            showConfiguration();
+            Utils.showToastLong(L10n.t("Couldn't start that. Try again."));
+        }
     }
 
     /** What the list calls [choice]. */
@@ -3964,11 +4295,13 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         row.setDialogTitle(L10n.t("Accent color"));
         row.setNegativeButtonText(L10n.t("Cancel"));
         List<AccentHue> hues = new ArrayList<>(Arrays.asList(AccentHue.values()));
-        if (!MaterialYou.available()) hues.remove(AccentHue.WALLPAPER);
         CharSequence[] entries = new CharSequence[hues.size()];
         CharSequence[] values = new CharSequence[hues.size()];
         for (int i = 0; i < hues.size(); i++) {
-            entries[i] = accentHueLabel(hues.get(i));
+            // Material You stays in the list on Android 11 and older, greyed out with its reason.
+            entries[i] = hues.get(i) == AccentHue.WALLPAPER && !MaterialYou.available()
+                    ? L10n.t("Material You needs Android 12 or newer, so Instagram's blue stays.")
+                    : accentHueLabel(hues.get(i));
             values[i] = hues.get(i).name();
         }
         row.setEntries(entries);
@@ -4123,6 +4456,58 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     /** What the list calls [size]. */
     static String cornerSizeLabel(CornerSize size) {
         return size == CornerSize.LARGE ? L10n.t("Large") : L10n.t("Small");
+    }
+
+    /** How far Ambient light's glow reaches. Its summary is the choice. */
+    static AmbientSpreadRow ambientSpreadRow(Context context) {
+        AmbientSpreadRow row = new AmbientSpreadRow(context);
+        row.setKey(Settings.AMBIENT_LIGHT_SPREAD.key);
+        row.setTitle(L10n.t("Glow spread"));
+        row.setDialogTitle(L10n.t("Glow spread"));
+        row.setNegativeButtonText(L10n.t("Cancel"));
+        AmbientSpread[] choices = AmbientSpread.values();
+        CharSequence[] entries = new CharSequence[choices.length];
+        CharSequence[] values = new CharSequence[choices.length];
+        for (int i = 0; i < choices.length; i++) {
+            entries[i] = ambientSpreadLabel(choices[i]);
+            values[i] = choices[i].name();
+        }
+        row.setEntries(entries);
+        row.setEntryValues(values);
+        row.setValue(Settings.AMBIENT_LIGHT_SPREAD.savedValue().name());
+        return row;
+    }
+
+    /** What the list calls [spread]. */
+    static String ambientSpreadLabel(AmbientSpread spread) {
+        if (spread == AmbientSpread.NARROW) return L10n.t("Narrow");
+        return spread == AmbientSpread.WIDE ? L10n.t("Wide") : L10n.t("Medium");
+    }
+
+    /** How quickly Ambient light's glow follows a video. Its summary is the choice. */
+    static AmbientSpeedRow ambientSpeedRow(Context context) {
+        AmbientSpeedRow row = new AmbientSpeedRow(context);
+        row.setKey(Settings.AMBIENT_LIGHT_SPEED.key);
+        row.setTitle(L10n.t("Glow speed"));
+        row.setDialogTitle(L10n.t("Glow speed"));
+        row.setNegativeButtonText(L10n.t("Cancel"));
+        AmbientSpeed[] choices = AmbientSpeed.values();
+        CharSequence[] entries = new CharSequence[choices.length];
+        CharSequence[] values = new CharSequence[choices.length];
+        for (int i = 0; i < choices.length; i++) {
+            entries[i] = ambientSpeedLabel(choices[i]);
+            values[i] = choices[i].name();
+        }
+        row.setEntries(entries);
+        row.setEntryValues(values);
+        row.setValue(Settings.AMBIENT_LIGHT_SPEED.savedValue().name());
+        return row;
+    }
+
+    /** What the list calls [speed]. */
+    static String ambientSpeedLabel(AmbientSpeed speed) {
+        if (speed == AmbientSpeed.SLOW) return L10n.t("Slow");
+        return speed == AmbientSpeed.FAST ? L10n.t("Fast") : L10n.t("Medium");
     }
 
     /** How much thicker Thicker story progress bar draws the bar. Its summary is the choice. */
@@ -4378,6 +4763,79 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         });
     }
 
+    /** The row that opens the list of Instagram's notification types to mute. Its summary says how many are. */
+    Row mutedChannelsRow(Context context) {
+        Row row = new Row(context);
+        row.setKey(Settings.MUTED_NOTIFICATION_CHANNELS.key);
+        row.setPersistent(false);
+        row.setTitle(L10n.t("Mute notification types"));
+        row.setSummary(mutedChannelsSummary(Settings.MUTED_NOTIFICATION_CHANNELS.savedValue()));
+        row.setOnPreferenceClickListener(tapped -> {
+            showMutedChannels(row);
+            return true;
+        });
+        return row;
+    }
+
+    /** What the notification types muted in [saved] mean, for the row's summary. */
+    static String mutedChannelsSummary(String saved) {
+        int muted = NotificationGroups.mutedChannels(saved).size();
+        if (muted == 0) {
+            return L10n.t("Stops the notification types you tick, even ones Instagram's own notification settings can't turn off.");
+        }
+        return L10n.quantity(muted, "%1$d notification type is muted.", "%1$d notification types are muted.", muted);
+    }
+
+    /**
+     * Instagram's notification channels on this phone, each with a check, ticked while muted, in
+     * Instagram's own words. A change saves at once and holds back the next notification on that
+     * channel. Until Instagram has set its channels up there's nothing to list, and the list says so.
+     */
+    void showMutedChannels(Row row) {
+        Context context = getActivity();
+        if (context == null) return;
+        Set<String> muted = NotificationGroups.mutedChannels(Settings.MUTED_NOTIFICATION_CHANNELS.savedValue());
+        List<String[]> channels = NotificationGroups.offeredChannels(context, muted);
+        AlertDialog.Builder builder = new AlertDialog.Builder(context).setTitle(L10n.t("Mute notification types"));
+        if (channels.isEmpty()) {
+            show(builder.setMessage(L10n.t("Instagram hasn't set up its notification types on this phone yet. Open "
+                    + "Instagram once, then come back here.")).setPositiveButton(L10n.t("OK"), null));
+            return;
+        }
+        CharSequence[] names = new CharSequence[channels.size()];
+        boolean[] ticked = new boolean[channels.size()];
+        for (int i = 0; i < names.length; i++) {
+            names[i] = channels.get(i)[1];
+            ticked[i] = muted.contains(channels.get(i)[0]);
+        }
+        // The dialog keeps [ticked] and re-applies its checks at each layout, so every change to a check changes it too.
+        builder.setMultiChoiceItems(names, ticked, (dialog, which, on) -> {
+            if (!allowMutation(row, true)) {
+                ticked[which] = muted.contains(channels.get(which)[0]);
+                setChecked((AlertDialog) dialog, which, ticked[which]);
+                return;
+            }
+            if (on) muted.add(channels.get(which)[0]);
+            else muted.remove(channels.get(which)[0]);
+            Settings.MUTED_NOTIFICATION_CHANNELS.save(NotificationGroups.joinChannels(muted));
+            row.setSummary(mutedChannelsSummary(Settings.MUTED_NOTIFICATION_CHANNELS.savedValue()));
+        });
+        AlertDialog dialog = show(builder.setNeutralButton(L10n.t("Unmute all"), null)
+                .setPositiveButton(L10n.t("OK"), null));
+        if (dialog == null) return;
+        // A click listener of its own, so Unmute all clears every check without closing the list.
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(tapped -> {
+            if (!allowMutation(row, true)) return;
+            muted.clear();
+            Settings.MUTED_NOTIFICATION_CHANNELS.save("");
+            row.setSummary(mutedChannelsSummary(""));
+            for (int i = 0; i < channels.size(); i++) {
+                ticked[i] = false;
+                dialog.getListView().setItemChecked(i, false);
+            }
+        });
+    }
+
     /** The row that opens the tab order list. Its summary names the order chosen. */
     Row tabOrderRow(Context context) {
         Row row = new Row(context);
@@ -4580,32 +5038,6 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                 return L10n.t("Material You");
             default:
                 return L10n.t("Instagram blue");
-        }
-    }
-
-    /** What the list calls [step]. */
-    static String glassBlurLabel(GlassBlur step) {
-        switch (step) {
-            case LIGHT:
-                return L10n.t("Light");
-            case STRONG:
-                return L10n.t("Strong");
-            default:
-                return L10n.t("Standard");
-        }
-    }
-
-    /** What the list calls [step]. */
-    static String glassOpacityLabel(GlassOpacity step) {
-        switch (step) {
-            case CLEAR:
-                return L10n.t("Clearest");
-            case LIGHT:
-                return L10n.t("Clear");
-            case FROSTED:
-                return L10n.t("Frosted");
-            default:
-                return L10n.t("Standard");
         }
     }
 
@@ -4875,8 +5307,10 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     @Override
     protected void updatePreferenceAvailability(Preference preference, Setting<?> setting) {
         super.updatePreferenceAvailability(preference, setting);
-        if ((setting == Settings.FONT || setting == Settings.STORY_FONTS || setting == Settings.STORY_EMOJI)
-                && (Fonts.importActive() || documentRequest != 0)) preference.setEnabled(false);
+        if ((setting == Settings.FONT || setting == Settings.STORY_FONTS || setting == Settings.STORY_EMOJI
+                || setting == Settings.EMOJI_FONT) && (Fonts.importActive() || documentRequest != 0)) {
+            preference.setEnabled(false);
+        }
         if (resumingFromOverview && setting == BaseSettings.PAUSED) preference.setEnabled(false);
         if (setting == Settings.SETTINGS_SHORTCUT || setting == Settings.SETTINGS_LOGO_PRESS
                 || setting == Settings.HIDE_MENU_ROW) {
@@ -4888,11 +5322,6 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             preference.setSummary(setting.isAvailable()
                     ? L10n.t("Removes For you from the choices at the top of Home, so it stays on Following or "
                             + "Favorites. Needs Start Home on Following. Restart Instagram to see the change.")
-                    : L10n.t("Turn on Start Home on Following to use this choice."));
-        } else if (setting == Settings.LOGO_ON_FOLLOWING) {
-            preference.setSummary(setting.isAvailable()
-                    ? L10n.t("Keeps Instagram's logo at the top of Home in place of the feed's name. Tap it to switch "
-                            + "feeds. Needs Start Home on Following. Restart Instagram to see the change.")
                     : L10n.t("Turn on Start Home on Following to use this choice."));
         } else if (preference instanceof PlaybackQualityRow) {
             ((PlaybackQualityRow) preference).showSummary();
@@ -4918,6 +5347,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             ((TabBarLayoutRow) preference).showSummary();
         } else if (preference instanceof FontRow) {
             ((FontRow) preference).showSummary();
+        } else if (preference instanceof EmojiRow) {
+            ((EmojiRow) preference).showSummary();
         } else if (preference instanceof LockDelayRow) {
             ((LockDelayRow) preference).showSummary();
         } else if (preference instanceof UnlockWithRow) {
@@ -4961,6 +5392,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             ((TabBarLayoutRow) listPreference).showSummary();
         } else if (listPreference instanceof FontRow) {
             ((FontRow) listPreference).showSummary();
+        } else if (listPreference instanceof EmojiRow) {
+            ((EmojiRow) listPreference).showSummary();
         } else if (listPreference instanceof LockDelayRow) {
             ((LockDelayRow) listPreference).showSummary();
         } else if (listPreference instanceof UnlockWithRow) {
@@ -5044,6 +5477,50 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             return false;
         });
         return row;
+    }
+
+    /**
+     * The server App-only proxy sends Instagram through. What's typed is saved as host:port (no
+     * scheme, no closing slash), and what isn't a server is refused with a toast.
+     */
+    static ProxyServerRow proxyServerRow(Context context) {
+        ProxyServerRow row = new ProxyServerRow(context);
+        row.setKey(Settings.APP_PROXY_SERVER.key);
+        row.setTitle(L10n.t("Proxy server"));
+        row.setDialogTitle(L10n.t("Proxy server"));
+        row.setDialogMessage(L10n.t("An HTTP proxy's address and port, with a colon between them, like "
+                + "192.168.1.10:8080. Proxies that need a password, and SOCKS proxies, don't work here. "
+                + "Instagram needs a restart to use it."));
+        row.setPositiveButtonText(L10n.t("Save"));
+        row.setNegativeButtonText(L10n.t("Cancel"));
+        EditText field = row.getEditText();
+        field.setSingleLine(true);
+        field.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        field.setTextDirection(View.TEXT_DIRECTION_LTR);
+        field.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        field.setHint("192.168.1.10:8080");
+        row.setText(Settings.APP_PROXY_SERVER.savedValue());
+        row.setOnPreferenceChangeListener((preference, typed) -> {
+            String raw = typed == null ? "" : typed.toString();
+            String server = AppProxy.normalize(raw);
+            if (server == null) {
+                Utils.showToastShort(L10n.t("That isn't a proxy server. Try 10.0.0.2:8080."));
+                return false;
+            }
+            if (server.equals(raw)) return true;
+            // Keeps the plain host:port in place of what was typed, as the sharing domain row does.
+            ((ProxyServerRow) preference).setText(server);
+            return false;
+        });
+        return row;
+    }
+
+    /** What the proxy server row says: where Instagram goes out, or that it goes out directly. */
+    static String proxyServerSummary(String text) {
+        String server = AppProxy.normalize(text);
+        return server == null || server.isEmpty()
+                ? L10n.t("No server set. Until there is one, Instagram goes out directly.")
+                : L10n.f("Instagram goes through %1$s.", L10n.isolate(server));
     }
 
     /**
@@ -5385,6 +5862,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             if (widget instanceof AnimatedSettingsSwitch) ((AnimatedSettingsSwitch) widget).bindMotion(motion);
             showAllText(view);
             ScreenColors.row(view, this);
+            // A greyed-out row's line says why, so it stays in sight.
+            DescriptionInfo.bind(view, isEnabled() ? getSummary() : null);
             view.setAccessibilityDelegate(new RowSemantics(this, Switch.class));
         }
     }
@@ -5826,6 +6305,34 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         }
     }
 
+    static final class ProxyServerRow extends ValidatedEditRow {
+        ProxyServerRow(Context context) {
+            super(context);
+        }
+
+        @Override
+        public void setText(String text) {
+            super.setText(text);
+            setSummary(proxyServerSummary(text));
+        }
+
+        @Override
+        protected void onBindView(View view) {
+            super.onBindView(view);
+            showAllText(view);
+            ScreenColors.row(view, this);
+            view.setAccessibilityDelegate(new RowSemantics(this, Button.class));
+        }
+
+        @Override String validatedValue(String typed) {
+            return AppProxy.normalize(typed);
+        }
+
+        @Override String validationError() {
+            return L10n.t("That isn't a proxy server. Try 10.0.0.2:8080.");
+        }
+    }
+
     static final class PlaceRow extends ValidatedEditRow {
         PlaceRow(Context context) {
             super(context);
@@ -6258,7 +6765,15 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         @Override
         protected void showDialog(Bundle state) {
             super.showDialog(state);
-            if (getDialog() instanceof AlertDialog) ScreenColors.dialog((AlertDialog) getDialog());
+            if (getDialog() instanceof AlertDialog) {
+                AlertDialog dialog = (AlertDialog) getDialog();
+                ListView choices = dialog.getListView();
+                if (choices != null && choices.getAdapter() != null) {
+                    // Each choice shows its actual icon before its name (#321, #327).
+                    DialogChoices.swap(choices, new IconChoices(getContext(), choices.getAdapter(), AppIconChoice.values()));
+                }
+                ScreenColors.dialog(dialog);
+            }
         }
     }
 
@@ -6347,13 +6862,16 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
 
         @Override
         public void setValue(String value) {
-            super.setValue(value);
+            // Before Android 11 the phone's lock asks whatever was saved, so the row says so.
+            super.setValue(Build.VERSION.SDK_INT < 30 && UnlockWith.BIOMETRICS.name().equals(value) ? UnlockWith.PHONE_LOCK.name() : value);
             showSummary();
         }
 
         void showSummary() {
             setSummary(UnlockWith.PIN.name().equals(getValue())
                     ? L10n.t("A PIN you set here unlocks your messages, in place of your screen lock. It can't be recovered, only cleared by clearing Instagram's storage.")
+                    : UnlockWith.BIOMETRICS.name().equals(getValue())
+                    ? L10n.t("Only your fingerprint or face unlocks your messages. If the phone has none set up, your screen lock does.")
                     : L10n.t("Your fingerprint, face or screen lock unlocks your messages."));
         }
 
@@ -6412,24 +6930,82 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         @Override
         protected void showDialog(Bundle state) {
             super.showDialog(state);
-            if (getDialog() instanceof AlertDialog) ScreenColors.dialog((AlertDialog) getDialog());
+            if (getDialog() instanceof AlertDialog) {
+                AlertDialog dialog = (AlertDialog) getDialog();
+                ListView choices = dialog.getListView();
+                CharSequence[] values = getEntryValues();
+                if (!MaterialYou.available() && choices != null && choices.getAdapter() != null && values != null) {
+                    boolean[] off = new boolean[values.length];
+                    for (int i = 0; i < values.length; i++) off[i] = AccentHue.WALLPAPER.name().contentEquals(values[i]);
+                    DialogChoices.swap(choices, new DisabledChoices(choices.getAdapter(), off));
+                }
+                ScreenColors.dialog(dialog);
+            }
         }
     }
 
-    static final class GlassBlurRow extends ListPreference {
-        GlassBlurRow(Context context) {
+    /**
+     * A number setting's row with a slider under its summary (#391). The slider saves as it's let go, as the
+     * row's text, so the page syncs, restores and backs it up as it does a text row, and the summary follows
+     * the slider while it moves. The row itself opens nothing: the slider is the control.
+     */
+    static final class SliderRow extends EditTextPreference {
+        private static final String SLIDER = "hushgram_slider";
+        final IntegerSetting setting;
+        /** How far one notch of the slider moves the value. */
+        final int step;
+        private final String format;
+
+        SliderRow(Context context, IntegerSetting setting, int step, String format) {
             super(context);
+            this.setting = setting;
+            this.step = step;
+            this.format = format;
+            setKey(setting.key);
+            setSelectable(false);
         }
 
-        /** The summary is the step chosen. */
-        @Override
-        public void setValue(String value) {
-            super.setValue(value);
-            GlassBlur step = GlassBlur.STANDARD;
-            for (GlassBlur candidate : GlassBlur.values()) {
-                if (candidate.name().equals(value)) step = candidate;
+        /** [text] as a value inside the setting's range, or its default when it isn't a number. */
+        int valueOf(@Nullable String text) {
+            try {
+                int value = Integer.parseInt(text == null ? "" : text.trim());
+                return Math.max(setting.minimum(), Math.min(setting.maximum(), value));
+            } catch (NumberFormatException notANumber) {
+                return setting.defaultValue;
             }
-            setSummary(glassBlurLabel(step));
+        }
+
+        /** The value at the slider's [progress], a {@link #step} a notch from the start of the range. */
+        int valueAt(int progress) {
+            return Math.max(setting.minimum(), Math.min(setting.maximum(), setting.minimum() + progress * step));
+        }
+
+        int progressOf(int value) {
+            return Math.round((value - setting.minimum()) / (float) step);
+        }
+
+        /** What the summary says for [value], marking the one the bar has always had. */
+        String label(int value) {
+            String amount = String.format(format, value);
+            return value == setting.defaultValue ? String.format(L10n.t("%1$s (standard)"), amount) : amount;
+        }
+
+        @Override
+        public void setText(String text) {
+            super.setText(text);
+            setSummary(label(valueOf(text)));
+        }
+
+        /** Saves [value] as the row's text, through the page's listener as any other row's change goes. */
+        void choose(int value) {
+            String text = String.valueOf(value);
+            if (text.equals(getText())) return;
+            if (callChangeListener(text)) setText(text);
+        }
+
+        @Override
+        protected void onClick() {
+            // The slider is the control, so there's no dialog to open.
         }
 
         @Override
@@ -6437,39 +7013,67 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             super.onBindView(view);
             showAllText(view);
             ScreenColors.row(view, this);
-            view.setAccessibilityDelegate(new RowSemantics(this, Button.class));
-        }
-    }
+            SeekBar slider = slider(view);
+            if (slider == null) return;
+            TextView summary = view.findViewById(android.R.id.summary);
+            ScreenColors colors = ScreenColors.shown == null ? ScreenColors.DEFAULT : ScreenColors.shown;
+            slider.setProgressTintList(ScreenColors.dimmedWhenDisabled(colors.accent));
+            slider.setThumbTintList(ScreenColors.dimmedWhenDisabled(colors.accent));
+            slider.setOnSeekBarChangeListener(null);
+            slider.setMax(progressOf(setting.maximum()));
+            slider.setProgress(progressOf(valueOf(getText())));
+            slider.setEnabled(isEnabled());
+            slider.setContentDescription(getTitle());
+            describe(slider, label(valueOf(getText())));
+            slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                private boolean dragging;
 
-    static final class GlassOpacityRow extends ListPreference {
-        GlassOpacityRow(Context context) {
-            super(context);
+                @Override
+                public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+                    if (!fromUser) return;
+                    String shown = label(valueAt(progress));
+                    if (summary != null) summary.setText(shown);
+                    describe(bar, shown);
+                    // A key or a screen reader moves it a notch at a time without a drag, so each notch saves.
+                    if (!dragging) choose(valueAt(progress));
+                }
+
+                @Override
+                public void onStartTrackingTouch(SeekBar bar) {
+                    dragging = true;
+                }
+
+                @Override
+                public void onStopTrackingTouch(SeekBar bar) {
+                    dragging = false;
+                    choose(valueAt(bar.getProgress()));
+                }
+            });
         }
 
-        /** The summary is the step chosen. */
-        @Override
-        public void setValue(String value) {
-            super.setValue(value);
-            GlassOpacity step = GlassOpacity.STANDARD;
-            for (GlassOpacity candidate : GlassOpacity.values()) {
-                if (candidate.name().equals(value)) step = candidate;
+        /** A screen reader reads the value as the summary shows it, not as a share of the slider. */
+        private static void describe(SeekBar slider, String shown) {
+            if (Build.VERSION.SDK_INT >= 30) slider.setStateDescription(shown);
+        }
+
+        /** The row's slider, made under its summary the first time the row's view is bound. */
+        @Nullable
+        private SeekBar slider(View view) {
+            View made = view.findViewWithTag(SLIDER);
+            if (made instanceof SeekBar) return (SeekBar) made;
+            TextView summary = view.findViewById(android.R.id.summary);
+            if (summary == null || !(summary.getParent() instanceof android.view.ViewGroup)) return null;
+            android.view.ViewGroup parent = (android.view.ViewGroup) summary.getParent();
+            SeekBar slider = new SeekBar(getContext());
+            slider.setTag(SLIDER);
+            if (parent instanceof RelativeLayout) {
+                RelativeLayout.LayoutParams below = new RelativeLayout.LayoutParams(-1, -2);
+                below.addRule(RelativeLayout.BELOW, android.R.id.summary);
+                parent.addView(slider, below);
+            } else {
+                parent.addView(slider, parent.indexOfChild(summary) + 1, new android.view.ViewGroup.LayoutParams(-1, -2));
             }
-            setSummary(glassOpacityLabel(step));
-        }
-
-        @Override
-        protected void onBindView(View view) {
-            super.onBindView(view);
-            showAllText(view);
-            ScreenColors.row(view, this);
-            view.setAccessibilityDelegate(new RowSemantics(this, Button.class));
-        }
-
-        /** Its list takes the screen's colours, as the other rows' dialogs do. */
-        @Override
-        protected void showDialog(Bundle state) {
-            super.showDialog(state);
-            if (getDialog() instanceof AlertDialog) ScreenColors.dialog((AlertDialog) getDialog());
+            return slider;
         }
     }
 
@@ -6669,6 +7273,70 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         }
     }
 
+    static final class AmbientSpreadRow extends ListPreference {
+        AmbientSpreadRow(Context context) {
+            super(context);
+        }
+
+        /** The summary is the spread chosen. */
+        @Override
+        public void setValue(String value) {
+            super.setValue(value);
+            AmbientSpread spread = AmbientSpread.MEDIUM;
+            for (AmbientSpread candidate : AmbientSpread.values()) {
+                if (candidate.name().equals(value)) spread = candidate;
+            }
+            setSummary(ambientSpreadLabel(spread));
+        }
+
+        @Override
+        protected void onBindView(View view) {
+            super.onBindView(view);
+            showAllText(view);
+            ScreenColors.row(view, this);
+            view.setAccessibilityDelegate(new RowSemantics(this, Button.class));
+        }
+
+        /** Its list takes the screen's colours, as the other rows' dialogs do. */
+        @Override
+        protected void showDialog(Bundle state) {
+            super.showDialog(state);
+            if (getDialog() instanceof AlertDialog) ScreenColors.dialog((AlertDialog) getDialog());
+        }
+    }
+
+    static final class AmbientSpeedRow extends ListPreference {
+        AmbientSpeedRow(Context context) {
+            super(context);
+        }
+
+        /** The summary is the speed chosen. */
+        @Override
+        public void setValue(String value) {
+            super.setValue(value);
+            AmbientSpeed speed = AmbientSpeed.MEDIUM;
+            for (AmbientSpeed candidate : AmbientSpeed.values()) {
+                if (candidate.name().equals(value)) speed = candidate;
+            }
+            setSummary(ambientSpeedLabel(speed));
+        }
+
+        @Override
+        protected void onBindView(View view) {
+            super.onBindView(view);
+            showAllText(view);
+            ScreenColors.row(view, this);
+            view.setAccessibilityDelegate(new RowSemantics(this, Button.class));
+        }
+
+        /** Its list takes the screen's colours, as the other rows' dialogs do. */
+        @Override
+        protected void showDialog(Bundle state) {
+            super.showDialog(state);
+            if (getDialog() instanceof AlertDialog) ScreenColors.dialog((AlertDialog) getDialog());
+        }
+    }
+
     static final class StoryBarRow extends ListPreference {
         StoryBarRow(Context context) {
             super(context);
@@ -6815,6 +7483,38 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                 if (candidate.name().equals(getValue())) choice = candidate;
             }
             setSummary(fontSummary(choice));
+        }
+
+        @Override
+        protected void onBindView(View view) {
+            super.onBindView(view);
+            showAllText(view);
+            ScreenColors.row(view, this);
+            view.setAccessibilityDelegate(new RowSemantics(this, Button.class));
+        }
+
+        /** Its list takes the screen's colours, as the other rows' dialogs do. */
+        @Override
+        protected void showDialog(Bundle state) {
+            super.showDialog(state);
+            if (getDialog() instanceof AlertDialog) ScreenColors.dialog((AlertDialog) getDialog());
+        }
+    }
+
+    static final class EmojiRow extends ListPreference {
+        EmojiRow(Context context) {
+            super(context);
+        }
+
+        @Override
+        public void setValue(String value) {
+            super.setValue(value);
+            showSummary();
+        }
+
+        /** The summary is the sentence for the emoji chosen, not the entry. */
+        void showSummary() {
+            setSummary(emojiSummary(emojiChoice(getValue())));
         }
 
         @Override

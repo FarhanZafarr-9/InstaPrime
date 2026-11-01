@@ -760,6 +760,16 @@ tasks.register("verifyAndroidBoundaries") {
             "app.hushgram.extension.instagram.stories.LiveSeenTest" to listOf(
                 "withTheSwitchOnTheViewerHeartbeatIsHeld[28]", "withTheSwitchOnTheViewerHeartbeatIsHeld[37]",
                 "offPausedUnreadyAndThrowingLeaveItToInstagram[28]", "offPausedUnreadyAndThrowingLeaveItToInstagram[37]"),
+            "app.hushgram.extension.instagram.direct.ViewOnceMarkTest" to listOf(
+                "theSwitchStartsOffAndNeedsNoRestart", "offLeavesTheBubbleAsInstagramDrewIt",
+                "onMarksAViewOnceBubbleAndCountsIt", "aBubbleThatIsNotViewOnceIsLeftAlone",
+                "aRecycledBubbleLosesTheMarkWhenItIsNotViewOnceOrTheSwitchIsOff",
+                "aForegroundInstagramSetItselfIsNeverCovered", "pausedAndUnreadyReadAsOff",
+                "nullAndThrowingInputsFailOpen", "theMarkDrawsWithOrWithoutInstagramsIcon"
+            ).flatMap { listOf("$it[28]", "$it[37]") },
+            "app.hushgram.extension.instagram.settings.ViewOnceMarkSettingsTest" to listOf(
+                "missingPatchHasNoSwitch", "aloneItStillGetsMessages", "switchStartsOffUnderMessagesRightAfterKeepInChat"
+            ).flatMap { listOf("$it[28]", "$it[37]") },
             "app.hushgram.extension.instagram.direct.KeepInChatTest" to listOf(
                 "withTheSwitchOnViewOnceAndReplayableStayInChat[28]", "withTheSwitchOnViewOnceAndReplayableStayInChat[37]",
                 "offPausedUnreadyAndThrowingLeaveItToInstagram[28]", "offPausedUnreadyAndThrowingLeaveItToInstagram[37]",
@@ -1034,6 +1044,28 @@ tasks.register("verifyAndroidBoundaries") {
             ).flatMap { listOf("$it[28]", "$it[37]") },
             "app.hushgram.extension.instagram.settings.FeedFollowSettingsTest" to listOf(
                 "missingPatchHasNoSwitch", "aloneItStillGetsFeed", "switchStartsOffUnderFeedAndHonorsPause"
+            ).flatMap { listOf("$it[28]", "$it[37]") },
+            "app.hushgram.extension.instagram.feed.HideCaptionsTest" to listOf(
+                "offToStartLeavesCaptionsAlone", "onHidesBothCaptionsAndLeavesTheRest", "pausedReadsAsOff",
+                "withTheSwitchOnAFeedCaptionIsLeftOutAndCounted", "offPausedAndUnreadyDrawTheFeedCaption"
+            ).flatMap { listOf("$it[28]", "$it[37]") },
+            "app.hushgram.extension.instagram.settings.HideCaptionsSettingsTest" to listOf(
+                "missingPatchHasNoSwitch", "aloneItStillGetsFeed", "switchStartsOffUnderFeedAndHonorsPause"
+            ).flatMap { listOf("$it[28]", "$it[37]") },
+            "app.hushgram.extension.instagram.feed.HomeTopBarTest" to listOf(
+                "theSwitchStartsOffAndAsksForARestart", "offToStartHandsOverInstagramsList",
+                "onHandsOverNothingPutsASlidHeaderBackAndCounts", "pausedAndUnreadyReadAsOff",
+                "aNullListAndAThrowingSwitchFailOpen"
+            ).flatMap { listOf("$it[28]", "$it[37]") },
+            "app.hushgram.extension.instagram.settings.HomeTopBarSettingsTest" to listOf(
+                "missingPatchHasNoSwitch", "aloneItStillGetsFeed", "switchStartsOffUnderFeedAfterHideCaptions"
+            ).flatMap { listOf("$it[28]", "$it[37]") },
+            "app.hushgram.extension.instagram.reels.ReelsTopBarScrollTest" to listOf(
+                "theSwitchStartsOffAndNeedsNoRestart", "offToStartPassesInstagramsAnswer",
+                "onKeepsTheBarAndCountsOnlyWhatItChanged", "pausedAndUnreadyReadAsOff", "aThrowingSwitchFailsOpen"
+            ).flatMap { listOf("$it[28]", "$it[37]") },
+            "app.hushgram.extension.instagram.settings.ReelsTopBarScrollSettingsTest" to listOf(
+                "missingPatchHasNoSwitch", "aloneItStillGetsReels", "switchStartsOffUnderReelsAfterCleanUpReels"
             ).flatMap { listOf("$it[28]", "$it[37]") },
             "app.hushgram.extension.instagram.reels.ReelsSuggestionsTest" to listOf(
                 "offPausedAndUnreadyKeepEveryItem[28]", "offPausedAndUnreadyKeepEveryItem[37]",
@@ -1348,7 +1380,7 @@ tasks.register("verifyAndroidBoundaries") {
                     }) throw GradleException("Android boundary case did not pass exactly once: $suiteName.$name")
             }
         }
-        logger.lifecycle("Verified Android API 28/29/37 boundary cases with the Instagram 450 target SDK (36).")
+        logger.lifecycle("Verified Android API 28/29/37 boundary cases with the Instagram 453 target SDK (37).")
     }
 }
 
@@ -1370,7 +1402,8 @@ android {
     namespace = "app.hushgram.extension.instagram"
 
     defaultConfig {
-        // Instagram 450 declares minSdk 28, so nothing below it can run this code.
+        // Instagram 453's arm64 builds declare minSdk 28 and the patch raises the others' 26 to
+        // it, so nothing below it can run this code.
         minSdk = 28
     }
 

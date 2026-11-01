@@ -44,5 +44,14 @@ final class EntryCategory {
                 wayInSummary(Settings.SETTINGS_LOGO_PRESS)));
         entry.addPreference(toggle(context, Settings.HIDE_MENU_ROW, L10n.t("Hide the HushGram row in Instagram's menu"),
                 wayInSummary(Settings.HIDE_MENU_ROW)));
+        SwitchPreference descriptions = toggle(context, Settings.DESCRIPTIONS_BEHIND_INFO,
+                L10n.t("Descriptions behind an info button"),
+                L10n.t("Shows each switch by its name alone. Tap the i next to a name to read what it does."));
+        descriptions.setOnPreferenceChangeListener((preference, value) -> {
+            // Posted, so the rows bind with the value this change saves.
+            Utils.runOnMainThread(page::rebindRows);
+            return true;
+        });
+        entry.addPreference(descriptions);
     }
 }

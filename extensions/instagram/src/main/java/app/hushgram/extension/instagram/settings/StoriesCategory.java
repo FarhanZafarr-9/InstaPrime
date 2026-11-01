@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import app.hushgram.extension.instagram.feed.AmbientLight;
 import app.hushgram.extension.instagram.stories.StoryProgressBar;
 import app.hushgram.extension.shared.L10n;
 
@@ -75,6 +76,11 @@ final class StoriesCategory {
             stories.add(storyRingRow(context));
             stories.add(storyRingColorRow(context));
         }
+        if (build.contains(PatchFamily.SMOOTH_STORY_OPEN)) {
+            stories.add(toggle(context, Settings.SMOOTH_STORY_OPEN, L10n.t("Smooth story opening"),
+                    L10n.t("A story you tap in the stories row opens with a slower zoom that doesn't bounce, "
+                            + "and closes the same way.")));
+        }
         if (build.contains(PatchFamily.STORY_PROGRESS_BAR)) {
             stories.add(onFlip(toggle(context, Settings.THICKER_STORY_BAR, L10n.t("Thicker story progress bar"),
                     L10n.t("Draws the bar along the top of a story as thick as the choice below. Its segments "
@@ -85,6 +91,12 @@ final class StoriesCategory {
             stories.add(toggle(context, Settings.STORY_SEEK_BAR, L10n.t("Seek bar on stories"),
                     L10n.t("Shows a bar near the bottom of a video story. Drag it to jump to any point in the "
                             + "video. Photos don't get one.")));
+        }
+        if (build.contains(PatchFamily.AMBIENT_LIGHT)) {
+            stories.add(onFlip(toggle(context, Settings.AMBIENT_LIGHT_STORIES, L10n.t("Ambient light in stories"),
+                    L10n.t("Fills the bands above and below a story that doesn't fill the screen with a soft glow in "
+                            + "its own colors. Glow spread and Glow speed, under Feed, set it too.")),
+                    AmbientLight::switchChanged));
         }
         if (build.contains(PatchFamily.STORY_AUTO_ADVANCE)) {
             stories.add(toggle(context, Settings.BLOCK_STORY_AUTO_ADVANCE, L10n.t("Stop Story auto-advance"),
@@ -135,11 +147,20 @@ final class StoriesCategory {
         if (build.contains(PatchFamily.LIVE_SEEN)) {
             stories.add(toggle(context, Settings.VIEW_LIVE_ANONYMOUSLY, L10n.t("View live anonymously"),
                     L10n.t("Lives you watch don't put you on the host's viewer list, so they aren't told you're there. Commenting or reacting still shows you. The viewer count you see stops updating, and a live that ends can keep looking live until you leave it.")));
+            stories.add(toggle(context, Settings.MARK_LIVE_SEEN, L10n.t("Mark as seen button on lives"),
+                    L10n.t("Adds an eye button to the top of a live while you watch anonymously. Tap it to show up on "
+                            + "that live's viewer list. Other lives stay hidden.")));
         }
         if (build.contains(PatchFamily.STORY_DOWNLOAD)) {
             stories.add(toggle(context, Settings.DOWNLOAD_STORIES, L10n.t("Download on stories"),
                     L10n.t("Adds Download to the menu of anyone's story, photo or video, saved at your download quality. "
                             + "Off or paused, Instagram's own menu returns.")));
+            stories.add(toggle(context, Settings.DOWNLOAD_BUTTON_ON_STORIES, L10n.t("Download button on stories"),
+                    L10n.t("Puts a Download button at the top of a story, beside the three dots. One tap saves the "
+                            + "photo or video in front, the same as Download in the menu.")));
+            stories.add(toggle(context, Settings.TEXT_BUTTON_ON_STORIES, L10n.t("Copy text button on stories"),
+                    L10n.t("Puts a Lens icon at the top of a story, beside the three dots. Tap it and Google Lens "
+                            + "opens on what's showing, so you can select and copy its text.")));
         }
         if (build.contains(PatchFamily.STORY_UPLOAD_QUALITY)) {
             stories.add(toggle(context, Settings.UPLOAD_STORIES_AT_FULL_QUALITY, L10n.t("Upload stories at full quality"),

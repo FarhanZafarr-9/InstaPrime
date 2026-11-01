@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.AbstractMap;
 import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -29,13 +30,18 @@ import app.hushgram.extension.instagram.download.FileNameTemplate;
 import app.hushgram.extension.instagram.download.SaveFolder;
 import app.hushgram.extension.instagram.direct.MessageBox;
 import app.hushgram.extension.instagram.profile.ProfileTabs;
+import app.hushgram.extension.instagram.misc.GlassBlur;
+import app.hushgram.extension.instagram.misc.GlassOpacity;
+import app.hushgram.extension.instagram.misc.NotificationGroups;
 import app.hushgram.extension.instagram.misc.SettingsRows;
 import app.hushgram.extension.instagram.misc.SpoofLocation;
+import app.hushgram.extension.instagram.misc.AppProxy;
 import app.hushgram.extension.instagram.reels.TabOrder;
 import app.hushgram.extension.instagram.share.ShareSheetActions;
 import app.hushgram.extension.instagram.share.SharingDomain;
 import app.hushgram.extension.shared.Utils;
 import app.hushgram.extension.shared.settings.BaseSettings;
+import app.hushgram.extension.shared.settings.IntegerSetting;
 import app.hushgram.extension.shared.settings.Setting;
 import app.hushgram.extension.shared.settings.SettingsJson;
 import app.hushgram.extension.shared.settings.preference.AbstractPreferenceFragment;
@@ -109,14 +115,20 @@ public final class ConfigurationBackup {
             settings.put(Settings.STORY_RING_COLOR.key, Settings.STORY_RING_COLOR);
         }
         if (PatchFamily.ROUNDED_POST_CORNERS.inBuild()) settings.put(Settings.ROUNDED_CORNER_SIZE.key, Settings.ROUNDED_CORNER_SIZE);
+        if (PatchFamily.AMBIENT_LIGHT.inBuild()) {
+            settings.put(Settings.AMBIENT_LIGHT_SPREAD.key, Settings.AMBIENT_LIGHT_SPREAD);
+            settings.put(Settings.AMBIENT_LIGHT_SPEED.key, Settings.AMBIENT_LIGHT_SPEED);
+        }
         if (PatchFamily.STORY_PROGRESS_BAR.inBuild()) settings.put(Settings.STORY_BAR_THICKNESS.key, Settings.STORY_BAR_THICKNESS);
         if (PatchFamily.STORIES_TRAY.inBuild()) settings.put(Settings.TRAY_BADGE.key, Settings.TRAY_BADGE);
         if (PatchFamily.SPOOF_LOCATION.inBuild()) settings.put(Settings.SPOOF_LOCATION_PLACE.key, Settings.SPOOF_LOCATION_PLACE);
+        if (PatchFamily.APP_PROXY.inBuild()) settings.put(Settings.APP_PROXY_SERVER.key, Settings.APP_PROXY_SERVER);
         if (PatchFamily.CAPTION_WORD_REELS.inBuild()) settings.put(Settings.REELS_BLOCKED_WORDS.key, Settings.REELS_BLOCKED_WORDS);
         if (PatchFamily.SANITIZE_SHARING_LINKS.inBuild()) settings.put(Settings.SHARING_DOMAIN.key, Settings.SHARING_DOMAIN);
         if (PatchFamily.LIKE_ANIMATION.inBuild()) settings.put(Settings.LIKE_ANIMATION.key, Settings.LIKE_ANIMATION);
         if (PatchFamily.NOTIFICATION_GROUPS.inBuild()) {
             settings.put(Settings.GROUP_NOTIFICATIONS_BY_TYPE.key, Settings.GROUP_NOTIFICATIONS_BY_TYPE);
+            settings.put(Settings.MUTED_NOTIFICATION_CHANNELS.key, Settings.MUTED_NOTIFICATION_CHANNELS);
         }
         if (PatchFamily.PLAYBACK_QUALITY.inBuild()) {
             settings.put(Settings.PLAYBACK_QUALITY.key, Settings.PLAYBACK_QUALITY);
@@ -130,11 +142,16 @@ public final class ConfigurationBackup {
             settings.put(Settings.TAP_TO_PLAY_AUTO_SCROLL_WAITS.key, Settings.TAP_TO_PLAY_AUTO_SCROLL_WAITS);
         }
         if (PatchFamily.REEL_TAP_AND_VOLUME.inBuild()) settings.put(Settings.REEL_TAP_CHOICE.key, Settings.REEL_TAP_CHOICE);
-        if (PatchFamily.REEL_SCROLLING.inBuild()) settings.put(Settings.SCROLL_BREAK.key, Settings.SCROLL_BREAK);
+        if (PatchFamily.REEL_SCROLLING.inBuild()) {
+            settings.put(Settings.SCROLL_BREAK.key, Settings.SCROLL_BREAK);
+            settings.put(Settings.REEL_CAP_COUNT.key, Settings.REEL_CAP_COUNT);
+            settings.put(Settings.REEL_CAP_BREAK.key, Settings.REEL_CAP_BREAK);
+        }
         if (PatchFamily.REEL_DECLUTTER.inBuild()) {
             settings.put(Settings.BURN_IN_GUARD.key, Settings.BURN_IN_GUARD);
             settings.put(Settings.BURN_IN_WAIT.key, Settings.BURN_IN_WAIT);
             settings.put(Settings.BURN_IN_STAY_DIM.key, Settings.BURN_IN_STAY_DIM);
+            settings.put(Settings.START_REEL_CLEAR_MODE.key, Settings.START_REEL_CLEAR_MODE);
         }
         if (GhostMode.offered(GhostMode.switches(PatchFamily.inThisBuild()))) {
             settings.put(Settings.GHOST_MODE_PICKS.key, Settings.GHOST_MODE_PICKS);
@@ -155,7 +172,7 @@ public final class ConfigurationBackup {
         }
         if (PatchFamily.GLASS_TAB_BAR.inBuild()) {
             settings.put(Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key, Settings.GLASS_TAB_BAR_HAPTIC_STYLE);
-            settings.put(Settings.GLASS_TAB_BAR_BLUR_STRENGTH.key, Settings.GLASS_TAB_BAR_BLUR_STRENGTH);
+            settings.put(Settings.GLASS_TAB_BAR_BLUR_RADIUS.key, Settings.GLASS_TAB_BAR_BLUR_RADIUS);
             settings.put(Settings.GLASS_TAB_BAR_OPACITY.key, Settings.GLASS_TAB_BAR_OPACITY);
             settings.put(Settings.GLASS_TAB_BAR_HEIGHT.key, Settings.GLASS_TAB_BAR_HEIGHT);
             settings.put(Settings.GLASS_TAB_BAR_CORNERS.key, Settings.GLASS_TAB_BAR_CORNERS);
@@ -167,6 +184,7 @@ public final class ConfigurationBackup {
         }
         if (PatchFamily.ACCENT_COLOR.inBuild()) settings.put(Settings.ACCENT_HUE.key, Settings.ACCENT_HUE);
         if (PatchFamily.FONT.inBuild()) settings.put(Settings.FONT.key, Settings.FONT);
+        if (PatchFamily.EMOJI_STYLE.inBuild()) settings.put(Settings.EMOJI_FONT.key, Settings.EMOJI_FONT);
         if (PatchFamily.APP_ICON.inBuild()) settings.put(Settings.APP_ICON.key, Settings.APP_ICON);
         if (PatchFamily.SETTINGS_ROWS.inBuild()) settings.put(Settings.HIDDEN_SETTINGS_ROWS.key, Settings.HIDDEN_SETTINGS_ROWS);
         if (PatchFamily.REEL_DOWNLOAD.inBuild()) {
@@ -176,6 +194,7 @@ public final class ConfigurationBackup {
             settings.put(Settings.REEL_NOT_INTERESTED_BUTTON.key, Settings.REEL_NOT_INTERESTED_BUTTON);
             settings.put(Settings.REEL_BLOCK_BUTTON.key, Settings.REEL_BLOCK_BUTTON);
             settings.put(Settings.HIDE_SOUND_REELS.key, Settings.HIDE_SOUND_REELS);
+            settings.put(Settings.TEXT_BUTTON_ON_REELS.key, Settings.TEXT_BUTTON_ON_REELS);
         }
         if (PatchFamily.REEL_POST_TIME.inBuild()) {
             settings.put(Settings.REEL_POST_TIME_SECONDS.key, Settings.REEL_POST_TIME_SECONDS);
@@ -199,6 +218,8 @@ public final class ConfigurationBackup {
             settings.put(Settings.DOWNLOAD_CONVERT.key, Settings.DOWNLOAD_CONVERT);
             // The switch only. What it remembered stays in DownloadHistory's own file, never exported.
             settings.put(Settings.DOWNLOAD_SKIP_SAVED.key, Settings.DOWNLOAD_SKIP_SAVED);
+            // The switch only, like the one above. The list itself stays on the phone and is never exported.
+            settings.put(Settings.VIEWING_HISTORY.key, Settings.VIEWING_HISTORY);
             settings.put(Settings.SEND_DOWNLOADS_TO_APP.key, Settings.SEND_DOWNLOADS_TO_APP);
             settings.put(Settings.DOWNLOAD_QUALITY.key, Settings.DOWNLOAD_QUALITY);
             settings.put(Settings.SAVE_FOLDER.key, Settings.SAVE_FOLDER);
@@ -214,6 +235,7 @@ public final class ConfigurationBackup {
         settings.put(Settings.SETTINGS_SHORTCUT.key, Settings.SETTINGS_SHORTCUT);
         settings.put(Settings.SETTINGS_LOGO_PRESS.key, Settings.SETTINGS_LOGO_PRESS);
         settings.put(Settings.CATEGORY_PAGES.key, Settings.CATEGORY_PAGES);
+        settings.put(Settings.DESCRIPTIONS_BEHIND_INFO.key, Settings.DESCRIPTIONS_BEHIND_INFO);
         settings.put(Settings.DATE_SETTINGS_EXPORT.key, Settings.DATE_SETTINGS_EXPORT);
         return settings;
     }
@@ -283,6 +305,19 @@ public final class ConfigurationBackup {
                 if (entry.length() != 2 || !(entry.get("type") instanceof String) || !entry.has("value")) throw invalid();
                 Setting<?> setting = allowed.get(key);
                 Object value = setting == null ? null : accepted(setting, entry.getString("type"), entry.get("value"));
+                if (setting == null) {
+                    // A file from before the glass sliders carries a step, which comes back as the value it drew (#391).
+                    Map.Entry<Setting<?>, Object> step = oldGlassStep(key, entry.getString("type"), entry.get("value"), allowed);
+                    if (step != null) {
+                        setting = step.getKey();
+                        value = step.getValue();
+                        // A file with both the step and the slider is a hand-made one; the slider wins.
+                        if (values.has(setting.key)) {
+                            skipped++;
+                            continue;
+                        }
+                    }
+                }
                 if (value == null || !setting.includeWithImportExport) {
                     skipped++;
                     continue;
@@ -335,15 +370,22 @@ public final class ConfigurationBackup {
     /**
      * [value] as [setting] would save it, declared as [declared], or null when this build can't take
      * it: another type than the setting's, an enum constant it doesn't have, text over
-     * {@link #MAX_TEXT} characters ({@link #MAX_WORDS_TEXT} for blocked words and settings rows) or text
-     * {@link #textAllowed} refuses.
+     * {@link #MAX_TEXT} characters ({@link #MAX_WORDS_TEXT} for blocked words, settings rows and muted
+     * notification types) or text {@link #textAllowed} refuses.
      */
     @Nullable
     static Object accepted(Setting<?> setting, String declared, Object value) {
         Object fallback = setting.defaultValue;
         if (fallback instanceof Boolean) return "boolean".equals(declared) && value instanceof Boolean ? value : null;
+        // A slider's whole number, inside the range its row offers.
+        if (setting instanceof IntegerSetting) {
+            IntegerSetting number = (IntegerSetting) setting;
+            if (!"integer".equals(declared) || !(value instanceof Integer)) return null;
+            int given = (Integer) value;
+            return given < number.minimum() || given > number.maximum() ? null : value;
+        }
         int longest = setting == Settings.REELS_BLOCKED_WORDS || setting == Settings.HIDDEN_SETTINGS_ROWS
-                ? MAX_WORDS_TEXT : MAX_TEXT;
+                || setting == Settings.MUTED_NOTIFICATION_CHANNELS ? MAX_WORDS_TEXT : MAX_TEXT;
         if (!(value instanceof String) || ((String) value).length() > longest) return null;
         if (fallback instanceof Enum) {
             if (!"enum".equals(declared)) return null;
@@ -354,6 +396,27 @@ public final class ConfigurationBackup {
         }
         if (fallback instanceof String) return "string".equals(declared) && textAllowed(setting, (String) value) ? value : null;
         return null;
+    }
+
+    /**
+     * The slider and its value for an entry under the key a glass step had before its slider, from a file
+     * an older build exported, or null for any other entry or a step this build never had (#391).
+     */
+    @Nullable
+    static Map.Entry<Setting<?>, Object> oldGlassStep(String key, String declared, Object value,
+                                                       Map<String, Setting<?>> allowed) {
+        if (!"enum".equals(declared) || !(value instanceof String)) return null;
+        IntegerSetting slider = null;
+        Integer drawn = null;
+        if (Settings.OLD_GLASS_BLUR_KEY.equals(key)) {
+            slider = Settings.GLASS_TAB_BAR_BLUR_RADIUS;
+            drawn = GlassBlur.dpOf((String) value);
+        } else if (Settings.OLD_GLASS_OPACITY_KEY.equals(key)) {
+            slider = Settings.GLASS_TAB_BAR_OPACITY;
+            drawn = GlassOpacity.percentOf((String) value);
+        }
+        if (slider == null || drawn == null || allowed.get(slider.key) != slider) return null;
+        return new AbstractMap.SimpleImmutableEntry<>(slider, drawn);
     }
 
     /** Whether [text] is a list of blocked words its row could have saved: no control characters but line breaks. */
@@ -375,6 +438,8 @@ public final class ConfigurationBackup {
         if (setting == Settings.SHARING_DOMAIN) return SharingDomain.normalize(text) != null;
         // The Place row keeps what was typed, spaces too, and takes blank as no place.
         if (setting == Settings.SPOOF_LOCATION_PLACE) return text.trim().isEmpty() || SpoofLocation.parse(text) != null;
+        // The row saves the server as host:port, so a file holds it that way or blank.
+        if (setting == Settings.APP_PROXY_SERVER) return text.equals(AppProxy.normalize(text));
         if (setting == Settings.TAB_ORDER) return text.equals(TabOrder.join(TabOrder.parse(text)));
         // The share sheet buttons to leave out, as Instagram's names for them with commas between.
         if (setting == Settings.HIDDEN_SHARE_SHEET_BUTTONS) {
@@ -384,6 +449,10 @@ public final class ConfigurationBackup {
         if (setting == Settings.HIDDEN_MESSAGE_BOX_BUTTONS) return text.equals(MessageBox.join(MessageBox.parse(text)));
         // The rows of Instagram's settings left off, as the names of Instagram's row ids with commas between, in name order.
         if (setting == Settings.HIDDEN_SETTINGS_ROWS) return text.equals(SettingsRows.join(SettingsRows.parse(text)));
+        // The notification channels muted, as Instagram's channel ids with commas between, in id order.
+        if (setting == Settings.MUTED_NOTIFICATION_CHANNELS) {
+            return text.equals(NotificationGroups.joinChannels(NotificationGroups.mutedChannels(text)));
+        }
         // The profile tabs left off, as Instagram's keys with commas between, in the order the dialog lists them.
         if (setting == Settings.HIDDEN_PROFILE_TABS) return text.equals(ProfileTabs.join(ProfileTabs.parse(text)));
         // The same for your own profile, or the mark that it still follows other profiles.
@@ -498,6 +567,7 @@ public final class ConfigurationBackup {
 
     private static String type(Object value) throws IOException {
         if (value instanceof Boolean) return "boolean";
+        if (value instanceof Integer) return "integer";
         if (value instanceof Enum) return "enum";
         if (value instanceof String) return "string";
         throw invalid();

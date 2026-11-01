@@ -12,6 +12,8 @@ import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragme
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.category;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.hiddenBarsRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.likeAnimationRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.reelCapBreakRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.reelCapCountRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.scrollBreakRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.toggle;
 
@@ -69,6 +71,12 @@ final class ReelsCategory {
             reels.add(toggle(context, Settings.HIDE_REEL_CHIPS, L10n.t("Hide promotion buttons on reels"),
                     L10n.t("Hides the buttons that push Edits, templates, Meta AI and Ray-Ban Meta glasses. Live "
                             + "badges and state-controlled media labels stay.")));
+            reels.add(toggle(context, Settings.HIDE_REEL_SEARCH_PILL, L10n.t("Hide suggested searches on reels"),
+                    L10n.t("The search terms Instagram suggests near a reel's author.")));
+            reels.add(toggle(context, Settings.HIDE_REEL_PRODUCT_PILLS, L10n.t("Hide shopping buttons on reels"),
+                    L10n.t("The product tag and shopping buttons near a reel's author.")));
+            reels.add(toggle(context, Settings.HIDE_REEL_POLL_PILLS, L10n.t("Hide poll prompts on reels"),
+                    L10n.t("The poll and vote prompts near a reel's author.")));
             reels.add(toggle(context, Settings.HIDE_REEL_SOCIAL_FOOTER, L10n.t("Hide friends' activity and comment previews"),
                     L10n.t("The bubbles of friends who liked or commented, the Followed by and Liked by lines with "
                             + "their faces, the comment shown under a reel and the row of friends who saw it. Comments "
@@ -106,6 +114,15 @@ final class ReelsCategory {
             reels.add(toggle(context, Settings.KEEP_REEL_CLEAR_MODE, L10n.t("Keep clear mode on"),
                     L10n.t("Turn on Instagram's clear mode on a reel and the next reels open in it too. Leave clear "
                             + "mode yourself and the next reels show their buttons again.")));
+            reels.add(toggle(context, Settings.START_REEL_CLEAR_MODE, L10n.t("Start every reel in clear mode"),
+                    L10n.t("Reels open in clear mode from the first one, with no tap. Leave it yourself and the next "
+                            + "reels show their buttons again. Instagram blocks screenshots in clear mode unless Allow "
+                            + "screenshots is on.")));
+        }
+        if (build.contains(PatchFamily.KEEP_REELS_TOP_BAR)) {
+            reels.add(toggle(context, Settings.KEEP_REELS_TOP_BAR, L10n.t("Keep the Reels top bar"),
+                    L10n.t("Keeps the Reels title, the Friends tab and the buttons beside them at the top while you "
+                            + "swipe through reels, instead of sliding them away.")));
         }
         if (build.contains(PatchFamily.REEL_WATCH_HISTORY)) {
             reels.add(toggle(context, Settings.DONT_SEND_REEL_WATCH_HISTORY, L10n.t("Don't send reel watch history"),
@@ -149,6 +166,9 @@ final class ReelsCategory {
             reels.add(toggle(context, Settings.FILL_REEL_SCREEN, L10n.t("Fill the screen"),
                     L10n.t("Reels that are nearly the screen's shape fill it, cut a little at the sides, instead of "
                             + "showing black bars above and below. Square and wide videos still fit.")));
+            reels.add(toggle(context, Settings.FIT_REEL_SCREEN, L10n.t("Show the whole reel"),
+                    L10n.t("Every reel fits inside the screen, with black bars where its shape differs, so nothing is "
+                            + "cut off at the sides. Works without Full screen Reels and wins over Fill the screen.")));
         }
         if (build.contains(PatchFamily.KEEP_REEL_SPEED)) {
             reels.add(toggle(context, Settings.KEEP_REEL_SPEED, L10n.t("Keep the reel speed"),
@@ -178,6 +198,11 @@ final class ReelsCategory {
                             + "with a big round white handle. The time shows above it. Drag it to seek. When Bigger seek "
                             + "bar is on too, this look wins. It also keeps the bar on short reels.")));
         }
+        if (build.contains(PatchFamily.REEL_ZOOM)) {
+            reels.add(toggle(context, Settings.PINCH_ZOOM_REELS, L10n.t("Pinch to zoom"),
+                    L10n.t("Two fingers zoom into a playing reel, the way a photo zooms. Lift them and it goes back. "
+                            + "Restart Instagram to see the change.")));
+        }
         if (build.contains(PatchFamily.REEL_BLUR_BARS)) {
             reels.add(toggle(context, Settings.BLUR_REEL_BARS, L10n.t("Blur the bars around a reel"),
                     L10n.t("A reel that doesn't fill the screen shows a blurred copy of itself above and below it "
@@ -199,9 +224,12 @@ final class ReelsCategory {
             reels.add(toggle(context, Settings.STOP_REELS_SCROLLING, L10n.t("Stop Reels scrolling"),
                     L10n.t("A swipe in Reels no longer moves on to the next reel, and pulling down doesn't load new "
                             + "ones. The reel you opened still plays. Restart Instagram to see the change.")));
-            reels.add(toggle(context, Settings.REEL_CAP, L10n.t("Stop after 20 reels"),
-                    L10n.t("After 20 reels, swiping in Reels stops until Instagram has been in the background for "
-                            + "15 minutes. A reel you open from a message or a post still plays.")));
+            reels.add(toggle(context, Settings.REEL_CAP, L10n.t("Stop after a set number of reels"),
+                    L10n.t("After the reels you pick below, swiping in Reels stops until Instagram has been in the "
+                            + "background for the time you pick. A reel you open from a message or a post still "
+                            + "plays.")));
+            reels.add(reelCapCountRow(context));
+            reels.add(reelCapBreakRow(context));
             reels.add(scrollBreakRow(context));
         }
         if (build.contains(PatchFamily.SWIPE_TO_PROFILE)) {
@@ -229,6 +257,9 @@ final class ReelsCategory {
                     L10n.t("Puts a music icon beside a reel. Tap it and the Reels tab skips other reels using that "
                             + "sound. Tap it again to bring them back.")));
             reels.add(page.hiddenSoundsRow(context));
+            reels.add(toggle(context, Settings.TEXT_BUTTON_ON_REELS, L10n.t("Copy text button on reels"),
+                    L10n.t("Puts a Lens icon beside a reel. Tap it and Google Lens opens on what's showing, so you "
+                            + "can select and copy its text.")));
         }
         if (!reels.isEmpty()) {
             PreferenceCategory section = category(screen, L10n.t("Reels"), SettingsIcons.REELS,

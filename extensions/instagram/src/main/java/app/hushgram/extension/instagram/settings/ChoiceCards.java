@@ -92,6 +92,7 @@ final class ChoiceCards extends BaseAdapter {
                     new int[][]{{android.R.attr.state_activated}, {}},
                     new int[]{colors.choiceSelected(), colors.iconSurface}));
 
+            surface.setStroke(dp(context, 2), colors.interactionOutline(android.graphics.Color.TRANSPARENT));
             surface.setCornerRadius(dp(context, 12));
             setBackground(ScreenColors.boundedRipple(ScreenColors.interactionRipple(colors.heading),
                     new InsetDrawable(surface, side, gap, side, gap),

@@ -74,7 +74,7 @@ public final class ScreenColors {
     /** The colours the screen on show was built with, or null for the black page. */
     @Nullable
     static volatile ScreenColors shown;
-    public static final ScreenColors DEFAULT = new ScreenColors();
+    public static final ScreenColors DEFAULT = new ScreenColors(SettingsStatus.pureBlack());
 
     int choiceSelected() {
         return android.graphics.Color.rgb(
@@ -87,21 +87,25 @@ public final class ScreenColors {
         return shown == null ? DEFAULT : shown;
     }
 
-    private ScreenColors() {
-        this(null);
+    ScreenColors(boolean pureBlack) {
+        this(null, pureBlack);
     }
 
     private ScreenColors(@Nullable Context context) {
+        this(context, SettingsStatus.pureBlack());
+    }
+
+    private ScreenColors(@Nullable Context context, boolean pureBlack) {
         light = false;
         // System tonal palettes follow the wallpaper without requesting wallpaper access.
         background = tone(context, "system_neutral1_1000", Color.BLACK);
-        dialog = tone(context, "system_neutral1_900", 0xFF211F26);
+        dialog = pureBlack ? Color.BLACK : tone(context, "system_neutral1_900", 0xFF211F26);
         title = tone(context, "system_neutral1_100", 0xFFE6E0E9);
         summary = tone(context, "system_neutral2_200", 0xFFCAC4D0);
         heading = tone(context, "system_accent1_200", 0xFFD0BCFF);
         accent = heading;
-        switchOff = tone(context, "system_neutral2_700", 0xFF49454F);
-        card = tone(context, "system_neutral1_900", 0xFF211F26);
+        switchOff = tone(context, "system_neutral2_500", 0xFF79747E);
+        card = pureBlack ? Color.BLACK : tone(context, "system_neutral1_900", 0xFF211F26);
         outline = tone(context, "system_neutral2_500", 0xFF79747E);
         iconSurface = tone(context, "system_neutral2_800", 0xFF322F35);
         onAccent = tone(context, "system_accent1_800", 0xFF381E72);
@@ -304,6 +308,7 @@ public final class ScreenColors {
         float bottom = dp(row, category || last ? 12 : 4);
         GradientDrawable surface = new GradientDrawable();
         surface.setColor(expanded ? iconSurface : card);
+        surface.setStroke(dp(row, 2), interactionOutline(Color.TRANSPARENT));
         surface.setCornerRadii(new float[]{top, top, top, top, bottom, bottom, bottom, bottom});
         int side = dp(row, 18);
         boolean afterSearch = false;
@@ -590,14 +595,7 @@ public final class ScreenColors {
         if (window != null) paintMessages(window.getDecorView());
         android.widget.ListView choices = dialog.getListView();
         if (choices != null && choices.getAdapter() != null && !(choices.getAdapter() instanceof DialogChoices)) {
-            SparseBooleanArray checked = choices.getCheckedItemPositions();
-            checked = checked == null ? null : checked.clone();
-            choices.setAdapter(new DialogChoices(choices.getAdapter(), this));
-            if (checked != null) {
-                for (int index = 0; index < checked.size(); index++) {
-                    if (checked.valueAt(index)) choices.setItemChecked(checked.keyAt(index), true);
-                }
-            }
+            DialogChoices.swap(choices, new DialogChoices(choices.getAdapter(), this));
             choices.setDivider(null);
         }
         if (choices != null) {
@@ -644,6 +642,7 @@ public final class ScreenColors {
         field.setHintTextColor(dimmedWhenDisabled(summary));
         GradientDrawable outline = new GradientDrawable();
         outline.setColor(iconSurface);
+        outline.setStroke(dp(field, 2), interactionOutline(Color.TRANSPARENT));
         outline.setCornerRadius(dp(field, 12));
         field.setBackgroundTintList(null);
         field.setBackground(outline);
@@ -734,6 +733,7 @@ public final class ScreenColors {
     void paintAction(TextView action, boolean primary) {
         GradientDrawable surface = new GradientDrawable();
         surface.setColor(dimmedWhenDisabled(primary ? accent : card));
+        surface.setStroke(dp(action, 2), interactionOutline(Color.TRANSPARENT, primary ? onAccent : heading));
         surface.setCornerRadius(dp(action, 12));
         action.setBackgroundTintList(null);
         // View's tint pass mutates the background after setting its state. Mutate first so

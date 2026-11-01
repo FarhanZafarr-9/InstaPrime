@@ -60,6 +60,8 @@ final class CoverFrame {
         if (manifest != null) {
             for (DashManifest.Track track : DashManifest.parse(manifest)) {
                 if (!track.isVideo() || !decodes(track.codecs)) continue;
+                // Never save HDR video (#352) keeps a frame of an HDR picture out of the gallery too.
+                if (track.hdr && MediaSave.skipsHdr()) continue;
                 best = larger(new MediaSave.Rendition(track.url, track.width, track.height, track.bandwidth), best);
             }
         }
@@ -75,10 +77,14 @@ final class CoverFrame {
         return pixels(video) == pixels(best) && smaller ? video : best;
     }
 
-    /** Whether the phone decodes a picture of [codecs]: H.264 and VP9 every phone does, AV1 one with a decoder. */
+    /**
+     * Whether the phone decodes a picture of [codecs]: H.264 and VP9 every phone does, AV1 one with
+     * a decoder, and not with Never save AV1 video on (#379), which is for a phone whose decoder is
+     * there but plays AV1 badly, a frame of it included.
+     */
     private static boolean decodes(String codecs) {
         return codecs.startsWith("avc1") || codecs.startsWith("vp09")
-            || (codecs.startsWith("av01") && DashSave.canWriteAv1());
+            || (codecs.startsWith("av01") && DashSave.canWriteAv1() && !MediaSave.skipsAv1());
     }
 
     private static long pixels(MediaSave.Rendition rendition) {

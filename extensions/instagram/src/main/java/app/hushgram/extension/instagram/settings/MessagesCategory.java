@@ -36,7 +36,9 @@ final class MessagesCategory {
                 || build.contains(PatchFamily.SCREENSHOT_REPORTS)
                 || build.contains(PatchFamily.SCREENSHOT_BLOCK)
                 || build.contains(PatchFamily.KEEP_IN_CHAT)
+                || build.contains(PatchFamily.VIEW_ONCE_MARK)
                 || build.contains(PatchFamily.CHAT_REELS)
+                || build.contains(PatchFamily.CHAT_HISTORY)
                 || build.contains(PatchFamily.ASK_BEFORE_CALL)
                 || build.contains(PatchFamily.MESSAGE_BOX)
                 || build.contains(PatchFamily.FULL_SCREEN_BARS)) {
@@ -75,6 +77,10 @@ final class MessagesCategory {
                                 + "and tap Mark as read. A newer message in it stays unread too. Turned off, a chat you "
                                 + "open stays read on this phone until a newer message comes in, even after your "
                                 + "messages refresh.")));
+                messages.addPreference(toggle(context, Settings.MARK_SEEN_ON_REPLY,
+                        L10n.t("Mark a chat seen when you reply"),
+                        L10n.t("Sending a message in a chat lets the other person see that you've read what they "
+                                + "sent before it. Chats you don't answer stay unseen to them.")));
             }
             if (build.contains(PatchFamily.TYPING)) {
                 messages.addPreference(toggle(context, Settings.HIDE_TYPING, L10n.t("Hide that you're typing"),
@@ -112,10 +118,26 @@ final class MessagesCategory {
                         L10n.t("Photos and videos sent as view once or replayable stay in the chat so you can open "
                                 + "them again. Open the chat again to update ones already loaded.")));
             }
+            if (build.contains(PatchFamily.VIEW_ONCE_MARK)) {
+                messages.addPreference(toggle(context, Settings.MARK_VIEW_ONCE, L10n.t("Mark one-time photos and videos"),
+                        L10n.t("Puts a border and Instagram's view once icon on a one-time photo or video in a chat, "
+                                + "so you can tell it from the rest before you open it. Only how the chat looks changes.")));
+            }
             if (build.contains(PatchFamily.CHAT_REELS)) {
                 messages.addPreference(toggle(context, Settings.SWIPE_CHAT_REELS, L10n.t("Swipe through a chat's reels"),
                         L10n.t("Swiping up on a reel you opened from a chat goes through the other reels shared in that "
                                 + "chat before any suggested reels. Back takes you to the chat.")));
+                messages.addPreference(toggle(context, Settings.STOP_AFTER_CHAT_REELS, L10n.t("Stop after the chat's reels"),
+                        L10n.t("Reels you opened from a chat end after the last one shared in that chat, with no "
+                                + "suggested reels after it. Works with Swipe through a chat's reels on.")));
+            }
+            if (build.contains(PatchFamily.CHAT_HISTORY)) {
+                messages.addPreference(toggle(context, Settings.JUMP_IN_CHAT, L10n.t("Jump to the first message or a date"),
+                        L10n.t("Long press a chat's name and pick Jump to the first message or Jump to a date. The "
+                                + "chat loads its older messages on its own, with a count and a Cancel button.")));
+                messages.addPreference(toggle(context, Settings.EXPORT_CHAT, L10n.t("Export a chat as text"),
+                        L10n.t("Long press a chat's name and pick Export chat. The whole chat is saved as a text file "
+                                + "in Downloads, HushGram folder, one line per message.")));
             }
             if (build.contains(PatchFamily.ASK_BEFORE_CALL)) {
                 messages.addPreference(toggle(context, Settings.ASK_BEFORE_CALL, L10n.t("Ask before a call"),
@@ -150,6 +172,7 @@ final class MessagesCategory {
                         L10n.t("Two quick taps on the Messages button, on the tab bar or at the top of Home, open "
                                 + "your hidden chats. While a lock is on, it asks for it first. One tap opens Messages "
                                 + "as usual.")));
+                messages.addPreference(page.pinnedChatsRow(context));
             }
         }
     }

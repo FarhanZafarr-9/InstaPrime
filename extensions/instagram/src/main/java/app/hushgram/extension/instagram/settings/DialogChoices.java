@@ -12,11 +12,13 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.InsetDrawable;
 import android.graphics.drawable.RippleDrawable;
+import android.util.SparseBooleanArray;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.CheckedTextView;
 import android.widget.ListAdapter;
+import android.widget.ListView;
 import android.widget.TextView;
 
 /** Styles the framework's real list rows without replacing selection or checkbox behavior. */
@@ -27,6 +29,17 @@ final class DialogChoices extends BaseAdapter {
     DialogChoices(ListAdapter source, ScreenColors colors) {
         this.source = source;
         this.colors = colors;
+    }
+
+    /** Puts [adapter] on [list] with the same rows checked: a new adapter clears ListView's checks. */
+    static void swap(ListView list, ListAdapter adapter) {
+        SparseBooleanArray checked = list.getCheckedItemPositions();
+        checked = checked == null ? null : checked.clone();
+        list.setAdapter(adapter);
+        if (checked == null) return;
+        for (int index = 0; index < checked.size(); index++) {
+            if (checked.valueAt(index)) list.setItemChecked(checked.keyAt(index), true);
+        }
     }
 
     @Override public int getCount() { return source.getCount(); }
@@ -68,6 +81,7 @@ final class DialogChoices extends BaseAdapter {
                     new int[]{colors.choiceSelected(), colors.iconSurface}));
             float top = Math.round((position == 0 ? 12 : 4) * density);
             float bottom = Math.round((position == getCount() - 1 ? 12 : 4) * density);
+            surface.setStroke(Math.round(2 * density), colors.interactionOutline(android.graphics.Color.TRANSPARENT));
             surface.setCornerRadii(new float[]{top, top, top, top, bottom, bottom, bottom, bottom});
             InsetDrawable inset = new InsetDrawable(surface, side, 0, side, gap);
             InsetDrawable mask = new InsetDrawable(surface.getConstantState().newDrawable().mutate(), side, 0, side, gap);

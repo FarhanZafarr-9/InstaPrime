@@ -76,6 +76,10 @@ public final class SettingsStatus {
         return false;
     }
 
+    public static boolean smoothStoryOpen() {
+        return false;
+    }
+
     public static boolean storySound() {
         return false;
     }
@@ -101,6 +105,15 @@ public final class SettingsStatus {
     }
 
     public static boolean spoofLocation() {
+        return false;
+    }
+
+    public static boolean appProxy() {
+        return false;
+    }
+
+    /** Rewritten by the Skip the contacts and location popups patch. */
+    public static boolean setupPopups() {
         return false;
     }
 
@@ -146,6 +159,10 @@ public final class SettingsStatus {
     }
 
     public static boolean allRecentSearches() {
+        return false;
+    }
+
+    public static boolean exploreMenu() {
         return false;
     }
 
@@ -229,6 +246,11 @@ public final class SettingsStatus {
     }
 
     public static boolean hdrBoost() {
+        return false;
+    }
+
+    /** Rewritten by the Stop videos looping patch. */
+    public static boolean stopLooping() {
         return false;
     }
 
@@ -328,6 +350,11 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Reply with a comment's GIF, Save comment photo's second switch, which a build can lack. */
+    public static boolean commentGifReply() {
+        return false;
+    }
+
     /** Rewritten by the Save profile picture patch. */
     public static boolean profilePicture() {
         return false;
@@ -351,6 +378,18 @@ public final class SettingsStatus {
     }
 
     public static boolean feedFollow() {
+        return false;
+    }
+
+    public static boolean hideCaptions() {
+        return false;
+    }
+
+    public static boolean homeTopBar() {
+        return false;
+    }
+
+    public static boolean keepReelsTopBar() {
         return false;
     }
 
@@ -398,6 +437,11 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Use the highest refresh rate patch. */
+    public static boolean refreshRate() {
+        return false;
+    }
+
     public static boolean keepReelSpeed() {
         return false;
     }
@@ -423,6 +467,11 @@ public final class SettingsStatus {
 
     /** Rewritten by the Start reels with sound patch. */
     public static boolean reelSound() {
+        return false;
+    }
+
+    /** Rewritten by the Pinch to zoom on Reels patch. */
+    public static boolean reelZoom() {
         return false;
     }
 
@@ -501,6 +550,11 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Skip the collections tray patch. */
+    public static boolean saveTray() {
+        return false;
+    }
+
     /** Rewritten by the Show a post's exact time patch. */
     public static boolean postTime() {
         return false;
@@ -531,6 +585,11 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Seek bar on feed videos patch. */
+    public static boolean feedSeekBar() {
+        return false;
+    }
+
     /** Rewritten by the Long press to zoom patch. */
     public static boolean longPressZoom() {
         return false;
@@ -541,13 +600,33 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Carousel arrows patch. */
+    public static boolean carouselArrows() {
+        return false;
+    }
+
+    /** Rewritten by the Ambient light patch. */
+    public static boolean ambientLight() {
+        return false;
+    }
+
     /** Rewritten by the Keep in chat patch. */
     public static boolean keepInChat() {
         return false;
     }
 
+    /** Rewritten by the Mark one-time photos and videos patch. */
+    public static boolean viewOnceMark() {
+        return false;
+    }
+
     /** Rewritten by the Swipe through a chat's reels patch. */
     public static boolean chatReels() {
+        return false;
+    }
+
+    /** Rewritten by the Chat history tools patch. */
+    public static boolean chatHistory() {
         return false;
     }
 

@@ -4,6 +4,7 @@
  */
 package app.morphe.patches.instagram.misc.theme
 
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.ResourcePatchContext
@@ -11,15 +12,24 @@ import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patches.instagram.misc.extension.EXTENSION_PACKAGE
 import app.morphe.patches.instagram.misc.extension.classesLoadingString
+import app.morphe.patches.instagram.misc.extension.jumpTargets
 import app.morphe.patches.instagram.misc.extension.parameterRegisterNumber
+import app.morphe.patches.instagram.misc.extension.patchLog
 import app.morphe.patches.instagram.misc.extension.requireParameterIntact
+import app.morphe.patches.instagram.misc.settings.MERGED_LOGO_BAR
+import app.morphe.patches.instagram.reels.tab.MAIN_FEED_ACTION_BAR
+import app.morphe.util.ControlFlow
 import app.morphe.util.addInstructionsAtControlFlowLabel
 import app.morphe.util.returnEarly
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -38,6 +48,12 @@ internal const val APPLY_THEME = "$ACCENT_THEME->apply(Landroid/content/Context;
  * one of Instagram's own strings.
  */
 internal const val ATTRIBUTES_STUB = "$ACCENT_THEME->attributes()Ljava/lang/String;"
+
+/** The extension's answer to the color Home's newer header tints its heart and Create buttons with (#8). */
+internal const val HEADER_ICONS = "$ACCENT_THEME->headerIcons(Landroid/content/Context;I)I"
+
+/** The extension's hook that lays the icon color over each icon Home's older header builds (#8). */
+internal const val HEADER_ICON = "$ACCENT_THEME->headerIcon(Landroid/content/Context;Landroid/graphics/drawable/Drawable;)V"
 
 /** The activity every screen of Instagram's own extends, whose theme setup ends with Prism's overrides. */
 internal const val IG_FRAGMENT_ACTIVITY = "Lcom/instagram/base/activity/IgFragmentActivity;"
@@ -155,6 +171,49 @@ internal fun badgeColor(palette: AccentPalette): String = "hushgram_accent_${pal
 
 internal fun badgeStyle(palette: AccentPalette): String = "HushGramAccentBadge_${palette.name}"
 
+/**
+ * The theme attribute Instagram's icons read, through `igdsPrimaryIcon` among others (#8). Its themes
+ * point it at the primary text color, so setting it colors the icons and leaves the text alone.
+ */
+internal const val ICON_ATTRIBUTE = "igds_color_primary_icon"
+
+/**
+ * The glyph attributes the icon styles set along with [ICON_ATTRIBUTE] (#8). Only Instagram's forced
+ * dark feed overlay ties them to it: its light and dark themes give each a color of its own (grey 9,
+ * or the primary text color and white), so the top bar's heart, a screen's back and overflow buttons,
+ * the post buttons, the selected profile tab and the saved bookmark kept that color. Each holds icons
+ * alone. The unselected tabs' `glyphColorSecondary` stays gray, and the liked heart's red is
+ * `igds_color_icon_badge`, so neither is in the list.
+ */
+internal val GLYPH_ATTRIBUTES = listOf("glyphColorPrimary", "glyphColorSecondaryActive", "feedSaveActiveColor")
+
+/** [ICON_ATTRIBUTE] and each of [GLYPH_ATTRIBUTES] that [attrs] declares, or none without [ICON_ATTRIBUTE]. */
+private fun iconAttributes(attrs: Document): List<String> {
+    val declared = attrs.children("attr").mapTo(HashSet()) { it.getAttribute("name") }
+    return if (ICON_ATTRIBUTE in declared) listOf(ICON_ATTRIBUTE) + GLYPH_ATTRIBUTES.filter { it in declared } else emptyList()
+}
+
+/** A style named [name] setting each of [attributes] to the color resource [color]. */
+private fun Document.colorStyle(name: String, attributes: List<String>, color: String): Element =
+    createElement("style").apply {
+        setAttribute("name", name)
+        for (attribute in attributes) {
+            appendChild(createElement("item").apply {
+                setAttribute("name", attribute)
+                textContent = "@color/$color"
+            })
+        }
+    }
+
+/** The theme an icon color is for, and the shade it takes there: a link's, made to read on that background. */
+internal enum class IconTheme(val role: AccentRole) { LIGHT(AccentRole.LINK_ON_LIGHT), DARK(AccentRole.LINK_ON_DARK) }
+
+internal fun iconColor(palette: String, theme: IconTheme): String =
+    "hushgram_accent_${palette.lowercase(Locale.ROOT)}_icon_${theme.name.lowercase(Locale.ROOT)}"
+
+internal fun iconStyle(palette: String, theme: IconTheme): String =
+    "HushGramAccentIcons_${palette}_${theme.name.lowercase(Locale.ROOT)}"
+
 private fun Document.children(tag: String): List<Element> {
     val list = documentElement.getElementsByTagName(tag)
     return (0 until list.length).map { list.item(it) as Element }
@@ -232,7 +291,10 @@ internal fun accentUses(styles: List<Document>, colors: Map<String, Set<Int>>): 
  * - for each color, a style setting each shade attribute to that color's resource;
  * - for each use, a style setting its attribute to its shade attribute, `?attr/hushgram_accent_fill_ff`;
  * - when attrs.xml declares [BADGE_ATTRIBUTE], each color's fill as a badge color and a style setting
- *   the attribute to it, `HushGramAccentBadge_PURPLE`, for Badges in the accent color (#315).
+ *   the attribute to it, `HushGramAccentBadge_PURPLE`, for Badges in the accent color (#315);
+ * - when attrs.xml declares [ICON_ATTRIBUTE], each color's light and dark link shades as icon colors
+ *   and a style setting the attribute, and each of [GLYPH_ATTRIBUTES] declared, to each,
+ *   `HushGramAccentIcons_PURPLE_dark`, for Icons in the accent color (#8).
  *
  * The extension lays a color's style and the styles for whatever its theme's attributes hold onto the
  * theme. The shade attributes stand between them because a part and alpha is the same whatever color
@@ -245,10 +307,15 @@ internal fun addAccentResources(uses: Set<AccentUse>, attrs: Document, colors: D
     val taken = (attrs.children("attr") + colors.children("color") + styles.children("style"))
         .mapTo(HashSet()) { it.getAttribute("name") }
     val badges = attrs.children("attr").any { it.getAttribute("name") == BADGE_ATTRIBUTE }
+    val iconAttributes = iconAttributes(attrs)
+    val icons = iconAttributes.isNotEmpty()
     val adding = shades.map(::shadeAttribute) +
         ACCENT_PALETTES.flatMap { palette -> shades.map { paletteColor(palette, it) } + paletteStyle(palette) } +
         uses.map { it.style } +
-        (if (badges) ACCENT_PALETTES.flatMap { listOf(badgeColor(it), badgeStyle(it)) } else emptyList())
+        (if (badges) ACCENT_PALETTES.flatMap { listOf(badgeColor(it), badgeStyle(it)) } else emptyList()) +
+        (if (icons) ACCENT_PALETTES.flatMap { palette ->
+            IconTheme.entries.flatMap { listOf(iconColor(palette.name, it), iconStyle(palette.name, it)) }
+        } else emptyList())
     adding.firstOrNull { it in taken }?.let { refuse("the resources already have a $it") }
 
     for (shade in shades) {
@@ -297,6 +364,17 @@ internal fun addAccentResources(uses: Set<AccentUse>, attrs: Document, colors: D
             })
         }
     }
+    if (icons) {
+        for (palette in ACCENT_PALETTES) {
+            for (theme in IconTheme.entries) {
+                colors.documentElement.appendChild(colors.createElement("color").apply {
+                    setAttribute("name", iconColor(palette.name, theme))
+                    textContent = "#ff%06x".format(palette.shades.getValue(theme.role))
+                })
+                styles.documentElement.appendChild(styles.colorStyle(iconStyle(palette.name, theme), iconAttributes, iconColor(palette.name, theme)))
+            }
+        }
+    }
     return uses.map { it.attribute }.distinct().joinToString(" ")
 }
 
@@ -307,7 +385,10 @@ internal fun addAccentResources(uses: Set<AccentUse>, attrs: Document, colors: D
  *   configuration and at the wallpaper's system color in [colorsV31], `hushgram_accent_wallpaper_fill_ff`;
  * - a style setting each of those shade attributes to its color, [WALLPAPER_PALETTE_STYLE];
  * - when attrs.xml declares [BADGE_ATTRIBUTE], a badge color at the fill and a style pointing the
- *   attribute at it, for Badges in the accent color (#315).
+ *   attribute at it, for Badges in the accent color (#315);
+ * - when attrs.xml declares [ICON_ATTRIBUTE], a light and a dark icon color at the link shades and a
+ *   style pointing the attribute, and each of [GLYPH_ATTRIBUTES] declared, at each, for Icons in the
+ *   accent color (#8).
  *
  * A see-through shade gets none: a plain color can't give a system color another alpha, and a color
  * state list reads back as a file name to Instagram's own reads, so the extension leaves those
@@ -318,8 +399,11 @@ internal fun addWallpaperResources(uses: Set<AccentUse>, attrs: Document, colors
     val taken = (colors.children("color") + colorsV31.children("color") + styles.children("style"))
         .mapTo(HashSet()) { it.getAttribute("name") }
     val badges = attrs.children("attr").any { it.getAttribute("name") == BADGE_ATTRIBUTE }
+    val iconAttributes = iconAttributes(attrs)
+    val icons = iconAttributes.isNotEmpty()
     val adding = opaque.map { wallpaperColor(it.shade) } + WALLPAPER_PALETTE_STYLE +
-        (if (badges) listOf(WALLPAPER_BADGE_COLOR, WALLPAPER_BADGE_STYLE) else emptyList())
+        (if (badges) listOf(WALLPAPER_BADGE_COLOR, WALLPAPER_BADGE_STYLE) else emptyList()) +
+        (if (icons) IconTheme.entries.flatMap { listOf(iconColor(WALLPAPER, it), iconStyle(WALLPAPER, it)) } else emptyList())
     adding.firstOrNull { it in taken }?.let { refuse("the resources already have a $it") }
 
     fun color(name: String, role: AccentRole) {
@@ -351,6 +435,12 @@ internal fun addWallpaperResources(uses: Set<AccentUse>, attrs: Document, colors
                 textContent = "@color/$WALLPAPER_BADGE_COLOR"
             })
         })
+    }
+    if (icons) {
+        for (theme in IconTheme.entries) {
+            color(iconColor(WALLPAPER, theme), theme.role)
+            styles.documentElement.appendChild(styles.colorStyle(iconStyle(WALLPAPER, theme), iconAttributes, iconColor(WALLPAPER, theme)))
+        }
     }
 }
 
@@ -487,6 +577,151 @@ internal fun BytecodePatchContext.applyAccentTheme(attributes: String = requireA
         for (at in returns.asReversed()) {
             method.addInstructionsAtControlFlowLabel(at, "invoke-static/range { v$context .. v$context }, $APPLY_THEME")
         }
+    }
+}
+
+private const val IMAGE_VIEW = "Landroid/widget/ImageView;"
+private const val DRAWABLE = "Landroid/graphics/drawable/Drawable;"
+
+/** A header constructor's store of its icon color: the store at [index], the Context the color was read through and the color's register. */
+internal class HeaderIconColor(val method: MutableMethod, val index: Int, val context: Int, val color: Int)
+
+/**
+ * Where Home's newer header ([MERGED_LOGO_BAR]) keeps the color it tints its heart and Create buttons
+ * with (#8). Its constructor reads that color through Context.getColor of the primary text color's
+ * resource, so neither the icon style's attributes nor the extension's color reads reach it, and the
+ * heart stayed white with Icons in the accent color on.
+ *
+ * The header tints each icon with the color over media when its state says so and with the icons'
+ * color when it doesn't, so the icons' color is the int field of the header some method of it reads
+ * where an if-eqz lands and hands straight to ImageView.setColorFilter(I), after at most a goto, that
+ * the constructor stores from Context.getColor's answer. The color over media is read on the fall
+ * through, and on 32-bit builds it comes from getColor too. Read from the header as it stands, since
+ * the logo's long press adds to the same constructor. Answers null with a warning when there's no such
+ * header or not exactly one such store: the other icons still take the color.
+ */
+internal fun BytecodePatchContext.findHeaderIconColor(): HeaderIconColor? {
+    if (classDefByOrNull(MERGED_LOGO_BAR) == null) {
+        patchLog.warning("$PATCH: no $MERGED_LOGO_BAR, so Home's newer header keeps its icon color")
+        return null
+    }
+    if (extensionMethod(HEADER_ICONS) == null) refuse("the extension has no public static $HEADER_ICONS")
+    val bar = mutableClassDefBy(MERGED_LOGO_BAR)
+    val tints = bar.methods.flatMapTo(HashSet()) { it.tintFields() }
+    val stores = bar.methods.filter { it.name == "<init>" }.flatMap { method ->
+        val code = method.code()
+        code.indices.mapNotNull { at -> method.colorStore(code, at, tints) }
+    }
+    if (stores.size != 1) {
+        patchLog.warning("$PATCH: ${stores.size} places keep Home's newer header's icon color, not one, so its heart stays Instagram's color")
+    }
+    return stores.singleOrNull()
+}
+
+/**
+ * The int fields of [MERGED_LOGO_BAR] this reads where an if-eqz lands and hands straight to
+ * ImageView.setColorFilter(I), after at most a goto.
+ */
+private fun Method.tintFields(): List<String> {
+    val code = code()
+    if (code.none { it.tints() }) return emptyList()
+    val flow = ControlFlow.of(this)
+    val off = code.indices.filter { code[it].opcode == Opcode.IF_EQZ }.flatMapTo(HashSet()) { at -> flow.normal[at].filter { it != at + 1 } }
+    return code.indices.mapNotNull { at ->
+        val field = (code[at] as? ReferenceInstruction)?.reference as? FieldReference
+        if (code[at].opcode != Opcode.IGET || field == null || field.definingClass != MERGED_LOGO_BAR || field.type != "I" || at !in off) {
+            return@mapNotNull null
+        }
+        var next = at + 1
+        val jump = code.getOrNull(next)?.opcode
+        if (jump == Opcode.GOTO || jump == Opcode.GOTO_16 || jump == Opcode.GOTO_32) next = flow.normal[next].single()
+        val call = code.getOrNull(next) as? FiveRegisterInstruction ?: return@mapNotNull null
+        field.key().takeIf { call.tints() && call.registerD == (code[at] as TwoRegisterInstruction).registerA }
+    }
+}
+
+/** A call to ImageView.setColorFilter(I). */
+private fun Instruction.tints(): Boolean =
+    opcode == Opcode.INVOKE_VIRTUAL && ((this as ReferenceInstruction).reference as MethodReference).let {
+        it.definingClass == IMAGE_VIEW && it.name == "setColorFilter" && it.parameterTypes.map(Any::toString) == listOf("I")
+    }
+
+/**
+ * The store at [at] when it puts one of [tints] on the header from Context.getColor's answer, the two
+ * instructions before it, with nothing jumping onto it and registers a plain call can name.
+ */
+private fun MutableMethod.colorStore(code: List<Instruction>, at: Int, tints: Set<String>): HeaderIconColor? {
+    val store = code[at]
+    if (store.opcode != Opcode.IPUT || ((store as ReferenceInstruction).reference as FieldReference).key() !in tints) return null
+    val color = (store as TwoRegisterInstruction).registerA
+    val result = code.getOrNull(at - 1)
+    val read = code.getOrNull(at - 2) as? FiveRegisterInstruction ?: return null
+    if (result?.opcode != Opcode.MOVE_RESULT || (result as OneRegisterInstruction).registerA != color) return null
+    if (read.opcode != Opcode.INVOKE_VIRTUAL || !read.calls(CONTEXT, "getColor") || read.registerCount != 2) return null
+    val context = read.registerC
+    if (context == color || context > 15 || color > 15 || at in jumpTargets()) return null
+    return HeaderIconColor(this, at, context, color)
+}
+
+private fun FieldReference.key(): String = "$definingClass->$name:$type"
+
+/** A drawable Home's older header builds for an icon: the constructor call at [index], the Context it took and the drawable it made. */
+internal class HeaderIconDrawable(val method: MutableMethod, val index: Int, val context: Int, val drawable: Int)
+
+/**
+ * Every icon Home's older header ([MAIN_FEED_ACTION_BAR], the one most accounts get) builds as one of
+ * Instagram's own drawables from a Context and a resource: the heart, and Create and the other plain
+ * buttons (#8). That drawable reads the primary text color as it's made and bakes it into its bitmap,
+ * so no theme attribute reaches it. Reels' header over media builds the same drawable, so the hook
+ * goes at this header's own calls rather than in the drawable. Answers none, with a warning, when
+ * there's no such header or call.
+ */
+internal fun BytecodePatchContext.findHeaderIconDrawables(): List<HeaderIconDrawable> {
+    if (classDefByOrNull(MAIN_FEED_ACTION_BAR) == null) {
+        patchLog.warning("$PATCH: no $MAIN_FEED_ACTION_BAR, so Home's older header keeps its icon color")
+        return emptyList()
+    }
+    if (extensionMethod(HEADER_ICON) == null) refuse("the extension has no public static $HEADER_ICON")
+    val sites = mutableClassDefBy(MAIN_FEED_ACTION_BAR).methods.flatMap { method ->
+        val code = method.code()
+        code.indices.mapNotNull { at -> iconDrawable(method, code[at], at) }
+    }
+    if (sites.isEmpty()) patchLog.warning("$PATCH: Home's older header builds no icon of its own, so its heart stays Instagram's color")
+    return sites
+}
+
+/**
+ * The call at [at] when it constructs a drawable from a Context and a resource, with registers a
+ * plain call can name.
+ */
+private fun BytecodePatchContext.iconDrawable(method: MutableMethod, call: Instruction, at: Int): HeaderIconDrawable? {
+    if (call.opcode != Opcode.INVOKE_DIRECT) return null
+    val target = (call as ReferenceInstruction).reference as MethodReference
+    if (target.name != "<init>" || target.parameterTypes.map(Any::toString) != listOf(CONTEXT, "I")) return null
+    if (classDefByOrNull(target.definingClass)?.superclass != DRAWABLE) return null
+    val made = call as FiveRegisterInstruction
+    if (made.registerC > 15 || made.registerD > 15) return null
+    return HeaderIconDrawable(method, at, made.registerD, made.registerC)
+}
+
+/**
+ * Hands Home's newer header's icon color to the extension as its constructor keeps it, and each icon
+ * Home's older header builds to the extension right after it's made, so the heart and Create buttons
+ * take the picked icon color with Icons in the accent color on (#8). Leaves a header as it is when
+ * [findHeaderIconColor] finds no one store or [findHeaderIconDrawables] no icon.
+ */
+internal fun BytecodePatchContext.tintHeaderIcons() {
+    findHeaderIconColor()?.let { site ->
+        site.method.addInstructions(
+            site.index,
+            """
+                invoke-static { v${site.context}, v${site.color} }, $HEADER_ICONS
+                move-result v${site.color}
+            """,
+        )
+    }
+    for (site in findHeaderIconDrawables().sortedByDescending { it.index }) {
+        site.method.addInstructions(site.index + 1, "invoke-static { v${site.context}, v${site.drawable} }, $HEADER_ICON")
     }
 }
 

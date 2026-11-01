@@ -145,6 +145,8 @@ public final class MediaSave {
         public final int failed;
         public final int skipped;
         public final int lower;
+        /** Of [lower], the saves that fell back for want of free storage (#348). */
+        public final int lowStorage;
         public final boolean cancelled;
         /** Of [skipped], the pages left out because they were saved before (#150). */
         public final int already;
@@ -154,10 +156,15 @@ public final class MediaSave {
         }
 
         BatchResult(int saved, int failed, int skipped, int lower, boolean cancelled, int already) {
+            this(saved, failed, skipped, lower, 0, cancelled, already);
+        }
+
+        BatchResult(int saved, int failed, int skipped, int lower, int lowStorage, boolean cancelled, int already) {
             this.saved = saved;
             this.failed = failed;
             this.skipped = skipped;
             this.lower = lower;
+            this.lowStorage = lowStorage;
             this.cancelled = cancelled;
             this.already = already;
         }
@@ -167,6 +174,9 @@ public final class MediaSave {
                     ? L10n.f(application, "Carousel canceled. Saved %1$d. Failed %2$d. Skipped %3$d.", saved, failed, skipped)
                     : L10n.f(application, "Saved %1$d. Failed %2$d. Skipped %3$d.", saved, failed, skipped);
             if (lower > 0) text += "\n" + L10n.f(application, "%1$d saved in lower quality than on Instagram.", lower);
+            if (lowStorage > 0) {
+                text += "\n" + L10n.f(application, "%1$d of them because storage is low.", lowStorage);
+            }
             if (already > 0) {
                 text += "\n" + L10n.f(application,
                         "Already saved %1$d. Download again within 30 seconds for those.", already);
@@ -278,7 +288,7 @@ public final class MediaSave {
             // The pages the check let through, each held until the carousel ends.
             List<String> held = new ArrayList<>();
             boolean started = launch(application, false, snapshot.size(), save -> {
-                int saved = 0, failed = 0, skipped = 0, lower = 0, already = 0;
+                int saved = 0, failed = 0, skipped = 0, lower = 0, lowStorage = 0, already = 0;
                 boolean cancelled = false;
                 for (int index = 0; index < snapshot.size(); index++) {
                     if (save.cancelled()) {
@@ -329,6 +339,7 @@ public final class MediaSave {
                     if (result.ok()) {
                         saved++;
                         if (result.lower) lower++;
+                        if (result.lower && result.lowStorage) lowStorage++;
                         DownloadHistory.record(application, key, writer, page.details);
                         if (!page.video) PostMetadata.tag(application, writer, page.details);
                     } else if (result.status == Downloader.Status.CANCELLED) {
@@ -337,7 +348,7 @@ public final class MediaSave {
                         break;
                     } else failed++;
                 }
-                outcome[0] = new BatchResult(saved, failed, skipped, lower, cancelled || save.cancelled(), already);
+                outcome[0] = new BatchResult(saved, failed, skipped, lower, lowStorage, cancelled || save.cancelled(), already);
             }, save -> {
                 BatchResult result = outcome[0] != null ? outcome[0]
                         : save.cancelled() ? new BatchResult(0, 0, snapshot.size(), 0, true)
@@ -701,6 +712,69 @@ public final class MediaSave {
     }
 
     /**
+     * What the report adds to a save line when Never save AV1 video (#379) passed over an AV1
+     * picture of [tracks] larger than the [saved] one within [quality], or nothing. So a report
+     * shows the switch, not the phone or the quality, is why a smaller picture was saved.
+     */
+    private static String av1Note(boolean skipAv1, List<DashManifest.Track> tracks, int saved, DownloadQuality quality) {
+        if (!skipAv1) return "";
+        DashManifest.Track passed = better(av1Split(tracks, true), saved, quality);
+        return passed == null ? "" : ", passing over the manifest's " + passed + " as Never save AV1 video is on";
+    }
+
+    /** [tracks] without its AV1 pictures: what a save with Never save AV1 video on is weighed against (#379). */
+    private static List<DashManifest.Track> withoutAv1(List<DashManifest.Track> tracks) {
+        return av1Split(tracks, false);
+    }
+
+    /** The AV1 pictures of [tracks] when [av1], else everything but them. Sound tracks stay with the latter. */
+    private static List<DashManifest.Track> av1Split(List<DashManifest.Track> tracks, boolean av1) {
+        List<DashManifest.Track> kept = new ArrayList<>(tracks.size());
+        for (DashManifest.Track track : tracks) {
+            if (track.codecs.startsWith("av01") == av1) kept.add(track);
+        }
+        return kept;
+    }
+
+    /**
+     * What the report adds to a save line when Never save HDR video (#352) passed over an HDR
+     * picture of [tracks] larger than the [saved] one within [quality], or nothing.
+     */
+    private static String hdrNote(boolean skipHdr, List<DashManifest.Track> tracks, int saved, DownloadQuality quality) {
+        if (!skipHdr) return "";
+        DashManifest.Track passed = better(hdrSplit(tracks, true), saved, quality);
+        return passed == null ? "" : ", passing over the manifest's " + passed + " as Never save HDR video is on";
+    }
+
+    /** [tracks] without its HDR pictures: what a save with Never save HDR video on picks from (#352). */
+    private static List<DashManifest.Track> withoutHdr(List<DashManifest.Track> tracks) {
+        return hdrSplit(tracks, false);
+    }
+
+    /** The HDR pictures of [tracks] when [hdr], else everything but them. Sound tracks stay with the latter. */
+    private static List<DashManifest.Track> hdrSplit(List<DashManifest.Track> tracks, boolean hdr) {
+        List<DashManifest.Track> kept = new ArrayList<>(tracks.size());
+        for (DashManifest.Track track : tracks) {
+            if (track.hdr == hdr) kept.add(track);
+        }
+        return kept;
+    }
+
+    /**
+     * What "has no track to save" adds when a switch is why: the switches that took a track out of
+     * [tracks], leaving [picks], or nothing.
+     */
+    private static String switchesNote(List<DashManifest.Track> tracks, List<DashManifest.Track> picks,
+            boolean skipAv1, boolean skipHdr) {
+        boolean av1 = skipAv1 && withoutAv1(picks).size() < picks.size();
+        boolean hdr = skipHdr && picks.size() < tracks.size();
+        if (av1 && hdr) return " with Never save AV1 video and Never save HDR video on";
+        if (av1) return " with Never save AV1 video on";
+        if (hdr) return " with Never save HDR video on";
+        return "";
+    }
+
+    /**
      * The largest picture of [tracks] that fits [quality] and is larger than a saved one of quality
      * [saved], whatever its format, or null: the picture the app's player can show that the save
      * didn't keep. AV1 on a phone with no AV1 decoder is one, and so is any picture of a DASH save
@@ -781,6 +855,32 @@ public final class MediaSave {
     static boolean convertSaves() {
         try {
             return compatibleSaves() && Settings.DOWNLOAD_CONVERT.get();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * Whether the save starting now passes AV1 tracks over ({@link Settings#DOWNLOAD_NO_AV1}), the
+     * way a phone with no AV1 decoder does (#379). Read when the save starts. Never throws: before
+     * the settings are ready, or when they can't be read, it's off.
+     */
+    static boolean skipsAv1() {
+        try {
+            return Utils.settingsReady() && Settings.DOWNLOAD_NO_AV1.get();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * Whether the save starting now passes HDR tracks over ({@link Settings#DOWNLOAD_NO_HDR}), for
+     * an app that plays them with a yellow or green cast (#352). Read when the save starts. Never
+     * throws: before the settings are ready, or when they can't be read, it's off.
+     */
+    static boolean skipsHdr() {
+        try {
+            return Utils.settingsReady() && Settings.DOWNLOAD_NO_HDR.get();
         } catch (Throwable t) {
             return false;
         }
@@ -1006,18 +1106,26 @@ public final class MediaSave {
             if (MediaUrlPolicy.shapeRefusal(track.url) == null) tracks.add(track);
         }
         renditions = metaOnly(renditions);
-        boolean allowAv1 = DashSave.canWriteAv1();
+        boolean skipAv1 = skipsAv1();
+        boolean skipHdr = skipsHdr();
+        boolean allowAv1 = DashSave.canWriteAv1() && !skipAv1;
+        // Never save HDR video (#352) takes the HDR pictures out before the pick, so no choice
+        // below ever sees them. The report still lists every track the manifest offered.
+        List<DashManifest.Track> picks = skipHdr ? withoutHdr(tracks) : tracks;
         // What a save below is weighed against when it tells the person it's lower. Not with saves
         // other apps can open on: that switch passes better pictures over by choice, and its own
-        // report lines say so.
-        List<DashManifest.Track> offered = compatible ? Collections.emptyList() : tracks;
+        // report lines say so. Nor an AV1 picture with Never save AV1 video on (#379), nor an HDR
+        // one with Never save HDR video on: the save line names what the switch passed over, and a
+        // choice isn't a shortfall.
+        List<DashManifest.Track> offered = compatible ? Collections.emptyList()
+            : skipAv1 ? withoutAv1(picks) : picks;
 
         // What the pick below chose from, as each track's type, codec, size and bitrate. Never its
         // address: the report is pasted into public issues.
         Logger.diagnosticDebug(DiagnosticCategory.DOWNLOADS, SOURCE,
             () -> "the manifest of " + label + " offers " + tracks.size() + " track(s): " + tracks);
 
-        DashChoice choice = DashChoice.of(tracks, renditions, quality, compatible, allowAv1, convertible(convert));
+        DashChoice choice = DashChoice.of(picks, renditions, quality, compatible, allowAv1, convertible(convert));
         Rendition fallback = choice.fallback;
         DashManifest.Pick kept = choice.kept;
         DashManifest.Pick usual = choice.usual;
@@ -1025,7 +1133,7 @@ public final class MediaSave {
         // why the single file is saved.
         Dash leftToFile = compatible && usual != null && beatsFile(usual.video, fallback, choice.fallbackQuality, quality)
             ? Dash.SINGLE_FILE_FOR_OTHER_APPS : Dash.SINGLE_FILE;
-        if (convert && !choice.converts) noConversion(label, tracks, allowAv1);
+        if (convert && !choice.converts) noConversion(label, tracks, allowAv1, skipHdr);
 
         if (choice.taken == null && kept == null && usual != null) {
             info(() -> "the manifest of " + label + " has no H.264 video with AAC-LC or HE-AAC sound, "
@@ -1034,7 +1142,8 @@ public final class MediaSave {
                 "the manifest has no H.264 video with AAC-LC or HE-AAC sound", null, quality, writer, progress);
         }
         if (choice.taken == null && kept == null) {
-            info(() -> "the manifest of " + label + " has no track to save: " + tracks);
+            info(() -> "the manifest of " + label + " has no track to save"
+                + switchesNote(tracks, picks, skipAv1, skipHdr) + ": " + tracks);
             return saveSingleVideo(application, renditions, offered, Dash.SINGLE_FILE,
                 "the manifest has no track to save", null, quality, writer, progress);
         }
@@ -1066,7 +1175,9 @@ public final class MediaSave {
             + qualityNote(quality)
             + (choice.converts ? ", converted to H.264 for other apps" : compatibleNote(keptCompatible))
             + (choice.soundFromFile ? ", the manifest's sound being only xHE-AAC" : soundNote(audio))
-            + belowNote(better));
+            + belowNote(better)
+            + av1Note(skipAv1, picks, picture(video, quality), quality)
+            + hdrNote(skipHdr, tracks, picture(video, quality), quality));
 
         Downloader.Result result = dashJob(application, video, audio, fallback, quality, choice.converts, instead,
             choice.soundFromFile).run(writer, progress);
@@ -1078,7 +1189,7 @@ public final class MediaSave {
      * Tells the report why a save that converts didn't convert [tracks]' largest VP9 or AV1 picture
      * (#236), so a report shows whether the phone or the pick passed it over.
      */
-    private static void noConversion(String label, List<DashManifest.Track> tracks, boolean allowAv1) {
+    private static void noConversion(String label, List<DashManifest.Track> tracks, boolean allowAv1, boolean skipHdr) {
         DashManifest.Track largest = null;
         for (DashManifest.Track track : tracks) {
             if (track.isVideo() && VideoConvert.needsConversion(track.codecs)
@@ -1088,7 +1199,9 @@ public final class MediaSave {
         }
         if (largest == null) return;
         DashManifest.Track picture = largest;
-        String why = VideoConvert.whyNot(picture, allowAv1);
+        String why = picture.codecs.startsWith("av01") && skipsAv1() ? "Never save AV1 video is on"
+            : picture.hdr && skipHdr ? "Never save HDR video is on"
+            : VideoConvert.whyNot(picture, allowAv1);
         info(() -> "not converting " + label + "'s " + picture + ": "
             + (why != null ? why : "what's saved suits the quality as well"));
     }
@@ -1227,7 +1340,8 @@ public final class MediaSave {
         for (DashManifest.Track track : DashManifest.parse(manifest)) {
             if (MediaUrlPolicy.shapeRefusal(track.url) == null) tracks.add(track);
         }
-        DashChoice choice = DashChoice.of(tracks, files, quality, compatibleSaves(), DashSave.canWriteAv1(),
+        if (skipsHdr()) tracks = withoutHdr(tracks);
+        DashChoice choice = DashChoice.of(tracks, files, quality, compatibleSaves(), DashSave.canWriteAv1() && !skipsAv1(),
             convertible(convertSaves()));
         return new Planned(choice.fallback, choice.taken == null ? null : choice.taken.video);
     }
@@ -1316,8 +1430,11 @@ public final class MediaSave {
                 RenditionPicker.qualityOf(fallback), quality);
             failure(() -> "the DASH save ended with " + result + ", saving " + describe(fallback) + belowNote(better),
                 null);
-            return saveFile(application, fallback.url, Downloader.Kind.VIDEO, "the DASH save ended with " + result,
-                Collections.singletonList(video), video, quality, writer, progress);
+            Downloader.Result single = saveFile(application, fallback.url, Downloader.Kind.VIDEO,
+                "the DASH save ended with " + result, Collections.singletonList(video), video, quality, writer,
+                progress);
+            // The tracks had no room to be fetched or joined: the smaller picture is for want of storage (#348).
+            return result.noRoom && single.ok() && single.lower ? single.lowerForStorage() : single;
         };
     }
 
@@ -1410,7 +1527,8 @@ public final class MediaSave {
                     // A photo only, after the file is published: tag it with where it came from.
                     if (!video && !audio) PostMetadata.tag(application, writer, known);
                 }
-                Feedback.show(application, message(application, result.status, writer.savedLocation(), result.lower),
+                Feedback.show(application, message(application, result.status, writer.savedLocation(), result.lower,
+                        result.lowStorage),
                         !result.ok() && !cancelled);
             } finally {
                 // The check let this save through and held its key, so a double tap saves it once.
@@ -1519,8 +1637,19 @@ public final class MediaSave {
      * picture is below the best one Instagram offered within the quality setting.
      */
     static String message(Context application, Downloader.Status status, String location, boolean lower) {
+        return message(application, status, location, lower, false);
+    }
+
+    /** As above. With [lowStorage] a lower save says the phone's low storage is the reason (#348). */
+    static String message(Context application, Downloader.Status status, String location, boolean lower,
+            boolean lowStorage) {
         switch (status) {
             case OK:
+                if (lower && lowStorage) {
+                    return location == null
+                        ? L10n.t(application, "Saved to the gallery in lower quality because storage is low")
+                        : L10n.f(application, "Saved to %1$s in lower quality because storage is low", L10n.isolate(location));
+                }
                 if (lower) {
                     return location == null
                         ? L10n.t(application, "Saved to the gallery in lower quality than on Instagram")

@@ -49,7 +49,7 @@ public class CategoryPagesSettingsTest {
     private SettingsDialog dialog;
 
     @Before public void prepare() {
-        RuntimeEnvironment.getApplication().getApplicationInfo().targetSdkVersion = 36;
+        RuntimeEnvironment.getApplication().getApplicationInfo().targetSdkVersion = 37;
         Settings.CATEGORY_PAGES.resetToDefault();
         Settings.START_ON_FOLLOWING.resetToDefault();
         Settings.ONLY_FOLLOWING.resetToDefault();
@@ -183,7 +183,7 @@ public class CategoryPagesSettingsTest {
             }
             assertNotNull("the real settings adapter bound the translated switch", bound);
             assertEquals("隱藏廣告", ((TextView) bound.findViewById(android.R.id.title)).getText().toString());
-            assertEquals("隱藏贊助貼文、Reels 和限時動態，原本顯示廣告的位置不會留下空白。",
+            assertEquals("隱藏贊助貼文、Reels、限時動態和留言中的廣告，原本顯示廣告的位置不會留下空白。",
                     ((TextView) bound.findViewById(android.R.id.summary)).getText().toString());
             ads.setChecked(true);
             assertTrue(Settings.HIDE_ADS.get());
@@ -396,8 +396,10 @@ public class CategoryPagesSettingsTest {
         assertTrue(input.hasFocus());
         assertNotNull(page.getPreferenceScreen().findPreference(Settings.HIDE_ADS.key));
         assertFalse(shown(PreferenceCategory.class).contains("Feed"));
+        assertTrue("a search shows the descriptions it matched (#130)", DescriptionInfo.searching);
         input.setText("");
         layoutPage();
+        assertFalse(DescriptionInfo.searching);
         assertEquals(List.of("Feed"), shown(PreferenceCategory.class));
         assertSame(input, page.getView().findViewWithTag("hushgram-settings-search"));
         assertTrue(input.hasFocus());

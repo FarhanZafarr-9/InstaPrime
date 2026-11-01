@@ -32,17 +32,23 @@ public final class FamilyNames {
     public static final String BACK_LEAVES_HOME = "Back leaves Home";
     public static final String HOME_PLACE = "Keep your place in Home";
     public static final String STORY_LOOP = "Loop a story";
+    public static final String SMOOTH_STORY_OPEN = "Smooth story opening";
     public static final String STORY_SOUND = "Start stories with sound";
     public static final String STORY_SWIPE_REPLY = "Stop swipe up to reply";
     public static final String STORY_FONTS = "Story text fonts";
     public static final String STORY_UPLOAD_QUALITY = "Upload stories at full quality";
     public static final String FEED_SOUND = "Start feed videos with sound";
     public static final String FEED_TAP_PAUSE = "Tap a feed video to pause it";
+    public static final String FEED_SEEK_BAR = "Seek bar on feed videos";
     public static final String LONG_PRESS_ZOOM = "Long press to zoom";
     public static final String ROUNDED_POST_CORNERS = "Rounded post corners";
+    public static final String CAROUSEL_ARROWS = "Carousel arrows";
+    public static final String AMBIENT_LIGHT = "Ambient light";
     public static final String STORY_SEEN = "View stories anonymously";
     public static final String DM_MEDIA_SEEN = "View DM photos and videos anonymously";
     public static final String SPOOF_LOCATION = "Spoof location";
+    public static final String APP_PROXY = "App-only proxy";
+    public static final String SETUP_POPUPS = "Skip the contacts and location popups";
     public static final String THREAD_SEEN = "Read messages without the seen receipt";
     public static final String TYPING = "Hide that you're typing";
     public static final String ACTIVE_STATUS = "Hide your active status";
@@ -64,6 +70,7 @@ public final class FamilyNames {
     public static final String EXPLORE_GRID = "Hide the Explore grid";
     public static final String RECENT_SEARCHES = "Don't save recent searches";
     public static final String ALL_RECENT_SEARCHES = "Show all recent searches";
+    public static final String EXPLORE_MENU = "Explore without personalization";
     public static final String NOTES_ROW = "Hide the notes row";
     public static final String INBOX_SEARCH = "Hide the search bar in Messages";
     public static final String INBOX_SUGGESTIONS = "Hide suggested accounts in DMs";
@@ -76,6 +83,7 @@ public final class FamilyNames {
     public static final String FULL_SCREEN_BARS = "Full screen Reels and Home";
     public static final String SAVED_ON_PROFILE = "Saved on your profile";
     public static final String STOP_HEARTBEAT = "Stop background wake-ups";
+    public static final String REFRESH_RATE = "Use the highest refresh rate";
     public static final String EMOJI_STYLE = "Emoji style";
     public static final String ACCENT_COLOR = "Accent color";
     public static final String LAUNCH_SCREEN = "HushGram launch screen";
@@ -84,6 +92,7 @@ public final class FamilyNames {
     public static final String FONT = "Font";
     public static final String NOTIFICATION_GROUPS = "Group Instagram's notifications";
     public static final String HDR_BOOST = "Turn off HDR brightness boosts";
+    public static final String STOP_LOOPING = "Stop videos looping";
     public static final String MEDIA_CACHE = "Clear the media cache";
     public static final String FRIENDSHIP_STATUS = "Show if a profile follows you";
     public static final String PROFILE_SUGGESTIONS = "Hide suggested people on profiles";
@@ -100,7 +109,10 @@ public final class FamilyNames {
     public static final String COMMENT_EMOJI_ROW = "Hide the comment emoji row";
     public static final String COMMENT_KEYBOARD = "Open comments without the keyboard";
     public static final String FEED_FOLLOW = "Hide Follow on feed posts";
+    public static final String HIDE_CAPTIONS = "Hide captions";
+    public static final String HOME_TOP_BAR = "Keep Home's top bar";
     public static final String REEL_DECLUTTER = "Clean up Reels";
+    public static final String KEEP_REELS_TOP_BAR = "Keep the Reels top bar";
     public static final String REEL_DOWNLOAD = "Download any reel";
     public static final String DOUBLE_TAP_LIKE = "Turn off double tap to like";
     public static final String LIKE_ANIMATION = "Change the like animation";
@@ -115,6 +127,7 @@ public final class FamilyNames {
     public static final String REEL_BLUR_BARS = "Blur the bars around Reels";
     public static final String REEL_TAP_AND_VOLUME = "Control taps and volume on Reels";
     public static final String REEL_SOUND = "Start reels with sound";
+    public static final String REEL_ZOOM = "Pinch to zoom on Reels";
     public static final String REEL_AUTO_SCROLL = "Keep Reels auto scroll on";
     public static final String REEL_SCROLLING = "Stop Reels scrolling";
     public static final String SWIPE_TO_PROFILE = "Swipe left to open the profile";
@@ -134,10 +147,13 @@ public final class FamilyNames {
     public static final String SCREENSHOT_REPORTS = "Don't report screenshots";
     public static final String SCREENSHOT_BLOCK = "Allow screenshots";
     public static final String KEEP_IN_CHAT = "Keep in chat";
+    public static final String VIEW_ONCE_MARK = "Mark one-time photos and videos";
     public static final String CHAT_REELS = "Swipe through a chat's reels";
+    public static final String CHAT_HISTORY = "Chat history tools";
     public static final String ASK_BEFORE_CALL = "Ask before a call";
     public static final String MESSAGE_BOX = "Message box buttons";
     public static final String ASK_BEFORE_LIKE = "Ask before a like";
     public static final String ASK_BEFORE_REFRESH = "Ask before a refresh";
+    public static final String SAVE_TRAY = "Skip the collections tray";
     public static final String LIVE_SEEN = "View live anonymously";
 }

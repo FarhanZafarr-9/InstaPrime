@@ -1,5 +1,6 @@
 # German for HushGram: the English key, a tab, the translation. One row per string.
 # After editing, run python scripts/gen-l10n.py from the repository root.
+%1$d of them because storage is low.	%1$d davon, weil der Speicher knapp ist.
 %1$s of %2$s	%1$s von %2$s
 %1$s so far	Bisher %1$s
 %1$s. It was set when you patched, so Pause can't turn it off. To rule it out, patch again and leave out that patch.	%1$s. Das wurde beim Patchen festgelegt, deshalb kann die Pause es nicht ausschalten. Um es auszuschließen, patche erneut und lass diesen Patch weg.
@@ -9,15 +10,20 @@ A file named %1$s in %2$s paused HushGram.	Eine Datei namens %1$s in %2$s hat Hu
 About	Info
 Add the source to saved photos	Quelle zu gespeicherten Fotos hinzufügen
 Ads and privacy	Werbung und Datenschutz
+Asks Android to run Instagram at your screen's fastest refresh rate, at the same resolution. Some phones keep their own limit for apps, and battery saver can still lower it.	Bittet Android, Instagram mit der schnellsten Bildwiederholrate deines Displays bei gleicher Auflösung laufen zu lassen. Manche Handys setzen Apps ein eigenes Limit, und der Energiesparmodus kann die Rate trotzdem senken.
 Back	Zurück
 Before you sign in	Bevor du dich anmeldest
 Cancel	Abbrechen
+Chat saved in Downloads/HushGram.	Chat in Downloads/HushGram gespeichert.
+Chat saved in the app's Download folder.	Chat im Download-Ordner der App gespeichert.
 Clear diagnostic data	Diagnosedaten löschen
 Copy a quick report or save the full one to %1$s. Links, IDs, cookies and sign-in details are left out. Check it for other private text before you share it.	Kopiere einen Kurzbericht oder speichere den vollständigen Bericht unter %1$s. Links, IDs, Cookies und Anmeldedaten werden ausgelassen. Prüfe ihn auf anderen privaten Text, bevor du ihn teilst.
 Copy a short report to the clipboard.	Kurzen Bericht in die Zwischenablage kopieren.
 Copy quick report	Kurzbericht kopieren
 Copying to the gallery	Wird in die Galerie kopiert
+Couldn't find this chat's messages.	Die Nachrichten dieses Chats fehlen.
 Couldn't put back the diagnostic data. Try again.	Die Diagnosedaten ließen sich nicht wiederherstellen. Versuche es noch einmal.
+Couldn't save the chat.	Chat nicht gespeichert.
 Couldn't start the report export. Try again shortly.	Der Export des Berichts ließ sich nicht starten. Versuche es gleich noch einmal.
 Couldn't turn HushGram back on. Try again.	HushGram ließ sich nicht wieder einschalten. Versuche es noch einmal.
 Debug logging	Debug-Protokollierung
@@ -26,19 +32,37 @@ Diagnostic data put back.	Diagnosedaten wiederhergestellt.
 Diagnostic report copied to the clipboard.	Diagnosebericht in die Zwischenablage kopiert.
 Download failed	Download fehlgeschlagen
 Downloading	Wird heruntergeladen
-Empties the activity log that a diagnostic report would include.	Leert das Aktivitätsprotokoll, das ein Diagnosebericht enthalten würde.
+Empties the activity log and any kept crash that a diagnostic report would include.	Leert das Aktivitätsprotokoll und einen gespeicherten Absturz, die ein Diagnosebericht enthalten würde.
 Every switch but Debug logging acts as if it were off, and what was set when you patched stays in. Your settings stay as they are.	Jeder Schalter außer der Debug-Protokollierung verhält sich, als wäre er aus, und was beim Patchen festgelegt wurde, bleibt aktiv. Deine Einstellungen bleiben, wie sie sind.
+Export a chat as text	Einen Chat als Text exportieren
+Export chat	Chat exportieren
 Export diagnostic report	Diagnosebericht exportieren
 From the next start, every switch but Debug logging acts as if it were off. Changes made when you patched stay in, and your choices stay saved.	Ab dem nächsten Start verhält sich jeder Schalter außer der Debug-Protokollierung, als wäre er aus. Was beim Patchen festgelegt wurde, bleibt aktiv, und deine Auswahl bleibt gespeichert.
+Here it is.	Hier ist es.
+Jump to a date	Zu einem Datum springen
+Jump to the first message	Zur ersten Nachricht springen
+Jump to the first message or a date	Zur ersten Nachricht oder zu einem Datum springen
+Loading older messages.	Ältere Nachrichten werden geladen.
+Loading older messages. %1$d message so far.	Ältere Nachrichten werden geladen. Bisher %1$d Nachricht.
+Loading older messages. %1$d messages so far.	Ältere Nachrichten werden geladen. Bisher %1$d Nachrichten.
 Lock these settings	Diese Einstellungen sperren
+Long press a chat's name and pick Export chat. The whole chat is saved as a text file in Downloads, HushGram folder, one line per message.	Halte den Namen eines Chats gedrückt und wähle Chat exportieren. Der ganze Chat wird als Textdatei im Ordner HushGram unter Downloads gespeichert, eine Zeile pro Nachricht.
+Long press a chat's name and pick Jump to the first message or Jump to a date. The chat loads its older messages on its own, with a count and a Cancel button.	Halte den Namen eines Chats gedrückt und wähle Zur ersten Nachricht springen oder Zu einem Datum springen. Der Chat lädt seine älteren Nachrichten von selbst, mit Zähler und Abbrechen-Taste.
+Mark a chat seen when you reply	Chat als gesehen markieren, wenn du antwortest
+No messages found to save.	Keine Nachrichten zum Speichern.
 Pick a wait from 1 to 72 hours. Locked, nothing here changes until you ask to unlock and the wait is over.	Wähle eine Wartezeit von 1 bis 72 Stunden. Gesperrt ändert sich hier nichts, bis du das Entsperren anforderst und die Wartezeit vorbei ist.
 Ask to unlock	Entsperren anfordern
+Saved to %1$s in lower quality because storage is low	Gespeichert unter %1$s, in geringerer Qualität, weil der Speicher knapp ist
+Saved to the gallery in lower quality because storage is low	In der Galerie gespeichert, in geringerer Qualität, weil der Speicher knapp ist
+Sending a message in a chat lets the other person see that you've read what they sent before it. Chats you don't answer stay unseen to them.	Wenn du in einem Chat eine Nachricht sendest, sieht die andere Person, dass du ihre vorherigen Nachrichten gelesen hast. Chats, auf die du nicht antwortest, bleiben für sie ungesehen.
+That's as far back as this chat goes.	Weiter zurück reicht der Chat nicht.
 These settings are locked. Tap to start the %1$s wait, then they open for 10 minutes.	Diese Einstellungen sind gesperrt. Tippe, um die Wartezeit von %1$s zu starten, danach sind sie 10 Minuten lang offen.
 Unlock asked	Entsperren angefordert
 These settings open at %1$s, for 10 minutes.	Diese Einstellungen öffnen sich um %1$s für 10 Minuten.
 These settings open at %1$s, for 10 minutes. Tap to stop the wait.	Diese Einstellungen öffnen sich um %1$s für 10 Minuten. Tippe, um die Wartezeit zu beenden.
 Stop the wait	Wartezeit beenden
 Keep waiting	Weiter warten
+Use the highest refresh rate	Höchste Bildwiederholrate nutzen
 Wait stopped. These settings stay locked.	Wartezeit beendet. Diese Einstellungen bleiben gesperrt.
 Settings are open	Einstellungen sind offen
 They lock again at %1$s. Tap to lock them now or turn the lock off.	Sie sperren sich um %1$s wieder. Tippe, um sie jetzt zu sperren oder die Sperre auszuschalten.
@@ -98,7 +122,7 @@ Set when you patched	Beim Patchen festgelegt
 Settings couldn't open	Einstellungen ließen sich nicht öffnen
 Settings couldn't refresh completely. Reopen settings and try again.	Die Einstellungen ließen sich nicht vollständig aktualisieren. Öffne sie neu und versuche es noch einmal.
 Source code and issues	Quellcode und Issues
-Hides sponsored posts, reels and stories. No empty gap is left where an ad would have been.	Blendet gesponserte Beiträge, Reels und Stories aus. Dort, wo eine Anzeige gewesen wäre, bleibt keine Lücke.
+Hides sponsored posts, reels, stories and the ad in comments. No empty gap is left where an ad would have been.	Blendet gesponserte Beiträge, Reels, Stories und die Anzeige in den Kommentaren aus. Dort, wo eine Anzeige gewesen wäre, bleibt keine Lücke.
 Stays in while paused	Bleibt während der Pause aktiv
 Removes tracking tags from links you copy or share, and opens bio links without Instagram's click tracker. The link still opens the same post, reel or profile.	Entfernt Tracking-Zusätze aus Links, die du kopierst oder teilst, und öffnet Links in der Biografie ohne Instagrams Klick-Tracker. Der Link öffnet weiterhin denselben Beitrag, dasselbe Reel oder Profil.
 Tap to hide this.	Zum Ausblenden tippen.
@@ -116,6 +140,7 @@ Version	Version
 Version %1$s for Instagram %2$s	Version %1$s für Instagram %2$s
 While you view anonymously, a story you've watched turns gray and moves to the end of the row, on this phone only. Instagram still isn't told you watched it.	Während du Stories anonym ansiehst, wird eine angesehene Story grau und rückt ans Ende der Reihe, nur auf diesem Handy. Instagram erfährt weiterhin nicht, dass du sie angesehen hast.
 Writes the account that posted, the post date and a link to the post into a saved photo's details, the EXIF a gallery or exiftool reads. JPEG photos only, and only what the save knows. The picture itself is unchanged.	Schreibt das Konto, das gepostet hat, das Beitragsdatum und einen Link zum Beitrag in die Details eines gespeicherten Fotos, die EXIF-Daten, die eine Galerie oder exiftool liest. Nur JPEG-Fotos, und nur was beim Speichern bekannt ist. Das Bild selbst bleibt unverändert.
+You	Du
 You paused HushGram.	Du hast HushGram pausiert.
 the re-signed build fix	der Fix für neu signierte Builds
 Don't send reel watch history	Reel-Wiedergabeverlauf nicht senden
@@ -144,6 +169,13 @@ The rows of suggested reels between posts in your home feed. A reel someone you 
 Hide the Follow button	Folgen-Button ausblenden
 The Follow and Subscribe buttons beside a reel's author. Their profile still has them.	Die Buttons Folgen und Abonnieren neben dem Namen der Person, die das Reel gepostet hat. Auf ihrem Profil gibt es sie weiterhin.
 Hide promotion buttons on reels	Werbe-Buttons auf Reels ausblenden
+# context: Reels settings: three switches for overlays Instagram shows next to a reel's author name, suggested searches, shopping buttons and poll prompts (#332)
+Hide suggested searches on reels	Vorgeschlagene Suchen auf Reels ausblenden
+The search terms Instagram suggests near a reel's author.	Die Suchbegriffe, die Instagram neben dem Autor eines Reels vorschlägt.
+Hide shopping buttons on reels	Shopping-Buttons auf Reels ausblenden
+The product tag and shopping buttons near a reel's author.	Das Produkt-Tag und die Shopping-Buttons neben dem Autor eines Reels.
+Hide poll prompts on reels	Umfrage-Hinweise auf Reels ausblenden
+The poll and vote prompts near a reel's author.	Die Umfrage- und Abstimmungshinweise neben dem Autor eines Reels.
 Hides the buttons that push Edits, templates, Meta AI and Ray-Ban Meta glasses. Live badges and state-controlled media labels stay.	Blendet die Buttons aus, die Edits, Vorlagen, Meta AI und Ray-Ban-Meta-Brillen bewerben. Live-Abzeichen und Hinweise auf staatlich kontrollierte Medien bleiben.
 Hide friends' activity and comment previews	Aktivität von Freunden und Kommentarvorschau ausblenden
 The bubbles of friends who liked or commented, the Followed by and Liked by lines with their faces, the comment shown under a reel and the row of friends who saw it. Comments are still a tap away.	Die Blasen von Freunden, die etwas mit Gefällt mir markiert oder kommentiert haben, die Zeilen „Gefolgt von“ und „Gefällt“ mit ihren Profilbildern, der Kommentar unter einem Reel und die Reihe der Freunde, die es gesehen haben. Die Kommentare sind weiterhin nur einen Tipp entfernt.
@@ -151,6 +183,11 @@ Downloads	Downloads
 Save videos other apps can open	Videos speichern, die andere Apps öffnen können
 For WhatsApp, video editors such as CapCut and InShot, or a gallery or player that plays saves without sound. May lower quality.	Für WhatsApp, Videoeditoren wie CapCut und InShot oder wenn eine Galerie oder ein Player gespeicherte Videos ohne Ton abspielt. Kann die Qualität senken.
 Convert to keep the full size	Umwandeln, um die volle Größe zu behalten
+For phones that play AV1 badly. A video Instagram has at full size only as AV1 is saved as VP9 when it has one, or at its largest H.264 size. Convert to keep the full size then converts only VP9.	Für Handys, die AV1 schlecht abspielen. Ein Video, das Instagram in voller Größe nur als AV1 hat, wird als VP9 gespeichert, wenn es das gibt, sonst in seiner größten H.264-Größe. Umwandeln, um die volle Größe zu behalten, wandelt dann nur VP9 um.
+Never save AV1 video	AV1-Videos nie speichern
+# context: Downloads settings: a switch that passes HDR pictures over for apps that show HDR with a yellow or green cast (#352)
+Never save HDR video	HDR-Videos nie speichern
+For apps that show HDR with a yellow or green cast, such as Messenger. A video Instagram has at full size only in HDR is saved at its largest standard size instead.	Für Apps, die HDR mit einem Gelb- oder Grünstich zeigen, etwa Messenger. Ein Video, das Instagram in voller Größe nur als HDR hat, wird stattdessen in seiner größten Standardgröße gespeichert.
 Saves videos other apps can open, at full size. A video Instagram only has as VP9 or AV1 is converted to H.264 on your phone instead of saved smaller. Slower, and videos over 3 minutes stay smaller.	Speichert Videos, die andere Apps öffnen können, in voller Größe. Ein Video, das Instagram nur als VP9 oder AV1 hat, wird auf deinem Handy in H.264 umgewandelt, statt kleiner gespeichert zu werden. Langsamer, und Videos über 3 Minuten bleiben kleiner.
 Converting to H.264	Wird in H.264 umgewandelt
 Download quality	Download-Qualität
@@ -342,7 +379,7 @@ Removes the empty gap under Instagram's tab bar that appears when your phone hid
 Only accounts you follow	Nur Konten, denen du folgst
 Removes For you from the choices at the top of Home, so it stays on Following or Favorites. Needs Start Home on Following. Restart Instagram to see the change.	Entfernt „Für dich“ aus der Auswahl oben auf der Startseite, sodass sie bei „Folge ich“ oder „Favoriten“ bleibt. Braucht „Start Home on Following“. Starte Instagram neu, um die Änderung zu sehen.
 Instagram logo on Home	Instagram-Logo auf der Startseite
-Keeps Instagram's logo at the top of Home in place of the feed's name. Tap it to switch feeds. Needs Start Home on Following. Restart Instagram to see the change.	Zeigt oben auf der Startseite das Instagram-Logo statt des Feed-Namens. Tippe darauf, um den Feed zu wechseln. Setzt voraus, dass Startseite mit „Gefolgt“ öffnen an ist. Starte Instagram neu, um die Änderung zu sehen.
+Keeps Instagram's logo at the top of Home in place of the feed's name. Tap it to switch feeds. Restart Instagram to see the change.	Zeigt oben auf der Startseite das Instagram-Logo statt des Feed-Namens. Tippe darauf, um den Feed zu wechseln. Starte Instagram neu, um die Änderung zu sehen.
 Profiles	Profile
 Show if a profile follows you	Zeigen, ob ein Profil dir folgt
 Adds Follows you or Doesn't follow you beside the name on someone's profile, after their pronouns if they've set any. Nothing shows until Instagram has checked.	Zeigt Folgt dir oder Folgt dir nicht neben dem Namen im Profil einer Person, hinter den Pronomen, falls angegeben. Es erscheint erst etwas, wenn Instagram es geprüft hat.
@@ -364,6 +401,8 @@ Hide suggestions in notifications	Vorschläge in Benachrichtigungen ausblenden
 Takes rows that only suggest something off your notifications, like a thread from an account you don't follow or someone you might know. Likes, comments, mentions and new followers stay.	Entfernt Zeilen aus deinen Benachrichtigungen, die nur etwas vorschlagen, etwa einen Thread von einem Konto, dem du nicht folgst, oder jemanden, den du vielleicht kennst. Likes, Kommentare, Erwähnungen und neue Follower bleiben.
 Hide Featured in notifications	Bereich „Empfohlen“ in Benachrichtigungen ausblenden
 Takes the Featured section off the top of your notifications, the posts and threads Instagram picks to show you there. Everything under it stays.	Entfernt den Bereich „Empfohlen“ oben in deinen Benachrichtigungen, also die Beiträge und Threads, die Instagram dort für dich auswählt. Alles darunter bleibt.
+Keep Featured off the heart's dot	Featured nicht auf dem Punkt am Herz zeigen
+Stops the red dot on the heart from showing up for Featured alone. Likes, comments and new followers still light it.	Verhindert, dass der rote Punkt am Herz allein wegen „Empfohlen“ erscheint. Likes, Kommentare und neue Follower lassen ihn weiter leuchten.
 Hide highlights	Highlights ausblenden
 Takes the row of story highlights off profiles, yours included. Bios, counts and posts stay, and so does Add to highlight on your stories.	Entfernt die Reihe mit Story-Highlights von Profilen, auch von deinem. Bios, Zahlen und Beiträge bleiben, ebenso „Zu Highlight hinzufügen“ in deinen Storys.
 Hide the Threads button	Threads-Schaltfläche ausblenden
@@ -434,6 +473,9 @@ Comment copied	Kommentar kopiert
 Couldn't copy comment	Kommentar konnte nicht kopiert werden
 Save comment photo	Kommentarfoto speichern
 Adds Save to a selected comment's menu when the comment has its own photo or GIF. Saves the largest size Instagram sent.	Fügt dem Menü eines ausgewählten Kommentars Speichern hinzu, wenn der Kommentar ein eigenes Foto oder GIF hat. Speichert die größte Version, die Instagram gesendet hat.
+Reply with a comment's GIF	Mit dem GIF eines Kommentars antworten
+When a comment has a GIF, its menu gets a GIF reply that sends that same GIF back as your reply, animated.	Hat ein Kommentar ein GIF, bekommt sein Menü eine GIF-Antwort, die genau dieses GIF animiert als deine Antwort zurückschickt.
+Couldn't reply with this GIF	Mit diesem GIF konnte nicht geantwortet werden
 # context: View stories anonymously's second switch, and the label TalkBack reads for its eye button in a story's header
 Mark as seen button	Schaltfläche Als gesehen markieren
 Adds an eye button to the top of each story while you view anonymously. Tap it to show up on that story's viewer list. The other stories stay hidden.	Fügt oben in jeder Story eine Augen-Schaltfläche hinzu, während du Stories anonym ansiehst. Tippe darauf, um in der Zuschauerliste dieser Story zu erscheinen. Die anderen Stories bleiben verborgen.
@@ -528,15 +570,19 @@ Ghost mode is on, and so is each of its switches.	Der Ghost-Modus ist an, und je
 Instagram doesn't notice when you take a screenshot, so whoever sent you a disappearing photo or video isn't told. Your screenshots save as usual.	Instagram bemerkt nicht, wenn du einen Screenshot machst, also erfährt niemand davon, der dir ein verschwindendes Foto oder Video geschickt hat. Deine Screenshots werden wie gewohnt gespeichert.
 Keep in chat	Im Chat behalten
 Lives you watch don't put you on the host's viewer list, so they aren't told you're there. Commenting or reacting still shows you. The viewer count you see stops updating, and a live that ends can keep looking live until you leave it.	Lives, die du ansiehst, setzen dich nicht auf die Zuschauerliste des Hosts, also erfährt er nicht, dass du da bist. Kommentare und Reaktionen zeigen dich weiterhin. Die Zuschauerzahl, die du siehst, wird nicht mehr aktualisiert, und ein beendetes Live kann weiter live aussehen, bis du es verlässt.
+Mark as seen button on lives	Schaltfläche Als gesehen markieren bei Lives
+Adds an eye button to the top of a live while you watch anonymously. Tap it to show up on that live's viewer list. Other lives stay hidden.	Fügt oben in einem Live eine Augen-Schaltfläche hinzu, während du anonym zusiehst. Tippe darauf, um in der Zuschauerliste dieses Lives zu erscheinen. Andere Lives bleiben verborgen.
 Screenshots and screen recordings work wherever Instagram blocks them, like disappearing photos and videos. Turn on Don't report screenshots too if the sender shouldn't hear about it.	Screenshots und Bildschirmaufnahmen funktionieren überall, wo Instagram sie sperrt, etwa bei verschwindenden Fotos und Videos. Schalte auch „Screenshots nicht melden“ ein, wenn der Absender nichts davon erfahren soll.
 Turns the switches that keep what you do to yourself on or off in one go, like View stories anonymously and Hide that you're typing. Each one keeps its own switch.	Schaltet die Schalter, die dein Tun für dich behalten, auf einmal ein oder aus, etwa „Stories anonym ansehen“ und „Verbergen, dass du schreibst“. Jeder behält seinen eigenen Schalter.
 View live anonymously	Lives anonym ansehen
 Photos and videos sent as view once or replayable stay in the chat so you can open them again. Open the chat again to update ones already loaded.	Fotos und Videos, die einmal ansehbar oder wiederholbar gesendet wurden, bleiben im Chat, damit du sie erneut öffnen kannst. Öffne den Chat erneut, um schon geladene zu aktualisieren.
 Swipe through a chat's reels	Durch die Reels eines Chats wischen
 Swiping up on a reel you opened from a chat goes through the other reels shared in that chat before any suggested reels. Back takes you to the chat.	Wischst du bei einem Reel, das du aus einem Chat geöffnet hast, nach oben, kommen erst die anderen in diesem Chat geteilten Reels und danach vorgeschlagene. Zurück bringt dich in den Chat.
+Stop after the chat's reels	Nach den Reels des Chats aufhören
+Reels you opened from a chat end after the last one shared in that chat, with no suggested reels after it. Works with Swipe through a chat's reels on.	Reels, die du aus einem Chat geöffnet hast, enden nach dem letzten in diesem Chat geteilten, ohne vorgeschlagene Reels danach. Funktioniert, wenn Durch die Reels eines Chats wischen an ist.
 Adds Download cover under Download. It saves the still picture a reel shows before it plays, at its largest size.	Fügt unter Herunterladen den Eintrag Cover herunterladen hinzu. Er speichert das Standbild, das ein Reel vor dem Abspielen zeigt, in der größten Auflösung.
 Adds Download audio under Download. It saves the sound of the reel as an audio file.	Fügt unter Herunterladen den Eintrag Audio herunterladen hinzu. Er speichert den Ton des Reels als Audiodatei.
-After 20 reels, swiping in Reels stops until Instagram has been in the background for 15 minutes. A reel you open from a message or a post still plays.	Nach 20 Reels hört das Wischen in Reels auf, bis Instagram 15 Minuten im Hintergrund war. Ein Reel, das du aus einer Nachricht oder einem Beitrag öffnest, läuft trotzdem.
+After the reels you pick below, swiping in Reels stops until Instagram has been in the background for the time you pick. A reel you open from a message or a post still plays.	Nach der unten gewählten Zahl Reels hört das Wischen in Reels auf, bis Instagram so lange im Hintergrund war, wie du wählst. Ein Reel, das du aus einer Nachricht oder einem Beitrag öffnest, läuft trotzdem.
 Find the reel you came from	Das Reel finden, von dem du kamst
 Open a creator's profile from a reel, then their Reels tab, and it scrolls to that reel and outlines it for a moment. A photo reel is found in their posts. Stop looking ends the search where it is.	Öffne aus einem Reel das Profil des Creators und dann seinen Reels-Tab, und der Tab scrollt zu diesem Reel und rahmt es kurz ein. Ein Foto-Reel wird in seinen Beiträgen gefunden. „Suche beenden“ beendet die Suche dort, wo sie gerade ist.
 Wait for a tap to find it	Erst auf Tippen suchen
@@ -567,7 +613,12 @@ Send downloads to another app	Downloads an eine andere App senden
 Send to	Senden an
 Sent to another app. To save here instead, turn off Send downloads to another app under Downloads.	An eine andere App gesendet. Um stattdessen hier zu speichern, schalte „Downloads an eine andere App senden“ unter Downloads aus.
 Spoof location	Standort vortäuschen
-Stop after 20 reels	Nach 20 Reels stoppen
+Stop after a set number of reels	Nach einer festen Zahl Reels stoppen
+# context: Reels settings: two sliders under Stop after a set number of reels (#405). The first picks how many reels play before swiping stops, %1$d is 5 to 100; the second how long Instagram stays in the background before swiping comes back, %1$d is 5 to 120 minutes
+Reels before swiping stops	Reels, bis das Wischen aufhört
+%1$d reels	%1$d Reels
+Time away before swiping comes back	Pause, bis das Wischen zurückkommt
+%1$d minutes in the background	%1$d Minuten im Hintergrund
 Take a scroll break	Scroll-Pause machen
 # context: a choice in the scroll break list; %1$d is 10, 20, 30 or 60
 After %1$d minutes	Nach %1$d Minuten
@@ -590,6 +641,8 @@ Hide story rewinds	Story-Rewinds ausblenden
 Nothing in the row of stories at the top of Home loads, your own story included, and highlights on profiles stay empty too. Saves data. A story ring on a profile or in a chat still opens its stories.	Nichts in der Stories-Leiste oben auf der Startseite lädt, auch deine eigene Story nicht, und Highlights auf Profilen bleiben ebenfalls leer. Spart Daten. Ein Story-Ring auf einem Profil oder in einem Chat öffnet seine Stories weiterhin.
 Expandable categories	Aufklappbare Kategorien
 Tap a category to show or hide its settings on this page.	Tippe auf eine Kategorie, um ihre Einstellungen auf dieser Seite ein- oder auszublenden.
+Descriptions behind an info button	Beschreibungen hinter einer Info-Schaltfläche
+Shows each switch by its name alone. Tap the i next to a name to read what it does.	Zeigt jeden Schalter nur mit seinem Namen. Tippe auf das i neben einem Namen, um zu lesen, was er tut.
 Expanded	Aufgeklappt
 Collapsed	Zugeklappt
 Hide the HushGram row in Instagram's menu	HushGram-Zeile in Instagrams Menü ausblenden
@@ -642,6 +695,8 @@ Ask before a refresh	Vor dem Aktualisieren fragen
 Continue	Weiter
 Like or unlike this post?	Diesen Beitrag liken oder nicht mehr liken?
 Asks before pulling down refreshes Home, Reels or another list. Cancel keeps what's on screen.	Fragt nach, bevor das Herunterziehen die Startseite, Reels oder eine andere Liste aktualisiert. Mit „Abbrechen“ bleibt, was auf dem Bildschirm ist.
+Skip the collections tray	Sammlungsfenster überspringen
+Saving a post or reel shows Instagram's Saved message instead of the tray that asks you to start a collection.	Beim Speichern eines Beitrags oder Reels zeigt Instagram nur die Meldung, dass er gespeichert ist, statt des Fensters, das dich bittet, eine Sammlung anzulegen.
 Refresh	Aktualisieren
 Refresh this list?	Diese Liste aktualisieren?
 Asks before the Like button under a post likes or unlikes it, so a stray tap doesn't do it for you. Double taps aren't asked about.	Fragt nach, bevor der Like-Button unter einem Beitrag ein Like setzt oder zurücknimmt, damit ein versehentliches Tippen nichts auslöst. Bei einem Doppeltippen wird nicht gefragt.
@@ -673,7 +728,7 @@ Details	Details
 Details in a post's menu	Details im Menü eines Beitrags
 Media ID %1$s	Medien-ID %1$s
 Media link	Medienlink
-Media link copied	Medienlink kopiert
+Media link copied. It stops working after a few days.	Medienlink kopiert. Er funktioniert nach ein paar Tagen nicht mehr.
 No direct link for this one	Dafür gibt es keinen direkten Link
 Posted %1$s	Gepostet am %1$s
 Size %1$d × %2$d	Größe %1$d × %2$d
@@ -752,6 +807,8 @@ Accent color	Akzentfarbe
 Turns Instagram's blue, on Follow buttons, links and the like, into the color you pick below. Restart Instagram to see the change.	Färbt Instagrams Blau auf Folgen-Buttons, Links und Ähnlichem in die Farbe um, die du unten auswählst. Starte Instagram neu, um die Änderung zu sehen.
 Badges in the accent color	Badges in der Akzentfarbe
 The red dots and counts for new messages and notifications take the color you picked. Restart Instagram to see the change.	Die roten Punkte und Zahlen für neue Nachrichten und Benachrichtigungen nehmen die Farbe an, die du ausgewählt hast. Starte Instagram neu, um die Änderung zu sehen.
+Icons in the accent color	Symbole in der Akzentfarbe
+Instagram's icons on the top bar, the tab bar and under posts take the color you picked. Text stays as it is. Restart Instagram to see the change.	Instagrams Symbole in der oberen Leiste, in der Tab-Leiste und unter Beiträgen nehmen die Farbe an, die du ausgewählt hast. Text bleibt, wie er ist. Starte Instagram neu, um die Änderung zu sehen.
 # context: Layout list under Accent color; its choices are Instagram blue and the colors below
 Color	Farbe
 Instagram blue	Instagram-Blau
@@ -803,6 +860,9 @@ Glass tab bar	Glas-Tab-Leiste
 Haptics on the tab bar	Haptik der Tab-Leiste
 Home, Reels and the other tabs run down behind the pill, so the glass has real content to blur.	Home, Reels und die anderen Tabs laufen hinter der Pille weiter, damit das Glas echten Inhalt zum Verwischen hat.
 Show content behind the tab bar	Inhalt hinter der Tab-Leiste zeigen
+# context: Layout: Glass tab bar's switch that runs the Reels video behind the pill and lifts its caption, buttons and seek bar above it (#372)
+Run Reels behind the tab bar	Reels hinter der Tab-Leiste laufen lassen
+The Reels video fills the screen behind the pill. Its caption, buttons and seek bar sit just above the pill.	Das Reels-Video füllt den Bildschirm hinter der Pille. Beschreibung, Schaltflächen und Suchleiste liegen direkt darüber.
 Tab bar	Tab-Leiste
 Saved	Gespeichert
 Saved tab on your profile	Gespeichert-Tab im Profil
@@ -833,6 +893,11 @@ Hide single chats. A hidden chat leaves your inbox and its notifications don't p
 Double-tap Messages for hidden chats	Doppeltippen auf Nachrichten für versteckte Chats
 Two quick taps on the Messages button, on the tab bar or at the top of Home, open your hidden chats. While a lock is on, it asks for it first. One tap opens Messages as usual.	Zwei schnelle Tipps auf die Nachrichten-Schaltfläche, in der Tab-Leiste oder oben auf der Startseite, öffnen deine versteckten Chats. Ist eine Sperre an, wird zuerst danach gefragt. Ein Tipp öffnet Nachrichten wie gewohnt.
 Open a chat in Instagram, then come back here to hide it.	Öffne einen Chat in Instagram und komm dann hierher zurück, um ihn zu verstecken.
+Pinned chats	Angepinnte Chats
+Keeps the chats you pick at the top of your inbox. The pins stay on this phone, and Instagram's own order holds for every other chat.	Hält die gewählten Chats oben in deinem Posteingang. Die Pins bleiben auf diesem Handy, alle anderen Chats behalten die Reihenfolge von Instagram.
+Open a chat in Instagram, then come back here to pin it.	Öffne einen Chat in Instagram und komm dann hierher zurück, um ihn anzupinnen.
+%1$s is pinned	%1$s ist angepinnt
+%1$s is unpinned	%1$s ist nicht mehr angepinnt
 %1$s is hidden	%1$s ist versteckt
 %1$s is shown again	%1$s wird wieder angezeigt
 Pick the playback quality with a tab long press	Wiedergabequalität durch langes Drücken auf einen Tab wählen
@@ -904,14 +969,14 @@ Show all settings as a list	Alle Einstellungen als Liste anzeigen
 Show settings by category	Einstellungen nach Kategorie anzeigen
 Tab bar opacity	Deckkraft der Tab-Leiste
 Tab bar height	Höhe der Tab-Leiste
-Clearest	Am klarsten
-Clear	Klar
-Frosted	Milchglas
 Standard	Standard
 Blur strength	Stärke der Unschärfe
-# context: a blur strength step of the tab bar
-Light	Leicht
-Strong	Stark
+# context: the blur slider's value under its title; dp is Android's screen unit, keep it
+%1$d dp	%1$d dp
+# context: the tab bar opacity slider's value under its title
+%1$d%%	%1$d %%
+# context: a slider's value when it sits at the starting setting, %1$s is the value
+%1$s (standard)	%1$s (Standard)
 Compact	Kompakt
 Tall	Hoch
 Tab bar corners	Ecken der Tab-Leiste
@@ -945,6 +1010,8 @@ Full screen Reels	Vollbild-Reels
 Hides the status bar and the navigation bar while Reels shows. Swipe in from the edge to bring them back for a moment. Back and the keyboard work as usual.	Blendet die Statusleiste und die Navigationsleiste aus, solange Reels angezeigt wird. Wische vom Rand herein, um sie kurz wieder einzublenden. Zurück und die Tastatur funktionieren wie gewohnt.
 Fill the screen	Bildschirm füllen
 Reels that are nearly the screen's shape fill it, cut a little at the sides, instead of showing black bars above and below. Square and wide videos still fit.	Reels, die fast die Form des Bildschirms haben, füllen ihn aus und werden an den Seiten etwas abgeschnitten, statt oben und unten schwarze Balken zu zeigen. Quadratische und breite Videos passen weiterhin hinein.
+Show the whole reel	Ganzes Reel zeigen
+Every reel fits inside the screen, with black bars where its shape differs, so nothing is cut off at the sides. Works without Full screen Reels and wins over Fill the screen.	Jedes Reel passt in den Bildschirm, mit schwarzen Balken, wo seine Form abweicht, damit an den Seiten nichts abgeschnitten wird. Funktioniert ohne Vollbild-Reels und hat Vorrang vor Bildschirm füllen.
 Full screen Home	Vollbild-Startseite
 Hides the status bar and the navigation bar while Home shows. Swipe in from the edge to bring them back for a moment.	Blendet die Statusleiste und die Navigationsleiste aus, solange die Startseite angezeigt wird. Wische vom Rand herein, um sie kurz wieder einzublenden.
 Full screen Messages	Vollbild-Nachrichten
@@ -966,7 +1033,7 @@ Copy, save or hide comments.	Kommentare kopieren, speichern oder ausblenden.
 See who follows you back, and clear extras off profiles.	Sieh, wer dir zurückfolgt, und entferne Extras von Profilen.
 Change how Instagram looks, from its colors to its emoji.	Ändere, wie Instagram aussieht, von den Farben bis zu den Emojis.
 Pick your tabs, their order and how the bar looks.	Wähle deine Tabs, ihre Reihenfolge und wie die Leiste aussieht.
-Group Instagram's notifications so they don't pile up.	Gruppiere Instagrams Benachrichtigungen, damit sie sich nicht stapeln.
+Group or mute Instagram's notifications so they don't pile up.	Gruppiere Instagrams Benachrichtigungen oder schalte sie stumm, damit sie sich nicht stapeln.
 Keep Instagram's saved photos and videos from filling your phone.	Verhindere, dass Instagrams gespeicherte Fotos und Videos dein Handy füllen.
 Save photos, videos and more, and choose where they go.	Speichere Fotos, Videos und mehr, und wähle, wo sie landen.
 Stop background work Instagram doesn't need.	Stoppe Hintergrundarbeit, die Instagram nicht braucht.
@@ -997,11 +1064,19 @@ Off. It can fade a reel's buttons while the screen sits untouched, so they don't
 Takes the Save button out of the column of buttons beside a reel, and the count under it. Posts in your feed keep theirs.	Nimmt den Speichern-Button aus der Button-Spalte neben einem Reel, dazu die Zahl darunter. Beiträge in deinem Feed behalten ihren.
 Keep clear mode on	Klaren Modus anlassen
 Turn on Instagram's clear mode on a reel and the next reels open in it too. Leave clear mode yourself and the next reels show their buttons again.	Schalte bei einem Reel Instagrams klaren Modus ein, dann öffnen sich auch die nächsten Reels darin. Verlässt du den klaren Modus selbst, zeigen die nächsten Reels ihre Buttons wieder.
+# context: Reels settings: a switch under Keep clear mode on (#138). Clear mode is the name used for Instagram's own mode that hides a reel's buttons; Allow screenshots is HushGram's switch of that name
+Start every reel in clear mode	Jedes Reel im klaren Modus starten
+Reels open in clear mode from the first one, with no tap. Leave it yourself and the next reels show their buttons again. Instagram blocks screenshots in clear mode unless Allow screenshots is on.	Reels öffnen sich ab dem ersten im klaren Modus, ohne Tippen. Verlässt du ihn selbst, zeigen die nächsten Reels ihre Buttons wieder. Instagram blockiert im klaren Modus Screenshots, außer Screenshots erlauben ist an.
 Unlock with	Entsperren mit
 Phone lock	Handy-Sperre
 HushGram PIN	HushGram-PIN
 A PIN you set here unlocks your messages, in place of your screen lock. It can't be recovered, only cleared by clearing Instagram's storage.	Eine PIN, die du hier festlegst, entsperrt deine Nachrichten statt der Bildschirmsperre. Sie lässt sich nicht wiederherstellen, nur durch Löschen des Instagram-Speichers entfernen.
 Your fingerprint, face or screen lock unlocks your messages.	Fingerabdruck, Gesicht oder Bildschirmsperre deines Handys entsperrt deine Nachrichten.
+Fingerprint or face only	Nur Fingerabdruck oder Gesicht
+Only your fingerprint or face unlocks your messages. If the phone has none set up, your screen lock does.	Nur dein Fingerabdruck oder Gesicht entsperrt deine Nachrichten. Ist auf dem Handy keins eingerichtet, tut es deine Bildschirmsperre.
+Add a fingerprint or face in your phone's settings first.	Richte zuerst in den Einstellungen deines Handys einen Fingerabdruck oder ein Gesicht ein.
+This phone has no fingerprint or face unlock to use.	Dieses Handy hat keine Entsperrung per Fingerabdruck oder Gesicht, die sich nutzen lässt.
+Your phone won't let HushGram use your fingerprint or face right now. Check its fingerprint and face settings.	Dein Handy lässt HushGram deinen Fingerabdruck oder dein Gesicht gerade nicht nutzen. Sieh in den Einstellungen für Fingerabdruck und Gesicht nach.
 Set or change the 4 to 8 digit PIN. It stays on this phone and isn't in a backup.	Lege die PIN mit 4 bis 8 Ziffern fest oder ändere sie. Sie bleibt auf diesem Handy und ist in keinem Backup.
 PIN saved.	PIN gespeichert.
 PIN	PIN
@@ -1031,6 +1106,8 @@ Rounded corners on Reels	Abgerundete Ecken bei Reels
 Rounded corners on stories	Abgerundete Ecken bei Storys
 Seek bar on stories	Suchleiste in Stories
 Shows a bar near the bottom of a video story. Drag it to jump to any point in the video. Photos don't get one.	Zeigt unten in einer Video-Story eine Leiste. Zieh sie, um zu einer beliebigen Stelle im Video zu springen. Fotos bekommen keine.
+Seek bar on feed videos	Suchleiste in Feed-Videos
+Shows a bar along the bottom of the video playing in a feed. Drag it and let go to jump to that point in the video.	Zeigt eine Leiste unten an dem Video, das in einem Feed läuft. Zieh sie und lass los, um zu dieser Stelle im Video zu springen.
 Thicker story progress bar	Dickere Story-Fortschrittsleiste
 Draws the bar along the top of a story as thick as the choice below. Its segments and timing stay as they were.	Zeichnet die Leiste oben in einer Story so dick wie unten gewählt. Ihre Abschnitte und ihr Timing bleiben, wie sie waren.
 Thickness	Dicke
@@ -1152,9 +1229,17 @@ Hide the Create button	Erstellen-Schaltfläche ausblenden
 Takes the plus for new posts off the top of your own profile. The other buttons stay where they were.	Entfernt das Plus für neue Beiträge oben auf deinem eigenen Profil. Die anderen Schaltflächen bleiben, wo sie waren.
 Hide Share profile	Profil teilen ausblenden
 Takes the Share profile button off your profile, and Edit profile stretches to fill the space.	Entfernt die Schaltfläche Profil teilen von deinem Profil, und Profil bearbeiten wird breiter und füllt den Platz.
+# context: Profiles: switches that hide Subscribe and the arrow at the end of the action buttons on someone's profile, which opens a menu of the buttons that didn't fit (#248). Subscribe is Instagram's own button label, as in the Feed switch that hides Follow and Subscribe.
+Hide Subscribe on profiles	Abonnieren auf Profilen ausblenden
+Takes the Subscribe button off creators' profiles, and the other buttons stretch to fill the space.	Entfernt die Schaltfläche Abonnieren von Creator-Profilen, und die anderen Schaltflächen werden breiter und füllen den Platz.
+Hide the arrow at the end of the buttons	Pfeil am Ende der Schaltflächen ausblenden
+Takes the arrow off the end of a profile's row of buttons, along with the menu it opens, and the other buttons stretch to fill the space.	Entfernt den Pfeil am Ende der Schaltflächenreihe eines Profils samt dem Menü, das er öffnet, und die anderen Schaltflächen werden breiter und füllen den Platz.
 # context: Layout: Glass tab bar's switch that stops the liquid pill shrinking as you scroll (#256)
 Keep the pill full size	Pille in voller Größe lassen
 Scrolling a list down leaves the liquid pill as it is, every tab in place. Restart Instagram after changing it.	Scrollst du eine Liste nach unten, bleibt die Liquid-Glass-Pille, wie sie ist, mit jedem Tab an seinem Platz. Starte Instagram nach der Änderung neu.
+# context: Layout: Glass tab bar's switch that makes the liquid pill's rim bend and mirror what's behind it like glass (#369)
+Bend light at the edges	Licht an den Rändern brechen
+The liquid pill's rim bends what's behind it like real glass, so what passes under the edge shows upside down. Android 13 and newer. Restart Instagram after changing it.	Der Rand der Liquid-Glass-Pille bricht, was dahinter liegt, wie echtes Glas, sodass alles, was unter dem Rand vorbeizieht, kopfüber erscheint. Ab Android 13. Starte Instagram nach der Änderung neu.
 # context: Ghost mode: the row and dialog picking which switches Ghost mode turns (#251). %1$s is a list of switch names
 All of them. Tap to leave some out, and Ghost mode leaves those as you set them.	Alle. Tippe, um einige auszulassen, dann lässt der Ghost-Modus sie so, wie du sie eingestellt hast.
 %1$s. The others stay as you set them.	%1$s. Die anderen bleiben, wie du sie eingestellt hast.
@@ -1232,6 +1317,7 @@ App icon	App-Symbol
 Instagram on black	Instagram auf Schwarz
 Instagram on plum	Instagram auf Pflaume
 Instagram in black on white	Instagram schwarz auf Weiß
+Hand-drawn Instagram	Handgezeichnetes Instagram
 Instagram's own	Instagrams eigenes
 Instagram's own. Pick another to change the icon on your home screen and in the app drawer.	Instagrams eigenes. Wähle ein anderes, um das Symbol auf deinem Startbildschirm und in der App-Übersicht zu ändern.
 %1$s. It shows once you leave Instagram. If the icon is gone from your home screen, add it again from the app drawer.	%1$s. Es erscheint, sobald du Instagram verlässt. Fehlt das Symbol auf deinem Startbildschirm, füge es aus der App-Übersicht wieder hinzu.
@@ -1270,7 +1356,7 @@ Instagram's choice	Auswahl von Instagram
 Keeps the newer bar, with Messages on it, and you can swipe sideways between every tab, even if Instagram moves your account back to the older one. Restart Instagram to see the change.	Behält die neuere Leiste mit Nachrichten darauf, und du kannst seitlich zwischen allen Tabs wischen, auch wenn Instagram dein Konto zurück auf die ältere setzt. Starte Instagram neu, um die Änderung zu sehen.
 Keeps the older bar, with Create on it and Messages at the top of Home. Swiping only moves between Home and the screens beside it. Restart Instagram to see the change.	Behält die ältere Leiste mit Erstellen darauf und Nachrichten oben auf der Startseite. Wischen wechselt nur zwischen der Startseite und den Bildschirmen daneben. Starte Instagram neu, um die Änderung zu sehen.
 Instagram picks the tab bar for your account, and it can switch between the two on its own.	Instagram wählt die Tab-Leiste für dein Konto und kann von selbst zwischen den beiden wechseln.
-Group Instagram's notifications, and take suggestions off the Notifications page.	Gruppiere Instagrams Benachrichtigungen und nimm Vorschläge von der Benachrichtigungsseite.
+Group or mute Instagram's notifications, and take suggestions off the Notifications page.	Gruppiere Instagrams Benachrichtigungen oder schalte sie stumm und nimm Vorschläge von der Benachrichtigungsseite.
 Take suggestions and Featured off the Notifications page.	Nimm Vorschläge und „Empfohlen“ von der Benachrichtigungsseite.
 Version warnings	Versionswarnungen
 Pause HushGram, lock these settings, or make a report when something breaks.	HushGram pausieren, diese Einstellungen sperren oder einen Bericht erstellen, wenn etwas nicht funktioniert.
@@ -1292,3 +1378,118 @@ The row of stories at the top of Home keeps only the accounts the choice below n
 Stories to keep	Behaltene Stories
 Only verified accounts	Nur verifizierte Konten
 Only accounts that aren't verified	Nur nicht verifizierte Konten
+Pinch to zoom	Mit zwei Fingern zoomen
+Two fingers zoom into a playing reel, the way a photo zooms. Lift them and it goes back. Restart Instagram to see the change.	Mit zwei Fingern zoomst du in ein laufendes Reel, so wie bei einem Foto. Nimmst du sie weg, springt es zurück. Starte Instagram neu, um die Änderung zu sehen.
+Mute notification types	Benachrichtigungsarten stummschalten
+Stops the notification types you tick, even ones Instagram's own notification settings can't turn off.	Stoppt die Benachrichtigungsarten, die du ankreuzt, auch solche, die Instagrams eigene Benachrichtigungseinstellungen nicht ausschalten können.
+%1$d notification type is muted.	%1$d Benachrichtigungsart ist stummgeschaltet.
+%1$d notification types are muted.	%1$d Benachrichtigungsarten sind stummgeschaltet.
+Instagram hasn't set up its notification types on this phone yet. Open Instagram once, then come back here.	Instagram hat seine Benachrichtigungsarten auf diesem Telefon noch nicht eingerichtet. Öffne Instagram einmal und komm dann hierher zurück.
+Unmute all	Alle Stummschaltungen aufheben
+Settings button on Home's header	Einstellungen-Taste oben auf der Startseite
+Adds a gear at the top of Home that opens HushGram settings. Restart Instagram to see the change.	Fügt oben auf der Startseite ein Zahnrad hinzu, das die HushGram-Einstellungen öffnet. Starte Instagram neu, um die Änderung zu sehen.
+Download button on stories	Download-Taste bei Stories
+Puts a Download button at the top of a story, beside the three dots. One tap saves the photo or video in front, the same as Download in the menu.	Setzt oben in einer Story neben die drei Punkte eine Download-Taste. Ein Tipp speichert das Foto oder Video, das du gerade siehst, genau wie Download im Menü.
+Start reels muted	Reels stumm starten
+Every reel starts silent, wherever you open it from. The volume keys or the speaker icon unmute it. Wins over Start reels with sound.	Jedes Reel startet stumm, egal wo du es öffnest. Die Lautstärketasten oder das Lautsprechersymbol schalten den Ton ein. Hat Vorrang vor Reels mit Ton starten.
+Hide captions	Beschreibungen ausblenden
+Takes the caption off posts in your feed and off reels. The post stays, and the comments sheet still shows it.	Nimmt die Beschreibung von Beiträgen im Feed und von Reels weg. Der Beitrag bleibt, und die Kommentare zeigen sie weiterhin.
+Keep Home's top bar	Obere Leiste der Startseite fixieren
+Keeps the Instagram logo and the buttons beside it at the top of Home while you scroll, instead of sliding them away.	Hält das Instagram-Logo und die Schaltflächen daneben beim Scrollen oben auf der Startseite, statt sie wegzuschieben.
+# context: Feed settings: the See-through top bar switch, right under Keep Home's top bar (#418). It blurs the posts that scroll under Home's header, the bar with the Instagram logo.
+See-through top bar	Durchsichtige obere Leiste
+Shows your feed blurred under Home's top bar, like frosted glass.	Zeigt deinen Feed verschwommen unter der oberen Leiste der Startseite, wie Milchglas.
+Keep the Reels top bar	Obere Leiste bei Reels fixieren
+Keeps the Reels title, the Friends tab and the buttons beside them at the top while you swipe through reels, instead of sliding them away.	Hält den Reels-Titel, den Freunde-Tab und die Schaltflächen daneben oben, während du durch Reels wischst, statt sie wegzuschieben.
+Keep a viewing history	Verlauf der angesehenen Inhalte führen
+Remembers the posts, reels, stories and profiles that come up on screen, newest first, on this phone only. Nothing is sent anywhere, and nothing is read about other accounts. Turn it off and it stops at once. Clear it below.	Merkt sich die Beiträge, Reels, Storys und Profile, die auf dem Bildschirm erscheinen, die neuesten zuerst, nur auf diesem Handy. Es wird nichts gesendet und nichts über andere Konten gelesen. Beim Ausschalten hört es sofort auf. Unten kannst du die Liste löschen.
+Viewing history	Verlauf der angesehenen Inhalte
+Nothing here yet. With Keep a viewing history on, what you look at shows up here.	Noch nichts da. Sobald das Führen des Verlaufs an ist, erscheint hier, was du dir ansiehst.
+Post	Beitrag
+Reel	Reel
+Story	Story
+Clear viewing history	Verlauf der angesehenen Inhalte löschen
+Forgets every post, reel, story and profile on the list, for all your accounts. The switch stays as it is.	Vergisst alle Beiträge, Reels, Storys und Profile in der Liste, für alle deine Konten. Der Schalter bleibt, wie er ist.
+Viewing history cleared.	Verlauf der angesehenen Inhalte gelöscht.
+Couldn't clear the viewing history. Try again.	Der Verlauf der angesehenen Inhalte ließ sich nicht löschen. Versuche es noch einmal.
+Mark one-time photos and videos	Einmalige Fotos und Videos markieren
+Puts a border and Instagram's view once icon on a one-time photo or video in a chat, so you can tell it from the rest before you open it. Only how the chat looks changes.	Setzt einen Rahmen und das Einmal-ansehen-Symbol von Instagram auf ein einmaliges Foto oder Video im Chat, damit du es vor dem Öffnen erkennst. Nur das Aussehen des Chats ändert sich.
+Fall back to Following	Auf „Gefolgt“ ausweichen
+When For you brings an account only suggested posts, page after page, Home opens on Following for that account. A feed you pick at the top of Home stays picked. Restart Instagram to see the change.	Wenn „Für dich“ einem Konto Seite um Seite nur vorgeschlagene Beiträge bringt, öffnet die Startseite für dieses Konto auf „Gefolgt“. Ein Feed, den du oben auf der Startseite auswählst, bleibt ausgewählt. Starte Instagram neu, um die Änderung zu sehen.
+Only suggestions in For you. Home will open on Following.	Nur Vorschläge in „Für dich“. Startseite öffnet „Gefolgt“.
+Explore without personalization	Entdecken ohne Personalisierung
+Where Instagram offers it (in the EU), Explore opens with the grid that isn't personalized every time, and stays on it past ten minutes.	Wo Instagram es anbietet (in der EU), öffnet Entdecken jedes Mal mit dem nicht personalisierten Raster und bleibt auch nach zehn Minuten dabei.
+Hide Explore's personalized menu	Personalisierungsmenü in Entdecken ausblenden
+Hides the top bar button that switches Explore's personalization, where Instagram shows it (in the EU).	Blendet die Schaltfläche in der oberen Leiste aus, die die Personalisierung von Entdecken umschaltet, wo Instagram sie zeigt (in der EU).
+# context: Feed settings: the Carousel arrows switch and the two arrow buttons' TalkBack labels (#417)
+Carousel arrows	Karussellpfeile
+Puts a back and a next arrow on a carousel post's photos and videos. Tap one to move a page without swiping.	Setzt einen Zurück- und einen Weiter-Pfeil auf die Fotos und Videos eines Karussellbeitrags. Tippe auf einen, um ohne Wischen eine Seite weiterzugehen.
+Previous page	Vorherige Seite
+Next page	Nächste Seite
+# context: Feed settings: the Page dots on a pill switch, right under Carousel arrows (#419). A pill is a small bar with round ends that holds the dots.
+Page dots on a pill	Seitenpunkte in einer Kapsel
+Moves a carousel post's page dots onto a round pill at the bottom of its photo or video, with the page you're on in blue.	Verschiebt die Seitenpunkte eines Karussellbeitrags in eine runde Kapsel unten auf dem Foto oder Video. Die Seite, auf der du bist, ist blau.
+# context: Feed settings: the Ambient light switch and its Glow spread and Glow speed lists (#416)
+Ambient light	Umgebungslicht
+Puts a soft glow in a post's own colors around its photo or video, and in the bands around a reel that doesn't fill the screen. The glow follows a video as it plays.	Legt ein weiches Leuchten in den Farben eines Beitrags um sein Foto oder Video und in die Streifen um ein Reel, das den Bildschirm nicht füllt. Das Leuchten folgt einem Video, während es läuft.
+Glow spread	Reichweite des Leuchtens
+Glow speed	Tempo des Leuchtens
+Narrow	Schmal
+Medium	Mittel
+Wide	Breit
+Slow	Langsam
+Fast	Schnell
+# context: Reels settings: a switch for a Lens icon beside each reel that opens Google Lens on the reel to copy its text (#303)
+Copy text button on reels	„Text kopieren“-Button bei Reels
+Puts a Lens icon beside a reel. Tap it and Google Lens opens on what's showing, so you can select and copy its text.	Setzt ein Lens-Symbol neben ein Reel. Tippst du darauf, öffnet sich Google Lens mit dem, was gerade zu sehen ist, und du kannst den Text markieren und kopieren.
+# context: Stories settings: the same Lens button, in the story header beside the three dots (#303)
+Copy text button on stories	„Text kopieren“-Button bei Stories
+Puts a Lens icon at the top of a story, beside the three dots. Tap it and Google Lens opens on what's showing, so you can select and copy its text.	Setzt oben in einer Story neben die drei Punkte ein Lens-Symbol. Tippst du darauf, öffnet sich Google Lens mit dem, was gerade zu sehen ist, und du kannst den Text markieren und kopieren.
+# context: the spoken label of that Lens icon, for screen readers
+Copy text	Text kopieren
+# context: title of the share sheet offered when Google Lens isn't installed; the apps listed below it read the picture's text
+Copy text with	Text kopieren mit
+# context: toast, under two lines of about 28 characters: the screen picture for Lens couldn't be made
+Couldn't copy this screen	Bildschirm nicht kopierbar
+# context: toast, under two lines of about 28 characters: no installed app takes a picture to read its text
+No app here can read text	Keine App kann hier Text lesen
+# context: Ads and privacy settings: switch that sends only Instagram's traffic through a proxy server the person sets (#219)
+App-only proxy	Proxy nur für die App
+# context: summary under that switch
+Sends Instagram through the HTTP proxy set below. Other apps and your phone's own settings aren't changed.	Leitet Instagram über den unten festgelegten HTTP-Proxy. Andere Apps und die Einstellungen deines Handys bleiben unverändert.
+# context: title of the row and its dialog where the proxy server is typed
+Proxy server	Proxyserver
+# context: that dialog's message; keep the example address as it is
+An HTTP proxy's address and port, with a colon between them, like 192.168.1.10:8080. Proxies that need a password, and SOCKS proxies, don't work here. Instagram needs a restart to use it.	Adresse und Port eines HTTP-Proxys mit einem Doppelpunkt dazwischen, z. B. 192.168.1.10:8080. Proxys mit Passwort und SOCKS-Proxys funktionieren hier nicht. Instagram muss neu starten, um ihn zu nutzen.
+# context: toast and field error, under two lines of about 28 characters: what was typed isn't host:port; keep the example address
+That isn't a proxy server. Try 10.0.0.2:8080.	Kein Proxyserver. Probier 10.0.0.2:8080.
+# context: the server row's summary while it's blank
+No server set. Until there is one, Instagram goes out directly.	Kein Server festgelegt. Bis es einen gibt, verbindet sich Instagram direkt.
+# context: the server row's summary; %1$s is the server as host:port
+Instagram goes through %1$s.	Instagram verbindet sich über %1$s.
+# context: Stories settings: switch that slows the zoom a story opens with from the stories row and takes out its bounce (#409)
+Smooth story opening	Stories sanft öffnen
+# context: summary under that switch
+A story you tap in the stories row opens with a slower zoom that doesn't bounce, and closes the same way.	Eine Story, die du in der Story-Leiste antippst, öffnet sich mit einem langsameren Zoom ohne Nachfedern und schließt sich genauso.
+Emoji pack	Emoji-Paket
+Your phone's emoji	Emojis deines Handys
+An emoji font file	Eine Emoji-Schriftdatei
+Your phone's emoji, or Google's with the switch above on. You can also download a free emoji pack or pick a color emoji font file.	Die Emojis deines Handys, oder die von Google, wenn der Schalter oben an ist. Du kannst auch ein kostenloses Emoji-Paket herunterladen oder eine Farb-Emoji-Schriftdatei wählen.
+Emoji draw as %1$s, downloaded from its maker. Restart Instagram to see a change.	Emojis erscheinen als %1$s, heruntergeladen vom Hersteller. Starte Instagram neu, um eine Änderung zu sehen.
+Emoji draw from the emoji font file you picked. Pick it again to change the file. Restart Instagram to see a change.	Emojis kommen aus der Emoji-Schriftdatei, die du gewählt hast. Wähle die Option erneut, um die Datei zu wechseln. Starte Instagram neu, um eine Änderung zu sehen.
+Downloading the emoji...	Emojis werden heruntergeladen...
+Couldn't download the emoji. Try again.	Download fehlgeschlagen. Versuch es erneut.
+Emoji saved. Restart Instagram to see them.	Emojis gespeichert. Starte Instagram neu.
+No color emoji in that file. Nothing changed.	Keine Farb-Emojis in der Datei. Nichts geändert.
+Couldn't load your emoji, so the phone's show.	Emojis nicht geladen. Du siehst die des Handys.
+# context: Stories settings: the Ambient light in stories switch (#420)
+Ambient light in stories	Umgebungslicht in Stories
+Fills the bands above and below a story that doesn't fill the screen with a soft glow in its own colors. Glow spread and Glow speed, under Feed, set it too.	Füllt die Streifen über und unter einer Story, die den Bildschirm nicht ausfüllt, mit einem weichen Leuchten in ihren eigenen Farben. Reichweite des Leuchtens und Tempo des Leuchtens unter Feed gelten auch dafür.
+# context: Ads and privacy settings: switch that keeps Instagram's screens asking to sync contacts and to turn on location services from opening at each start (#295, #329, #421)
+Skip the contacts and location popups	Kontakt- und Standort-Pop-ups überspringen
+# context: summary under that switch
+The screens asking you to sync your contacts and turn on location services stop opening each time Instagram starts. Nothing else is skipped.	Die Bildschirme, die dich bitten, deine Kontakte zu synchronisieren und die Standortdienste einzuschalten, öffnen sich nicht mehr bei jedem Start von Instagram. Sonst wird nichts übersprungen.
+# context: Playback settings: switch that stops feed videos and reels from playing again from the start when they end (#248, #175)
+Stop videos looping	Videos nicht wiederholen
+# context: summary under that switch; auto scroll is Instagram's own Reels setting, worded as in Keep auto scroll on
+Feed videos and reels stop at their last frame instead of playing again. Reels still loop while auto scroll is on, so it can move on.	Videos im Feed und Reels bleiben am letzten Bild stehen, statt noch einmal abzuspielen. Reels laufen weiter in Schleife, solange das automatische Scrollen an ist, damit es weitergehen kann.

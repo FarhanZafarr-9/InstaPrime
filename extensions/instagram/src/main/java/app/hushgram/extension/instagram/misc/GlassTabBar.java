@@ -222,6 +222,33 @@ public final class GlassTabBar {
         return false;
     }
 
+    /**
+     * The slot kept under a Reels viewer for a pill [pill] tall, its lift included ({@link #reelsMargin}). A
+     * pill the Reels auto-hide ({@link GlassReelsHide}) has slid all the way off, [slidOff], gives its own
+     * height to the reel, since the slot kept under it was a black band where the pill had been (#335). The
+     * navigation bar's room under it stays, so the seek bar is still clear of the gesture handle (#221). The
+     * pill's height comes back as it starts to return.
+     */
+    static int reelsSlot(int pill, boolean slidOff) {
+        return reelsMargin(slidOff ? 0 : pill);
+    }
+
+    /**
+     * The bottom margin a Reels viewer gets: the pill's [slot] while the slot is kept ([keep]), unless the
+     * reel is to run behind the pill ([behind], #372), when it gets none and the viewer fills the screen.
+     */
+    static int reelsViewerMargin(boolean keep, boolean behind, int slot) {
+        return keep && !behind ? slot : 0;
+    }
+
+    /**
+     * How far a reel's caption, buttons and seek bar are raised so nothing touchable sits under the pill
+     * when the reel runs behind it: the slot, while the slot is kept. Otherwise 0 (#372).
+     */
+    static int reelsBandLift(boolean keep, boolean behind, int slot) {
+        return keep && behind ? Math.max(0, slot) : 0;
+    }
+
     private static int liftReels(View view, View bar, int id, int wanted, java.util.Map<View, Integer> given,
             @Nullable java.util.Collection<View> seen, int depth) {
         if (view == bar || depth > 60) return 0;
@@ -437,7 +464,7 @@ public final class GlassTabBar {
      * drawn a second time, into the glass, has its picture moved there (#136): the video dropped to the
      * bottom of the screen, under the bar, and left black where it played.
      */
-    static boolean surfacePaths(ViewGroup parent, int count, java.util.Set<View> into) {
+    public static boolean surfacePaths(ViewGroup parent, int count, java.util.Set<View> into) {
         into.clear();
         boolean found = false;
         for (int i = 0; i < count; i++) found |= findSurfaces(parent.getChildAt(i), into, 0);
@@ -502,7 +529,7 @@ public final class GlassTabBar {
      * place is cleared, the way the SurfaceView clears its hole in the window, and the pill shows the video
      * through its tint. Before, the backgrounds round the video drew there, black on a feed post (#144).
      */
-    static void drawLeavingOutSurfaces(Canvas canvas, View view, java.util.Set<View> paths, int depth) {
+    public static void drawLeavingOutSurfaces(Canvas canvas, View view, java.util.Set<View> paths, int depth) {
         drawLeavingOutSurfaces(canvas, view, paths, java.util.Collections.emptySet(), null, depth);
     }
 
@@ -594,7 +621,8 @@ public final class GlassTabBar {
      * and the bottom of that height.
      */
     static final int FIT_GAP_DP = 1;
-    static final int BLUR_DP = 18;
+    /** The blur radius the glass has always drawn, and where its slider starts (#391). */
+    public static final int BLUR_DP = 18;
     /** The selected tab's capsule sits 4dp in from the pill's top and bottom and stands 4dp past its slot. */
     static final int HIGHLIGHT_INSET_DP = 4;
     static final int HIGHLIGHT_GROW_DP = 4;
@@ -621,7 +649,7 @@ public final class GlassTabBar {
      * at 90, and each recording makes the GPU render the blur layer again for that frame: on a phone at 90 Hz
      * recording every frame doubled the GPU's busy time.
      */
-    static final long RECORD_EVERY_MS = 33;
+    public static final long RECORD_EVERY_MS = 33;
     /** Blur recordings that may fail in a row before the blur rests ({@link BlurTries}, #262). */
     static final int BLUR_TRIES = 3;
     /** How long the blur rests on the plain tint after {@link #BLUR_TRIES} failed recordings in a row. */
@@ -976,7 +1004,7 @@ public final class GlassTabBar {
     }
 
     /** Whether a colour is dark enough that a lighter tint reads against it. */
-    static boolean isDark(int color) {
+    public static boolean isDark(int color) {
         double luminance = 0.2126 * Color.red(color) + 0.7152 * Color.green(color) + 0.0722 * Color.blue(color);
         return luminance < 128;
     }
@@ -995,13 +1023,12 @@ public final class GlassTabBar {
      * solid and a dark one is lifted a little so the pill still shows against the bar.
      */
     static int tint(int base, boolean blurred) {
-        return tint(base, blurred, GlassOpacity.STANDARD);
+        return tint(base, blurred, 1f);
     }
 
-    /** {@link #tint(int, boolean)} with the strength of the fill scaled by the opacity step chosen. */
-    static int tint(int base, boolean blurred, GlassOpacity opacity) {
+    /** {@link #tint(int, boolean)} with the strength of the fill scaled by [scale], the opacity slider's share. */
+    public static int tint(int base, boolean blurred, float scale) {
         boolean dark = isDark(base);
-        float scale = opacity == null ? 1f : opacity.scale;
         if (blurred) return (base & 0x00ffffff) | (scaledAlpha(dark ? 0x70 : 0xa6, scale) << 24);
         int solid = dark ? blend(base, Color.WHITE, 0.10f) : base;
         return (solid & 0x00ffffff) | (scaledAlpha(0xe6, scale) << 24);
@@ -1009,6 +1036,11 @@ public final class GlassTabBar {
 
     static int scaledAlpha(int alpha, float scale) {
         return Math.max(0, Math.min(255, Math.round(alpha * scale)));
+    }
+
+    /** The opacity slider as a share of the standard tint, read as the pill draws so a move shows at once (#391). */
+    public static float opacityScale() {
+        return Settings.GLASS_TAB_BAR_OPACITY.get() / 100f;
     }
 
     /** The shortest a compact pill is drawn, so the icons, the capsule round the selected one and badges fit. */
@@ -1227,11 +1259,8 @@ public final class GlassTabBar {
         private final ViewGroup bar;
         private final float density;
         private final boolean blurWanted;
-        /** How strongly the glass blurs what's behind it (#289). */
-        private final GlassBlur blurStrength;
         private final boolean haptics;
         private final HapticStyle hapticStyle;
-        private final GlassOpacity opacity;
         private final GlassHeight height;
         /** How round the pill and its highlight are, outside the liquid look (#144). */
         private final GlassCorners corners;
@@ -1298,6 +1327,8 @@ public final class GlassTabBar {
         private long reelsLookedAt = Long.MIN_VALUE / 2;
         /** The margin the last look gave the Reels viewers, or -1 before the first. */
         private int reelsWanted = -1;
+        /** How far the last look raised each reel's caption, buttons and seek bar for a reel run behind the pill (#372). */
+        private int reelsBandLift;
         /** Every Reels viewer the last look met. */
         private final java.util.Set<View> viewers = java.util.Collections.newSetFromMap(new WeakHashMap<>());
         /** The views raised over a reel to clear the pill (#221), each with the translation it was given. */
@@ -1333,6 +1364,8 @@ public final class GlassTabBar {
         private final Rect reelsRect = new Rect();
         /** The liquid look (#65): a round pill and highlight, Search in a circle of its own, and the compact row on a scroll. */
         private final boolean liquid;
+        /** Whether the liquid pill's rim bends what's behind it (#369). */
+        private final boolean refract;
         /** How far the liquid bar has shrunk to its compact row: 0 is the whole bar, 1 the tab you're on and Search. */
         private float compact;
         @Nullable private ValueAnimator compacting;
@@ -1356,13 +1389,12 @@ public final class GlassTabBar {
             this.floating = Settings.GLASS_TAB_BAR_FLOAT.get();
             this.haptics = Settings.GLASS_TAB_BAR_HAPTICS.get();
             this.hapticStyle = Settings.GLASS_TAB_BAR_HAPTIC_STYLE.get();
-            this.opacity = Settings.GLASS_TAB_BAR_OPACITY.get();
             this.height = Settings.GLASS_TAB_BAR_HEIGHT.get();
             this.corners = Settings.GLASS_TAB_BAR_CORNERS.get();
-            this.blurStrength = Settings.GLASS_TAB_BAR_BLUR_STRENGTH.get();
             this.lift = liftPx(Settings.GLASS_TAB_BAR_LIFT.get(), floating, density);
             this.room = lift;
             this.liquid = Settings.GLASS_TAB_BAR_LIQUID.get();
+            this.refract = liquid && Settings.GLASS_TAB_BAR_REFRACT.get();
             boolean hideOnScroll = Settings.GLASS_TAB_BAR_HIDE_ON_SCROLL.get();
             // The liquid look shrinks the bar as a list scrolls down, unless a scroll is to take it away altogether
             // or the pill is to keep its full size (#256).
@@ -1862,15 +1894,21 @@ public final class GlassTabBar {
          * {@link #REELS_LOOK_MS}, and at once when the margin they want changes, so a viewer is never left
          * a frame at a size Instagram's own layout just gave it. Where Instagram hides the bar outside the
          * Reels tab, as over a reel opened from a feed post, the viewers get Instagram's 0 back
-         * ({@link #reelsKeepTheSlot}, #347).
+         * ({@link #reelsKeepTheSlot}, #347). Where an auto-hide has the pill all the way off, the reel runs
+         * down to the gesture handle while the pill is away ({@link #reelsSlot}, #335).
          */
         private void keepReelsAboveTheSlot(View holder, long now) {
             if (originalBarHeight <= 0) return;
-            int wanted = reelsKeepTheSlot(bar, id(holder.getContext(), REELS_TAB))
-                    ? reelsMargin(barHeightPx(height, originalBarHeight, density) + lift) : 0;
-            if (wanted == reelsWanted && now - reelsLookedAt < REELS_LOOK_MS) return;
+            boolean keep = reelsKeepTheSlot(bar, id(holder.getContext(), REELS_TAB));
+            int slot = reelsSlot(barHeightPx(height, originalBarHeight, density) + lift,
+                    scrollHide != null && scrollHide.isOffScreen());
+            boolean behind = Settings.GLASS_TAB_BAR_REELS_BEHIND.get();
+            int wanted = reelsViewerMargin(keep, behind, slot);
+            int bandLift = reelsBandLift(keep, behind, slot);
+            if (wanted == reelsWanted && bandLift == reelsBandLift && now - reelsLookedAt < REELS_LOOK_MS) return;
             reelsLookedAt = now;
             reelsWanted = wanted;
+            reelsBandLift = bandLift;
             viewers.clear();
             if (reelsAboveTheBar(holder, bar, id(holder.getContext(), REELS_ROOT), wanted, lifted, viewers) > 0) {
                 reelsMoved = true;
@@ -1905,6 +1943,7 @@ public final class GlassTabBar {
                 reelAnchors(viewer, info, scrubber, footers, anchors, footerViews, 0);
                 int footer = 0;
                 for (View view : footerViews) footer += overlapFooter(view);
+                footer += reelsBandLift;
                 for (View anchor : anchors) {
                     View band = bands.get(anchor);
                     if (band == null || !holds(band, anchor)) {
@@ -2231,6 +2270,8 @@ public final class GlassTabBar {
             private float nodeLeft, nodeTop;
             private int nodeWidth = -1;
             private int nodeHeight = -1;
+            /** The blur slider's dp the node's effect was made for (#391). */
+            private int nodeBlurDp = -1;
             private boolean drawingBackdrop;
             private float sheenTop = Float.NaN;
             private float sheenBottom = Float.NaN;
@@ -2243,6 +2284,8 @@ public final class GlassTabBar {
             /** Whether the blurred backdrop was drawn into the pill this frame, which the bubble's lens needs. */
             private boolean blurShown;
             @Nullable private GlassLens lens;
+            /** The rims of the liquid pill and of Search's circle (#369), a render node each, as both draw in one frame. */
+            @Nullable private GlassLens rimLens, circleRim;
             private final Paint bubbleSheen = new Paint(Paint.ANTI_ALIAS_FLAG);
             private final Paint bubbleRim = new Paint(Paint.ANTI_ALIAS_FLAG);
             private final Matrix bubbleMatrix = new Matrix();
@@ -2292,7 +2335,7 @@ public final class GlassTabBar {
                 // Light glass has nothing under it to stand out against, so it gets a soft shadow.
                 if (!dark) shadow(canvas, rect, radius);
                 boolean blurred = blurWanted && !tries.resting(SystemClock.uptimeMillis()) && drawBackdrop(canvas);
-                fill.setColor(tint(base, blurred, opacity));
+                fill.setColor(tint(base, blurred, opacityScale()));
                 canvas.drawRoundRect(rect, radius, radius, fill);
 
                 keepSheen(dark);
@@ -2334,7 +2377,8 @@ public final class GlassTabBar {
                     canvas.restoreToCount(saved);
                 }
                 blurShown = blurred;
-                fill.setColor(tint(base, blurred, opacity));
+                if (blurred && refract) paintRims(canvas, apart);
+                fill.setColor(tint(base, blurred, opacityScale()));
                 canvas.drawPath(shapes, fill);
                 keepSheen(dark);
                 canvas.drawPath(shapes, sheen);
@@ -2465,9 +2509,33 @@ public final class GlassTabBar {
                     lens = made;
                 }
                 if (made.paint(canvas, node, nodeLeft, nodeTop, DOWNSAMPLE, bar.getWidth(), bar.getHeight(), capsule, corner)) {
-                    fill.setColor(tint(base, true, opacity));
+                    fill.setColor(tint(base, true, opacityScale()));
                     canvas.drawRoundRect(capsule, corner, corner, fill);
                 }
+            }
+
+            /**
+             * Bend light at the edges (#369): on Android 13 and newer, over the blurred backdrop already in the
+             * pill, the band at the rim of the pill, and of Search's circle when it stands [apart], mirrored the
+             * way the edge of glass bends what's behind it. The pill's tint goes over it with the rest.
+             */
+            private void paintRims(Canvas canvas, boolean apart) {
+                if (!GlassLens.supported()) return;
+                GlassLens pillRim = rimLens;
+                if (pillRim == null) {
+                    pillRim = new GlassLens(true);
+                    rimLens = pillRim;
+                }
+                pillRim.paint(canvas, node, nodeLeft, nodeTop, DOWNSAMPLE, bar.getWidth(), bar.getHeight(), shrunk,
+                        shrunk.height() / 2f);
+                if (!apart) return;
+                GlassLens searchRim = circleRim;
+                if (searchRim == null) {
+                    searchRim = new GlassLens(true);
+                    circleRim = searchRim;
+                }
+                searchRim.paint(canvas, node, nodeLeft, nodeTop, DOWNSAMPLE, bar.getWidth(), bar.getHeight(), circle,
+                        circle.height() / 2f);
             }
 
             /**
@@ -2578,6 +2646,8 @@ public final class GlassTabBar {
                 recorded = false;
                 if (backdrop != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) backdrop.discardDisplayList();
                 if (lens != null) lens.discard();
+                if (rimLens != null) rimLens.discard();
+                if (circleRim != null) circleRim.discard();
                 leftOut.clear();
                 surfaces.clear();
                 skipped.clear();
@@ -2699,7 +2769,9 @@ public final class GlassTabBar {
                 drawingBackdrop = true;
                 try {
                     float scale = 1f / DOWNSAMPLE;
-                    float pad = GlassBlur.radiusPx(blurStrength, density);
+                    // The blur slider is read each recording, so a move shows on the next frame (#391).
+                    int blurDp = Settings.GLASS_TAB_BAR_BLUR_RADIUS.get();
+                    float pad = GlassBlur.radiusPx(blurDp, density);
                     float radius = cornerPx(corners, false, area.height(), density);
                     float wide = area.width() + 2 * pad;
                     float tall = area.height() + 2 * pad;
@@ -2709,16 +2781,22 @@ public final class GlassTabBar {
                     if (backdrop == null) {
                         backdrop = new RenderNode("hushgram-glass");
                         backdrop.setClipToOutline(true);
-                        float blur = GlassBlur.effectRadius(blurStrength, density, scale);
+                        node = backdrop;
+                        nodeBlurDp = -1;
+                    }
+                    boolean newBlur = blurDp != nodeBlurDp;
+                    if (newBlur) {
+                        float blur = GlassBlur.effectRadius(blurDp, density, scale);
                         ColorMatrix saturate = new ColorMatrix();
                         saturate.setSaturation(1.5f);
                         ColorFilter colour = new ColorMatrixColorFilter(saturate);
                         backdrop.setRenderEffect(RenderEffect.createChainEffect(
                                 RenderEffect.createColorFilterEffect(colour),
                                 RenderEffect.createBlurEffect(blur, blur, Shader.TileMode.CLAMP)));
-                        node = backdrop;
+                        nodeBlurDp = blurDp;
                     }
-                    if (width != nodeWidth || height != nodeHeight) {
+                    // The outline sits the blur's reach inside the node, so a new radius moves it too.
+                    if (newBlur || width != nodeWidth || height != nodeHeight) {
                         backdrop.setPosition(0, 0, width, height);
                         Outline outline = new Outline();
                         float inner = pad * scale;
@@ -2795,12 +2873,12 @@ public final class GlassTabBar {
      * frame, and then tries again. Before, one failure turned the blur off for as long as the bar lived.
      * Main thread.
      */
-    static final class BlurTries {
+    public static final class BlurTries {
         private int failedInARow;
         private long restUntil = Long.MIN_VALUE;
 
         /** Whether the blur rests at [now], drawing the plain tint and recording nothing. */
-        boolean resting(long now) {
+        public boolean resting(long now) {
             return now < restUntil;
         }
 
@@ -2809,7 +2887,7 @@ public final class GlassTabBar {
         }
 
         /** A recording failed at [now]. Says whether that was one too many in a row and the blur rests. */
-        boolean failed(long now) {
+        public boolean failed(long now) {
             if (++failedInARow < BLUR_TRIES) return false;
             failedInARow = 0;
             restUntil = now + BLUR_REST_MS;
@@ -2817,7 +2895,7 @@ public final class GlassTabBar {
         }
 
         /** A recording worked, so the count of failures starts over. */
-        void worked() {
+        public void worked() {
             failedInARow = 0;
         }
     }

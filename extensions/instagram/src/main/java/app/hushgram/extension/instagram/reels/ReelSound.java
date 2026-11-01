@@ -28,6 +28,18 @@ import app.hushgram.extension.shared.diagnostics.HookStatus;
  * the speaker icon does. The Reels tab, profiles, chats and Explore keep Instagram's own choice. The
  * phone's ringer and volume still count, as they do for stories.
  *
+ * <p>With Start reels muted on, every viewer gets a yes from any source, and {@link #opened(Object, int)}
+ * answers 0, so the patch sets the state to off instead. Nothing is put back; the speaker icon and the
+ * volume keys unmute as usual. It wins over Start reels with sound.
+ *
+ * <p>Instagram also changes the state by itself. As the app comes to the front for the first time
+ * since it started, or after ten minutes away, it clears the state back to its defaults, which play
+ * with sound; and as a reel opens with the app just opened, it turns the sound on. Both came right
+ * after a reel opened from a link or a notification was set muted, so that reel played with sound
+ * (#342). While Start reels muted is on, {@link #letsReset(Boolean, Boolean)} keeps an off state
+ * through the clear and {@link #letsSoundOn(int)} holds those two turn-ons back. The speaker icon and
+ * the volume keys take other calls and still unmute.
+ *
  * <p>When the patch turned the sound on from off, the viewer's pause puts it back to off, so Home is
  * muted again on the way back, and its resume turns it on again for the reel. A reel you mute
  * yourself stays muted.
@@ -36,11 +48,23 @@ public final class ReelSound {
     /** What {@link HookStatus} counts: a reel opened from Home with the sound turned on. */
     static final String STARTED = "reels started with sound";
 
+    /** What {@link HookStatus} counts: a reel opened with the sound turned off by Start reels muted. */
+    static final String STARTED_MUTED = "reels started muted";
+
     /** What {@link HookStatus} counts: the sound put back to off as a reel opened from Home was left. */
     static final String RESTORED = "reel sound put back to off";
 
+    /** What {@link HookStatus} counts: Instagram's clear of a muted state as the app came back, kept muted. */
+    static final String KEPT_MUTED = "reel mute kept as the app came back";
+
+    /** What {@link HookStatus} counts: Instagram turning the sound on by itself, held back. */
+    static final String HELD_OFF = "reel sound turn-on held back";
+
     /** The hook's name in a failure report. */
     static final String VIEWER = "reels viewer";
+
+    /** The name of the hooks on Instagram's own changes to the state in a failure report. */
+    static final String APP_OPEN = "sound as the app opens";
 
     /** The start of every source name for a viewer opened from a post on Home, as Instagram 452 names them. */
     static final String FROM_HOME = "FEED_TIMELINE";
@@ -50,6 +74,9 @@ public final class ReelSound {
      * pause has put the sound back to off. A viewer is a Fragment, whose equals is identity.
      */
     private static final Map<Object, Boolean> turnedOn = new WeakHashMap<>();
+
+    /** Every viewer told to start muted, until {@link #opened(Object, int)} answers for it. */
+    private static final Map<Object, Boolean> startedMuted = new WeakHashMap<>();
 
     private ReelSound() {
     }
@@ -61,7 +88,7 @@ public final class ReelSound {
     public static int wanted() {
         try {
             HookStatus.invoked(FamilyNames.REEL_SOUND);
-            return Utils.settingsReady() && Settings.START_REELS_WITH_SOUND.get() ? 1 : 0;
+            return Utils.settingsReady() && (Settings.START_REELS_WITH_SOUND.get() || Settings.START_REELS_MUTED.get()) ? 1 : 0;
         } catch (Throwable failure) {
             HookStatus.threw(FamilyNames.REEL_SOUND, VIEWER, failure);
             return 0;
@@ -76,7 +103,15 @@ public final class ReelSound {
      */
     public static int startWithSound(Object viewer, Object source) {
         try {
-            if (viewer == null || !(source instanceof Enum)) return 0;
+            if (viewer == null) return 0;
+            if (Utils.settingsReady() && Settings.START_REELS_MUTED.get()) {
+                synchronized (ReelSound.class) {
+                    startedMuted.put(viewer, Boolean.TRUE);
+                }
+                HookStatus.counted(FamilyNames.REEL_SOUND, STARTED_MUTED);
+                return 1;
+            }
+            if (!(source instanceof Enum)) return 0;
             String name = ((Enum<?>) source).name();
             Logger.printDebug(() -> "Reels viewer opened from " + name);
             if (!name.startsWith(FROM_HOME)) return 0;
@@ -91,17 +126,25 @@ public final class ReelSound {
 
     /**
      * Told, after a yes from {@link #startWithSound(Object, Object)} and before the sound is set
-     * on, whether the account's sound was on already. Only an off is worth putting back. Never throws.
+     * on, whether the account's sound was on already. Only an off is worth putting back. Answers the
+     * state to set: 1 for on, 0 for a viewer that {@link #startWithSound(Object, Object)} started
+     * muted, which is never put back. Never throws.
      */
-    public static void opened(Object viewer, int wasOn) {
+    public static int opened(Object viewer, int wasOn) {
         try {
-            if (viewer == null) return;
+            if (viewer == null) return 1;
             synchronized (ReelSound.class) {
+                if (startedMuted.remove(viewer) != null) {
+                    turnedOn.remove(viewer);
+                    return 0;
+                }
                 if (wasOn == 0) turnedOn.put(viewer, Boolean.FALSE);
                 else turnedOn.remove(viewer);
             }
+            return 1;
         } catch (Throwable failure) {
             HookStatus.threw(FamilyNames.REEL_SOUND, VIEWER, failure);
+            return 1;
         }
     }
 
@@ -170,10 +213,49 @@ public final class ReelSound {
         }
     }
 
+    /**
+     * Asked as Instagram, coming to the front, is about to change the account's sound from
+     * [current] to [next], which clears it to Instagram's defaults. 0 skips the change: the sound is
+     * off, the change would turn it anything but off, and Start reels muted is on. 1 lets it happen,
+     * as it does for anything that throws. Never throws.
+     */
+    public static int letsReset(Boolean current, Boolean next) {
+        try {
+            if (!Boolean.FALSE.equals(current) || Boolean.FALSE.equals(next) || !keepsMuted()) return 1;
+            HookStatus.counted(FamilyNames.REEL_SOUND, KEPT_MUTED);
+            return 0;
+        } catch (Throwable failure) {
+            HookStatus.threw(FamilyNames.REEL_SOUND, APP_OPEN, failure);
+            return 1;
+        }
+    }
+
+    /**
+     * Asked as Instagram is about to set the account's sound by itself, with the value, non-zero
+     * for on. 0 skips an on while Start reels muted is on. 1 lets it happen, as it does for an off
+     * and for anything that throws. Never throws.
+     */
+    public static int letsSoundOn(int on) {
+        try {
+            if (on == 0 || !keepsMuted()) return 1;
+            HookStatus.counted(FamilyNames.REEL_SOUND, HELD_OFF);
+            return 0;
+        } catch (Throwable failure) {
+            HookStatus.threw(FamilyNames.REEL_SOUND, APP_OPEN, failure);
+            return 1;
+        }
+    }
+
+    /** Whether Start reels muted is on. Off while paused or before the settings are read. */
+    private static boolean keepsMuted() {
+        return Utils.settingsReady() && Settings.START_REELS_MUTED.get();
+    }
+
     /** Forgets every viewer. For tests. */
     static void resetForTests() {
         synchronized (ReelSound.class) {
             turnedOn.clear();
+            startedMuted.clear();
         }
     }
 }

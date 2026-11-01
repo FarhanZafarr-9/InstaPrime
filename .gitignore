@@ -79,3 +79,6 @@ Roadmap_Blocked.md
 
 # One-off helper scripts never belong at the root
 /*.py
+
+# Local GitHub testing credentials
+.env.github-testing

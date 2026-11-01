@@ -281,7 +281,7 @@ public class L10nCatalogTest {
     @Test
     public void pluralRowsHaveToBelongToAnActualOtherForm() throws IOException {
         Set<String> others = quantityOthersInCode();
-        assertEquals("the source quantity scan must find each call", 9, others.size());
+        assertEquals("the source quantity scan must find each call", 11, others.size());
         assertTrue("notification counts have a quantity form", others.contains("%d notifications"));
         String other = others.iterator().next();
         assertTrue(reachableVariant(other + "|few", others));
@@ -521,7 +521,7 @@ public class L10nCatalogTest {
         throw new AssertionError("no repository root above " + new File("").getAbsolutePath());
     }
 
-    private static final byte CODE = 0;
+    static final byte CODE = 0;
     private static final byte COMMENT = 1;
     private static final byte LITERAL = 2;
     private static final byte WRAPPED = 3;

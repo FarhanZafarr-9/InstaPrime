@@ -11,9 +11,11 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceGroup;
+import android.widget.ListView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -87,7 +89,7 @@ public class AppIconSettingsTest {
         List<String> entries = new ArrayList<>();
         for (CharSequence entry : row.getEntries()) entries.add(entry.toString());
         assertEquals(Arrays.asList("Instagram's own", "HushGram", "Instagram on black", "Instagram on plum",
-                "Instagram in black on white"), entries);
+                "Instagram in black on white", "Hand-drawn Instagram"), entries);
         assertEquals(AppIconChoice.INSTAGRAM, Settings.APP_ICON.get());
         assertEquals("INSTAGRAM", row.getValue());
         assertTrue(row.getSummary().toString(), row.getSummary().toString().startsWith("Instagram's own. "));
@@ -101,8 +103,27 @@ public class AppIconSettingsTest {
         ShadowLooper.idleMainLooper();
         assertEquals(AppIconChoice.LIGHT, Settings.APP_ICON.savedValue());
         assertTrue(row.getSummary().toString(), row.getSummary().toString().startsWith("Instagram in black on white. "));
+        row.setValue("SKETCH");
+        ShadowLooper.idleMainLooper();
+        assertEquals(AppIconChoice.SKETCH, Settings.APP_ICON.savedValue());
+        assertTrue(row.getSummary().toString(), row.getSummary().toString().startsWith("Hand-drawn Instagram. "));
 
         assertTrue(ConfigurationBackup.eligible().containsKey(Settings.APP_ICON.key));
+    }
+
+    /** Swapping in the icon list used to clear the list's checks, so no row showed the icon in use (#321). */
+    @Test public void theListOpensWithTheIconInUseChecked() throws Exception {
+        Settings.APP_ICON.save(AppIconChoice.PLUM);
+        open(EnumSet.of(PatchFamily.APP_ICON));
+        HushgramPreferenceFragment.AppIconRow row = (HushgramPreferenceFragment.AppIconRow)
+                page.getPreferenceScreen().findPreference(Settings.APP_ICON.key);
+        assertEquals("PLUM", row.getValue());
+        row.showDialog(null);
+        AlertDialog dialog = (AlertDialog) row.getDialog();
+        ListView list = dialog.getListView();
+        assertTrue(list.getAdapter() instanceof DialogChoices);
+        assertEquals(row.findIndexOfValue("PLUM"), list.getCheckedItemPosition());
+        dialog.dismiss();
     }
 
     @Test public void onlyItsOwnPatchBringsTheLayoutCategory() throws Exception {

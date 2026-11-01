@@ -98,6 +98,7 @@ public class DownloadSettingsTest {
         Settings.REEL_NOT_INTERESTED_BUTTON.resetToDefault();
         Settings.REEL_BLOCK_BUTTON.resetToDefault();
         Settings.HIDE_SOUND_REELS.resetToDefault();
+        Settings.TEXT_BUTTON_ON_REELS.resetToDefault();
         Settings.HIDDEN_SOUNDS.resetToDefault();
         Settings.HOLD_TO_DOWNLOAD.resetToDefault();
         Settings.HOLD_FINGERS.resetToDefault();
@@ -233,6 +234,35 @@ public class DownloadSettingsTest {
         }
     }
 
+    /**
+     * Copy text button on reels (#303) sits right after the Hidden sounds row under Reels. It starts
+     * off, has its own switch and goes in a settings file. A build without the reel download has none.
+     */
+    @Test
+    public void theCopyTextButtonSitsAfterHiddenSoundsWithItsOwnSwitch() {
+        PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.REEL_DOWNLOAD);
+        try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {
+            HushgramPreferenceFragment page = pageIn(controller);
+            PreferenceGroup reels = section(page.getPreferenceScreen(), "Reels");
+            Preference row = reels.findPreference(Settings.TEXT_BUTTON_ON_REELS.key);
+            assertTrue("the Copy text button isn't under Reels", row instanceof SwitchPreference);
+            assertEquals("Copy text button on reels", String.valueOf(row.getTitle()));
+            assertTrue(String.valueOf(row.getSummary()).contains("Google Lens"));
+            assertFalse("it starts off", ((SwitchPreference) row).isChecked());
+            List<Preference> rows = rowsOf(page);
+            assertEquals(indexOfKey(rows, HushgramPreferenceFragment.HIDDEN_SOUNDS_ROW) + 1, indexOfKey(rows, Settings.TEXT_BUTTON_ON_REELS.key));
+            ((SwitchPreference) page.findPreference(Settings.DOWNLOAD_REELS.key)).setChecked(false);
+            ShadowLooper.idleMainLooper();
+            assertTrue("it doesn't wait for Download on reels", row.isEnabled());
+            assertTrue(ConfigurationBackup.eligible().containsKey(Settings.TEXT_BUTTON_ON_REELS.key));
+        }
+        PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.VIDEO_DOWNLOAD);
+        try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {
+            assertEquals(-1, indexOfKey(rowsOf(pageIn(controller)), Settings.TEXT_BUTTON_ON_REELS.key));
+            assertFalse(ConfigurationBackup.eligible().containsKey(Settings.TEXT_BUTTON_ON_REELS.key));
+        }
+    }
+
     /** Hidden sounds lists each sound by title and artist, checked; unchecking one brings its reels back and checking it hides them again. */
     @Test
     public void hiddenSoundsListsEachSoundAndUncheckingOneBringsItsReelsBack() {
@@ -341,7 +371,6 @@ public class DownloadSettingsTest {
 
             int convert = indexOfKey(rows, Settings.DOWNLOAD_CONVERT.key);
             assertEquals("the convert switch isn't right under the compatible one", compatible + 1, convert);
-            assertEquals(indexOfKey(rows, Settings.DOWNLOAD_QUALITY.key) - 1, convert);
             Preference convertRow = rows.get(convert);
             assertTrue(convertRow instanceof SwitchPreference);
             assertFalse(((SwitchPreference) convertRow).isChecked());
@@ -349,6 +378,27 @@ public class DownloadSettingsTest {
             assertEquals("Saves videos other apps can open, at full size. A video Instagram only has as VP9 or AV1 "
                     + "is converted to H.264 on your phone instead of saved smaller. Slower, and videos over "
                     + "3 minutes stay smaller.", String.valueOf(convertRow.getSummary()));
+
+            int noAv1 = indexOfKey(rows, Settings.DOWNLOAD_NO_AV1.key);
+            assertEquals("the AV1 switch isn't right under the convert one (#379)", convert + 1, noAv1);
+            Preference noAv1Row = rows.get(noAv1);
+            assertTrue(noAv1Row instanceof SwitchPreference);
+            assertFalse(((SwitchPreference) noAv1Row).isChecked());
+            assertEquals("Never save AV1 video", String.valueOf(noAv1Row.getTitle()));
+            assertEquals("For phones that play AV1 badly. A video Instagram has at full size only as AV1 is saved "
+                    + "as VP9 when it has one, or at its largest H.264 size. Convert to keep the full size "
+                    + "then converts only VP9.", String.valueOf(noAv1Row.getSummary()));
+
+            int noHdr = indexOfKey(rows, Settings.DOWNLOAD_NO_HDR.key);
+            assertEquals("the HDR switch isn't right under the AV1 one (#352)", noAv1 + 1, noHdr);
+            assertEquals(indexOfKey(rows, Settings.DOWNLOAD_QUALITY.key) - 1, noHdr);
+            Preference noHdrRow = rows.get(noHdr);
+            assertTrue(noHdrRow instanceof SwitchPreference);
+            assertFalse(((SwitchPreference) noHdrRow).isChecked());
+            assertEquals("Never save HDR video", String.valueOf(noHdrRow.getTitle()));
+            assertEquals("For apps that show HDR with a yellow or green cast, such as Messenger. A video Instagram "
+                    + "has at full size only in HDR is saved at its largest standard size instead.",
+                    String.valueOf(noHdrRow.getSummary()));
         }
 
         PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.HIDE_ADS);
@@ -358,6 +408,10 @@ public class DownloadSettingsTest {
                     -1, indexOfKey(rows, Settings.DOWNLOAD_COMPATIBLE.key));
             assertEquals("a convert row with no download in the build",
                     -1, indexOfKey(rows, Settings.DOWNLOAD_CONVERT.key));
+            assertEquals("an AV1 row with no download in the build",
+                    -1, indexOfKey(rows, Settings.DOWNLOAD_NO_AV1.key));
+            assertEquals("an HDR row with no download in the build",
+                    -1, indexOfKey(rows, Settings.DOWNLOAD_NO_HDR.key));
         }
     }
 

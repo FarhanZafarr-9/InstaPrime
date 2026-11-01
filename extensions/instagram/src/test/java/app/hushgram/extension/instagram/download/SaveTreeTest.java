@@ -70,7 +70,7 @@ import app.hushgram.extension.shared.settings.preference.LogBufferManager;
  * grant goes.
  */
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 30)
+@Config(sdk = {30, 37})
 public class SaveTreeTest {
     @Rule public final SettingsContextRule settingsContext = new SettingsContextRule();
 
@@ -83,6 +83,7 @@ public class SaveTreeTest {
     @Before
     public void setUp() {
         context = RuntimeEnvironment.getApplication();
+        context.getApplicationInfo().targetSdkVersion = 37; // Instagram 453's target on every runtime.
         LogBufferManager.clearLogBuffer();
         ShadowToast.reset();
         SaveLeftovers.forgetSweepForTests();
@@ -216,12 +217,18 @@ public class SaveTreeTest {
                 tree.doc(unknown.publishedItem()).parent);
     }
 
+    /**
+     * One video saved twice at once. The template names it by its id alone, so both saves get one
+     * name whatever second each opens in: "clip" would put the time on the end, and two opens
+     * either side of a second's turn got different names and nothing to number.
+     */
     @Test
     public void twoSavesOfOneNameFinishingTogetherBothKeepTheirFile() throws IOException {
         assertTrue(SaveTree.keep(context, treeUri));
-        Settings.FILENAME_TEMPLATE.save("clip");
-        MediaStoreWriter first = new MediaStoreWriter(context, true);
-        MediaStoreWriter second = new MediaStoreWriter(context, true);
+        Settings.FILENAME_TEMPLATE.save("clip_" + FileNameTemplate.VIDEO_ID);
+        PostDetails video = PostDetails.of("3141");
+        MediaStoreWriter first = new MediaStoreWriter(context, true, video);
+        MediaStoreWriter second = new MediaStoreWriter(context, true, video);
         write(first.open("video/mp4"), bytes(100, '1'));
         write(second.open("video/mp4"), bytes(100, '2'));
         first.commit();

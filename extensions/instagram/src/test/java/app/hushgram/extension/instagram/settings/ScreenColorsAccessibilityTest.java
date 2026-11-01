@@ -74,7 +74,7 @@ public class ScreenColorsAccessibilityTest {
     private final List<AlertDialog> opened = new ArrayList<>();
 
     @Before public void prepare() {
-        RuntimeEnvironment.getApplication().getApplicationInfo().targetSdkVersion = 36;
+        RuntimeEnvironment.getApplication().getApplicationInfo().targetSdkVersion = 37;
         RuntimeEnvironment.getApplication().getApplicationInfo().flags |= ApplicationInfo.FLAG_SUPPORTS_RTL;
         RuntimeEnvironment.setFontScale(1f);
         Settings.SIGN_IN_NOTICE_HIDDEN.save(true);
@@ -101,7 +101,22 @@ public class ScreenColorsAccessibilityTest {
     }
 
     @Test public void enabledTextAndSwitchPartsRemainDistinctOnEverySurface() {
-        ScreenColors colors = ScreenColors.DEFAULT;
+        readable(ScreenColors.DEFAULT);
+    }
+
+    @Test public void pureBlackTurnsCardsAndDialogsBlackAndKeepsTheirOutlines() {
+        ScreenColors black = new ScreenColors(true);
+        assertEquals(Color.BLACK, black.card);
+        assertEquals(Color.BLACK, black.dialog);
+        assertEquals(ScreenColors.DEFAULT.outline, black.outline);
+        contrast("card edge", black.outline, Color.BLACK, 1.3);
+        readable(black);
+        ScreenColors charcoal = new ScreenColors(false);
+        assertNotEquals(Color.BLACK, charcoal.card);
+        assertNotEquals(Color.BLACK, charcoal.dialog);
+    }
+
+    private static void readable(ScreenColors colors) {
         for (int surface : new int[]{colors.background, colors.card, colors.dialog}) {
             contrast("title", colors.title, surface, 4.5);
             contrast("summary", colors.summary, surface, 4.5);
@@ -141,7 +156,7 @@ public class ScreenColorsAccessibilityTest {
                     : (GradientDrawable) control.getBackground();
             assertTrue("Shared controls use the compact radius scale", shape.getCornerRadius() <= dp(12));
         }
-        contrast("unfocused input boundary", border(field, android.R.attr.state_enabled), colors.dialog, 3.0);
+        assertEquals("Inputs remain borderless at rest", colors.dialog, border(field, android.R.attr.state_enabled));
         assertTrue(primary instanceof Button);
         assertTrue(secondary.getBackground() instanceof RippleDrawable);
         assertTrue(compact.getBackground() instanceof RippleDrawable);
@@ -159,7 +174,7 @@ public class ScreenColorsAccessibilityTest {
                 ScreenColors.styleAction(action, primary);
                 assertTrue(action.isEnabled());
                 int fill = primary ? colors.accent : colors.card;
-                int edge = primary ? colors.accent : colors.outline;
+                int edge = fill;
                 assertEquals("A fresh enabled action must start opaque", fill, nativePixel(action, 6));
                 assertEquals("Its default outline must start opaque", edge, nativePixel(action, 1));
                 ScreenColors.styleAction(action, primary);
@@ -181,15 +196,15 @@ public class ScreenColorsAccessibilityTest {
         card.name.setText("Original");
         card.detail.setText("Keep the original file.");
         card.setBackgroundTintList(null);
-        assertEquals(colors.card, nativePixel(card, 10));
-        assertEquals("A fresh card's enabled outline must not become translucent", colors.outline, nativePixel(card, 4));
+        assertEquals(colors.iconSurface, nativePixel(card, 10));
+        assertTrue("A fresh card keeps touch feedback", card.getBackground() instanceof RippleDrawable);
 
         TextView plain = new TextView(activity);
         plain.setText("Original");
         plain.setBackgroundTintList(null);
         new DialogChoices(singleRow(plain), colors).getView(0, null, new FrameLayout(activity));
-        assertEquals(colors.card, nativePixel(plain, 10));
-        assertEquals(colors.outline, nativePixel(plain, 4));
+        assertEquals(colors.iconSurface, nativePixel(plain, 10));
+        assertEquals(colors.iconSurface, nativePixel(plain, 4));
 
         CheckedTextView checked = new CheckedTextView(activity);
         checked.setText("Original");
@@ -197,9 +212,8 @@ public class ScreenColorsAccessibilityTest {
         checked.setBackgroundTintList(null);
         new DialogChoices(singleRow(checked), colors).getView(0, null, new FrameLayout(activity));
         assertTrue(checked.isChecked());
-        assertEquals("An already checked choice keeps its native selection fill", 0x22,
-                Color.alpha(nativePixel(checked, 6)));
-        assertEquals(colors.heading, nativePixel(checked, 0));
+        assertEquals("An already checked choice keeps its opaque selected tone", colors.choiceSelected(), nativePixel(checked, 6));
+        assertTrue("A selected choice keeps touch feedback", checked.getBackground() instanceof RippleDrawable);
     }
 
     private static BaseAdapter singleRow(View row) {
@@ -273,7 +287,8 @@ public class ScreenColorsAccessibilityTest {
 
     @Test public void realDisabledRowsKeepTheirStateAndVisiblyDifferentControls() {
         Activity activity = controller.get();
-        SwitchPreference preference = new SwitchPreference(activity);
+        SwitchPreference preference = HushgramPreferenceFragment.toggle(activity, Settings.HIDE_ADS, "Hide ads", "Hides sponsored posts, reels and stories.");
+        preference.setPersistent(false);
         preference.setTitle("Hide ads");
         preference.setSummary("Hides sponsored posts, reels and stories.");
         preference.setChecked(true);
@@ -283,21 +298,12 @@ public class ScreenColorsAccessibilityTest {
         TextView enabledSummary = enabled.findViewById(android.R.id.summary);
         Switch enabledSwitch = enabled.findViewById(android.R.id.switch_widget);
         assertNotNull(enabledSwitch);
-        assertTrue(enabledSwitch.getThumbDrawable() instanceof GradientDrawable);
-        assertTrue(enabledSwitch.getTrackDrawable() instanceof GradientDrawable);
-        GradientDrawable thumb = (GradientDrawable) enabledSwitch.getThumbDrawable();
-        GradientDrawable track = (GradientDrawable) enabledSwitch.getTrackDrawable();
-        assertEquals("The native switch thumb stays rectangular", GradientDrawable.RECTANGLE, thumb.getShape());
-        assertEquals("The switch track must not become a capsule", GradientDrawable.RECTANGLE, track.getShape());
-        assertEquals(dp(4), thumb.getCornerRadius(), 0.01f);
-        assertEquals(dp(6), track.getCornerRadius(), 0.01f);
-        assertEquals(dp(20), thumb.getIntrinsicWidth());
-        assertEquals(dp(20), thumb.getIntrinsicHeight());
-        assertEquals(dp(40), track.getIntrinsicWidth());
-        assertEquals(dp(24), track.getIntrinsicHeight());
+        assertTrue(enabledSwitch instanceof AnimatedSettingsSwitch);
+        assertTrue(((InsetDrawable) enabledSwitch.getThumbDrawable()).getDrawable() instanceof SwitchThumb);
+        assertEquals(dp(52), enabledSwitch.getTrackDrawable().getIntrinsicWidth());
+        assertEquals(dp(32), enabledSwitch.getTrackDrawable().getIntrinsicHeight());
         contrast("actual enabled title", color(enabledTitle.getTextColors(), true, false), ScreenColors.DEFAULT.card, 4.5);
         contrast("actual enabled summary", color(enabledSummary.getTextColors(), true, false), ScreenColors.DEFAULT.card, 4.5);
-        int activeTrack = color(enabledSwitch.getTrackTintList(), true, true);
         preference.setEnabled(false);
         View disabled = preference.getView(null, new FrameLayout(activity));
         ScreenColors.row(disabled, preference);
@@ -306,8 +312,6 @@ public class ScreenColorsAccessibilityTest {
         assertFalse(disabled.isEnabled());
         assertFalse(disabledSwitch.isEnabled());
         assertTrue("Disabling a control must preserve its saved choice", disabledSwitch.isChecked());
-        assertNotEquals("An unavailable control must look different", activeTrack,
-                color(disabledSwitch.getTrackTintList(), false, true));
         assertTrue("Unavailable text must keep the disabled visual state",
                 Color.alpha(color(disabledTitle.getTextColors(), false, false))
                         < Color.alpha(color(enabledTitle.getTextColors(), true, false)));

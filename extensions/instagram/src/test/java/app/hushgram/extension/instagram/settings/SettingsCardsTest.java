@@ -56,7 +56,7 @@ public class SettingsCardsTest {
     private HushgramPreferenceFragment page;
 
     @Before public void prepare() {
-        RuntimeEnvironment.getApplication().getApplicationInfo().targetSdkVersion = 36;
+        RuntimeEnvironment.getApplication().getApplicationInfo().targetSdkVersion = 37;
         BaseSettings.PAUSED.save(false);
         PauseForTests.resume();
         BaseSettings.SAFE_MODE.save(false);
@@ -69,6 +69,8 @@ public class SettingsCardsTest {
         PatchFamily.inBuildForTests = null;
         ScreenColors.shown = null;
         Settings.CATEGORY_PAGES.resetToDefault();
+        Settings.DESCRIPTIONS_BEHIND_INFO.resetToDefault();
+        DescriptionInfo.searching = false;
         Settings.SIGN_IN_NOTICE_HIDDEN.resetToDefault();
         Settings.START_ON_FOLLOWING.resetToDefault();
         Settings.ONLY_FOLLOWING.resetToDefault();
@@ -203,6 +205,26 @@ public class SettingsCardsTest {
         assertEquals(before, Settings.START_ON_FOLLOWING.savedValue());
         assertTrue(page.closeCategory());
         assertEquals(destination.parent.id, page.currentPage());
+    }
+
+    @Test public void descriptionInfoWorksWithPageNavigationAndSearch() throws Exception {
+        Settings.DESCRIPTIONS_BEHIND_INFO.save(true);
+        open(EnumSet.allOf(PatchFamily.class));
+        assertNotNull(page.findPreference(Settings.DESCRIPTIONS_BEHIND_INFO.key));
+        assertNull(page.findPreference(Settings.CATEGORY_PAGES.key));
+        tap(category("Ads and privacy").opener);
+        Preference setting = page.findPreference(Settings.HIDE_ADS.key);
+        View row = render(setting);
+        TextView title = row.findViewById(android.R.id.title);
+        assertTrue(title.getCompoundDrawablesRelative()[2] instanceof DescriptionInfo.Mark);
+        page.searchSettings("Hide ads");
+        assertTrue(DescriptionInfo.searching);
+        page.searchSettings("");
+        assertFalse(DescriptionInfo.searching);
+        assertSame(setting, page.getPreferenceScreen().findPreference(setting.getKey()));
+        row = render(setting);
+        title = row.findViewById(android.R.id.title);
+        assertTrue(title.getCompoundDrawablesRelative()[2] instanceof DescriptionInfo.Mark);
     }
 
     @Test public void backClearsSearchBeforeLeavingItsSourcePage() throws Exception {

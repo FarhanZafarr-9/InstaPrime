@@ -7,8 +7,12 @@
 package app.hushgram.extension.instagram.settings;
 
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.category;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.clearViewingHistory;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.mark;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.viewingHistoryRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.ghostTabRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.placeRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.proxyServerRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.sharingDomainRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.toggle;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.withCoverage;
@@ -41,8 +45,8 @@ final class PrivacyCategory {
         }
         if (build.contains(PatchFamily.HIDE_ADS)) {
             privacy.add(toggle(context, Settings.HIDE_ADS, L10n.t("Hide ads"),
-                    L10n.t("Hides sponsored posts, reels and stories. No empty gap is left where an ad would have "
-                            + "been.")));
+                    L10n.t("Hides sponsored posts, reels, stories and the ad in comments. No empty gap is left where an "
+                            + "ad would have been.")));
         }
         if (build.contains(PatchFamily.SANITIZE_SHARING_LINKS)) {
             privacy.add(toggle(context, Settings.SANITIZE_SHARING_LINKS, L10n.t("Sanitize sharing links"),
@@ -61,6 +65,37 @@ final class PrivacyCategory {
                     L10n.t("Tells Instagram your phone is at the place set below, for the location sticker, nearby "
                             + "places and maps. Photos keep their own places.")));
             privacy.add(placeRow(context));
+        }
+        if (build.contains(PatchFamily.APP_PROXY)) {
+            privacy.add(toggle(context, Settings.APP_PROXY, L10n.t("App-only proxy"),
+                    L10n.t("Sends Instagram through the HTTP proxy set below. Other apps and your phone's own "
+                            + "settings aren't changed.")));
+            privacy.add(proxyServerRow(context));
+        }
+        if (build.contains(PatchFamily.SETUP_POPUPS)) {
+            privacy.add(toggle(context, Settings.SKIP_SETUP_POPUPS, L10n.t("Skip the contacts and location popups"),
+                    L10n.t("The screens asking you to sync your contacts and turn on location services stop "
+                            + "opening each time Instagram starts. Nothing else is skipped.")));
+        }
+        if (build.contains(PatchFamily.VIDEO_DOWNLOAD)) {
+            privacy.add(toggle(context, Settings.VIEWING_HISTORY, L10n.t("Keep a viewing history"),
+                    L10n.t("Remembers the posts, reels, stories and profiles that come up on screen, newest first, "
+                            + "on this phone only. Nothing is sent anywhere, and nothing is read about other accounts. "
+                            + "Turn it off and it stops at once. Clear it below.")));
+            Preference history = viewingHistoryRow(context);
+            privacy.add(history);
+            HushgramPreferenceFragment.Row clear = new HushgramPreferenceFragment.Row(context);
+            clear.setKey(HushgramPreferenceFragment.CLEAR_VIEWING_HISTORY);
+            clear.setPersistent(false);
+            clear.actsAtOnce = true;
+            clear.setTitle(L10n.t("Clear viewing history"));
+            clear.setSummary(L10n.t("Forgets every post, reel, story and profile on the list, for all your accounts. "
+                    + "The switch stays as it is."));
+            clear.setOnPreferenceClickListener(p -> {
+                clearViewingHistory(p, history);
+                return true;
+            });
+            privacy.add(mark(clear, SettingsIcons.DELETE));
         }
         if (!privacy.isEmpty()) {
             PreferenceCategory section = category(screen, L10n.t("Ads and privacy"), SettingsIcons.PRIVACY,
