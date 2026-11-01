@@ -10,7 +10,7 @@ I made InstaPrime as a personal settings UI and branding rework of HushGram, the
   <a href="https://morphe.software/add-source?github=FarhanZafarr-9%2FInstaPrime"><img src="https://img.shields.io/badge/Add_InstaPrime_to_Morphe-FFFFFF?style=for-the-badge" alt="Add InstaPrime to Morphe"></a>
 </p>
 
-<p align="center"><a href="https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.17">Download InstaPrime v0.0.17</a></p>
+<p align="center"><a href="https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.18">Download InstaPrime v0.0.18</a></p>
 
 **The Instagram patches, their underlying functionality, research, compatibility work, and ongoing upstream maintenance are the work of SysAdminDoc and the upstream contributors. I do not claim credit for that work.**
 
@@ -18,7 +18,7 @@ My contribution is the settings interface rework and the InstaPrime name and ico
 
 I started this out of personal interest in interface design. It is not a critique of HushGram's original UI: everyone has their own preferences and likes different interfaces. I wanted to try a layout that suits mine, and I am sharing it for anyone who likes the same approach.
 
-My first release is InstaPrime v0.0.17, based on HushGram 0.0.17 with 123 patches. The link adds my source to Morphe; patch and install Instagram with that source to use my redesigned interface.
+InstaPrime v0.0.18 is based on HushGram 0.0.18 with 139 patches. The link adds my source to Morphe; patch and install Instagram with that source to use my redesigned interface.
 
 ## Updates and maintenance
 
@@ -31,7 +31,9 @@ If you need the latest available patches and compatibility updates promptly, ple
 I built on HushGram's existing settings and patch infrastructure, focusing on how its settings are presented and used:
 
 - **Category navigation:** the settings home shows category rows that open their own pages. Larger categories have another level of grouping, with a back action and restored scroll positions.
-- **Row layout:** borderless grouped rows, rounded corners, more horizontal padding, space below search and at the bottom, and fully readable descriptions. Ripples stay inside the visible row.
+- **Row layout:** borderless grouped rows, rounded corners, comfortable vertical and horizontal padding, space below search and at the bottom, and fully readable descriptions. Ripples stay inside the visible row. Enable all has a slightly taller row.
+- **Optional info buttons:** description-less mode puts descriptions behind a separate rounded info button before a switch or chevron. Row taps still toggle switches or open choices. Disabled rows keep their explanation visible.
+- **New-setting badges:** dots on the top-left of row icons and a subtle highlight identify unseen settings. Category and subcategory badges remain while any nested setting is unseen; visiting one subpage does not clear its siblings.
 - **Settings colors:** wallpaper-derived Material tones on Android 12 and newer, with fallback colors on older Android versions. This describes the settings interface; it does not add wallpaper-colored backgrounds throughout Instagram.
 - **Switches:** rounded tracks and circular thumbs, an on-state checkmark, animations that survive row replacement, and clearer disabled states. Temporarily unavailable options retain their saved choices.
 - **Dialogs:** rounded selection indicators, tonal backgrounds for selected and unselected choices, borderless text fields, vertically stacked full-width actions, and a redesigned restart notice.
@@ -73,9 +75,7 @@ The original screenshot files are kept in [docs/screenshots/settings](docs/scree
 
 ## Patches and compatibility
 
-The current development branch integrates HushGram **0.0.18**, whose catalog contains **139 patches** for Instagram. The published InstaPrime release linked above remains v0.0.17 until a new release is tested and published. Features such as ad hiding, privacy controls, downloads, playback controls, and tab bar customization are inherited from upstream.
-
-The targets below apply to the v0.0.18 development build. The published v0.0.17 download still targets Instagram `453.0.0.55.79`; use its release notes when installing that bundle.
+This release integrates HushGram **0.0.18**, whose catalog contains **139 patches** for Instagram. Features such as ad hiding, privacy controls, downloads, playback controls, and tab bar customization are inherited from upstream.
 
 | Item | Inherited compatibility target |
 | --- | --- |
@@ -90,7 +90,7 @@ The targets below apply to the v0.0.18 development build. The published v0.0.17 
 I inherited these compatibility targets from upstream; I have not independently repeated every upstream device test. See the [upstream guide](docs/upstream/README.md#supported-instagram-builds) and [upstream changelog](CHANGELOG.md) for the original feature and compatibility history. The changelog records HushGram's work; my changes are listed above.
 
 <details>
-<summary>Full development patch catalog (139 patches)</summary>
+<summary>Full patch catalog (139 patches)</summary>
 
 | Patch | Description | Selection |
 | --- | --- | --- |
@@ -244,7 +244,7 @@ I inherited these compatibility targets from upstream; I have not independently 
 4. Select a stock Instagram APK matching the version and build above, choose the patches you want, then patch and install.
 5. Open **InstaPrime** at the top of Instagram's **Settings and activity**, or long-press the Instagram logo on Home. Choose a category to open its settings.
 
-For a local source, download the `.mpp` from [my release](https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.17) and add it through **Sources → + → Local**. A `.mpp` is a patch bundle, not an Instagram APK.
+For a local source, download the `.mpp` from [my release](https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.18) and add it through **Sources → + → Local**. A `.mpp` is a patch bundle, not an Instagram APK.
 
 For a separate installation, select **Install next to Instagram**. I set the clone defaults to the label **InstaPrime** and package **`com.instagram.android.prime`**. Keep the same package name and signing key for subsequent updates.
 
@@ -273,7 +273,7 @@ I used these focused settings checks for the rework:
 ./gradlew :extensions:instagram:testDebugUnitTest --tests 'app.hushgram.extension.instagram.settings.SettingsCardsTest' --max-workers=1
 ```
 
-The previous v0.0.17 local run passed **44 settings tests** across Android API 28 and 37, including navigation, selection behavior, animation across row replacement, dependent options, and rendered disabled-switch contrast. The generated bundle also passed its integrity checks for 123 patches and all three non-empty DEX payloads. These checks do not replace testing a patched APK on your own device.
+For v0.0.18, **101 focused UI checks passed**, covering navigation, actual row and switch touch events, selectable settings, info buttons, new-setting badges and highlights, accessibility, and normal and double font sizes. The generated bundle passed its integrity checks for **139 patches and all three non-empty DEX payloads**. The inherited full fixture release gate and whole-app device walkthrough were not run for this fork release. These checks do not replace testing a patched APK on your own device.
 
 For the full upstream build workflow, fixture-based patch tests, and release checks, see the [upstream build guide](docs/upstream/README.md#building-from-source) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
