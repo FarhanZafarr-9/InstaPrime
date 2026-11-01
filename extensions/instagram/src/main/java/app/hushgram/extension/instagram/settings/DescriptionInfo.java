@@ -62,6 +62,10 @@ final class DescriptionInfo {
         }
         ScreenColors colors = ScreenColors.current();
         Mark mark = new Mark(colors.heading, dp(row, 18));
+        // Focusable children make ListView suppress its preference-row click.
+        // Keep the secondary action touch-clickable without taking list-item focus.
+        button.setFocusable(false);
+        button.setFocusableInTouchMode(false);
         button.setImageDrawable(mark);
         button.setScaleType(android.widget.ImageView.ScaleType.CENTER);
         button.setPadding(0, 0, 0, 0);

@@ -702,6 +702,7 @@ public final class ScreenColors {
         ScreenColors colors = shown;
         ScreenColors used = colors == null ? DEFAULT : colors;
         used.paintRow(row, preference);
+        DescriptionInfo.bind(row, preference.isEnabled() && preference.isSelectable() ? preference.getSummary() : null);
         NewRowDots.paint(row, preference, used.accent);
     }
 

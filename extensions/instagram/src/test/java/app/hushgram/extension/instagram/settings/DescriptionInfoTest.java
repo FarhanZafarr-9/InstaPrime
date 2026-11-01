@@ -137,4 +137,91 @@ public class DescriptionInfoTest {
     @Test public void choiceTravelsInBackup() {
         assertTrue(ConfigurationBackup.eligible().containsKey(Settings.DESCRIPTIONS_BEHIND_INFO.key));
     }
+
+    public static class TestPreferenceFragment extends android.preference.PreferenceFragment { }
+
+    private ListView attach(android.preference.Preference... rows) {
+        android.preference.PreferenceFragment fragment = new TestPreferenceFragment();
+        controller.get().getFragmentManager().beginTransaction()
+                .add(android.R.id.content, fragment).commitNow();
+        android.preference.PreferenceScreen screen = fragment.getPreferenceManager().createPreferenceScreen(controller.get());
+        for (android.preference.Preference row : rows) screen.addPreference(row);
+        fragment.setPreferenceScreen(screen);
+        controller.visible();
+        org.robolectric.shadows.ShadowLooper.idleMainLooper();
+        View decor = controller.get().getWindow().getDecorView();
+        decor.measure(View.MeasureSpec.makeMeasureSpec(320, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(480, View.MeasureSpec.EXACTLY));
+        decor.layout(0, 0, 320, 480);
+        org.robolectric.shadows.ShadowLooper.idleMainLooper();
+        ListView list = fragment.getView().findViewById(android.R.id.list);
+        list.measure(View.MeasureSpec.makeMeasureSpec(320, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY));
+        list.layout(0, 0, 320, 400);
+        return list;
+    }
+
+    private void touch(ListView list, View target) {
+        android.graphics.Rect rect = new android.graphics.Rect();
+        target.getDrawingRect(rect);
+        list.offsetDescendantRectToMyCoords(target, rect);
+        long now = android.os.SystemClock.uptimeMillis();
+        android.view.MotionEvent down = android.view.MotionEvent.obtain(now, now,
+                android.view.MotionEvent.ACTION_DOWN, rect.exactCenterX(), rect.exactCenterY(), 0);
+        android.view.MotionEvent up = android.view.MotionEvent.obtain(now, now + 60,
+                android.view.MotionEvent.ACTION_UP, rect.exactCenterX(), rect.exactCenterY(), 0);
+        list.dispatchTouchEvent(down);
+        list.dispatchTouchEvent(up);
+        down.recycle(); up.recycle();
+        shadowOf(android.os.Looper.getMainLooper()).idleFor(1, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    @Test public void realListTouchTogglesRowWhileInfoOnlyShowsDescription() {
+        SwitchPreference preference = preference();
+        preference.setChecked(false);
+        ListView list = attach(preference);
+        View row = list.getChildAt(0);
+        assertNotNull(row);
+        assertFalse("A secondary action must not disable native ListView item clicks", row.hasFocusable());
+        View info = row.findViewWithTag(DescriptionInfo.TAG);
+        assertNotNull(info);
+        touch(list, info);
+        AlertDialog description = ShadowAlertDialog.getLatestAlertDialog();
+        assertNotNull(description);
+        assertEquals(DESCRIPTION, shadowOf(description).getMessage().toString());
+        assertFalse(preference.isChecked());
+        description.dismiss();
+        touch(list, row.findViewById(android.R.id.title));
+        assertTrue("Touching the label still flips the switch", preference.isChecked());
+        touch(list, list.getChildAt(0).findViewById(android.R.id.switch_widget));
+        assertFalse("Touching the switch still flips it", preference.isChecked());
+    }
+
+    @Test public void customChoiceRowHidesDescriptionAndRealTouchStillOpensPicker() {
+        HushgramPreferenceFragment.ScrollBreakRow choice = new HushgramPreferenceFragment.ScrollBreakRow(controller.get());
+        choice.setPersistent(false);
+        choice.setTitle("Scroll break");
+        choice.setEntries(new String[]{"Off", "Ten minutes"});
+        choice.setEntryValues(new String[]{"OFF", "TEN_MINUTES"});
+        choice.setValue("OFF");
+        choice.setSummary(DESCRIPTION);
+        ListView list = attach(choice);
+        View row = list.getChildAt(0);
+        assertFalse(row.hasFocusable());
+        assertEquals(View.GONE, row.findViewById(android.R.id.summary).getVisibility());
+        View info = row.findViewWithTag(DescriptionInfo.TAG);
+        assertNotNull(info);
+        assertNotNull(row.findViewWithTag(ScreenColors.CHEVRON));
+        touch(list, info);
+        AlertDialog description = ShadowAlertDialog.getLatestAlertDialog();
+        assertEquals(DESCRIPTION, shadowOf(description).getMessage().toString());
+        description.dismiss();
+        touch(list, row.findViewById(android.R.id.title));
+        assertTrue("Row touch opens the actual choice picker", choice.getDialog().isShowing());
+        AlertDialog picker = (AlertDialog) choice.getDialog();
+        ListView options = picker.getListView();
+        options.performItemClick(options.getAdapter().getView(1, null, options), 1, options.getAdapter().getItemId(1));
+        shadowOf(android.os.Looper.getMainLooper()).idleFor(1, java.util.concurrent.TimeUnit.SECONDS);
+        assertEquals("TEN_MINUTES", choice.getValue());
+    }
 }

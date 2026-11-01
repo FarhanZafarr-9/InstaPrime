@@ -5824,7 +5824,6 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             super.onBindView(view);
             showAllText(view);
             ScreenColors.row(view, this);
-            DescriptionInfo.bind(view, isEnabled() && isSelectable() ? getSummary() : null);
             view.setAccessibilityDelegate(isSelectable() ? new RowSemantics(this, Button.class) : null);
             view.setAccessibilityLiveRegion(("hushgram_export_configuration".equals(getKey())
                     || "hushgram_settings_search_empty".equals(getKey()))
@@ -5863,8 +5862,6 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             if (widget instanceof AnimatedSettingsSwitch) ((AnimatedSettingsSwitch) widget).bindMotion(motion);
             showAllText(view);
             ScreenColors.row(view, this);
-            // A greyed-out row's line says why, so it stays in sight.
-            DescriptionInfo.bind(view, isEnabled() ? getSummary() : null);
             view.setAccessibilityDelegate(new RowSemantics(this, Switch.class));
         }
     }
