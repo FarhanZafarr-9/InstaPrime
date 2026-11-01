@@ -331,11 +331,12 @@ public final class ScreenColors {
                 ? boundedRipple(interactionRipple(heading), inset, mask).mutate() : inset);
         // Explicit padding after the inset background prevents its padding from moving the text.
         int horizontal = 36;
-        int vertical = 8;
+        boolean enableAll = HushgramPreferenceFragment.ENABLE_ALL_KEY.equals(preference.getKey());
+        int vertical = enableAll ? 12 : 10;
         row.setPaddingRelative(dp(row, horizontal), dp(row, vertical) + above,
                 dp(row, horizontal), dp(row, vertical + 1));
         row.setMinimumHeight(dp(row, "hushgram_view_toggle".equals(preference.getKey()) ? 48
-                : "hushgram_status".equals(preference.getKey()) ? 56 : opensPage(preference) ? 64 : 56));
+                : "hushgram_status".equals(preference.getKey()) ? 56 : enableAll ? 64 : opensPage(preference) ? 68 : 60));
     }
 
     /** A section title. */
