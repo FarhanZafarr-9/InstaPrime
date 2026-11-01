@@ -93,7 +93,7 @@ final class SettingsNavigation {
         row.setSummary(L10n.f("%1$d settings · %2$s", node.count(), detail == null ? "" : detail));
         HushgramPreferenceFragment.mark(row, node.icon);
         row.setOnPreferenceClickListener(clicked -> { open.accept(node); return true; });
-        NewRowDots.opens(row, node.category);
+        NewRowDots.opens(row, node);
         for (Preference setting : node.rows) destinations.put(setting, node);
         for (Node child : node.children) register(context, child, open);
     }

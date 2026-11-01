@@ -307,7 +307,12 @@ public final class ScreenColors {
         float top = dp(row, category || first ? 12 : 4);
         float bottom = dp(row, category || last ? 12 : 4);
         GradientDrawable surface = new GradientDrawable();
-        surface.setColor(expanded ? iconSurface : card);
+        int fill = expanded ? iconSurface : card;
+        if (NewRowDots.freshRow(preference)) fill = Color.rgb(
+                (Color.red(fill) * 94 + Color.red(accent) * 6) / 100,
+                (Color.green(fill) * 94 + Color.green(accent) * 6) / 100,
+                (Color.blue(fill) * 94 + Color.blue(accent) * 6) / 100);
+        surface.setColor(fill);
         surface.setStroke(dp(row, 2), interactionOutline(Color.TRANSPARENT));
         surface.setCornerRadii(new float[]{top, top, top, top, bottom, bottom, bottom, bottom});
         int side = dp(row, 18);
@@ -318,19 +323,19 @@ public final class ScreenColors {
             afterSearch = at > 0 && ("hushgram_settings_search".equals(parent.getPreference(at - 1).getKey())
                     || HushgramPreferenceFragment.ENABLE_ALL_KEY.equals(parent.getPreference(at - 1).getKey()));
         }
-        int above = category || afterSearch ? dp(row, 16) : 0;
-        Drawable inset = new InsetDrawable(surface, side, above, side, dp(row, 3));
+        int above = category || afterSearch ? dp(row, 8) : 0;
+        Drawable inset = new InsetDrawable(surface, side, above, side, dp(row, 1));
         Drawable mask = new InsetDrawable(surface.getConstantState().newDrawable().mutate(),
-                side, above, side, dp(row, 3));
+                side, above, side, dp(row, 1));
         row.setBackground(preference.isSelectable()
                 ? boundedRipple(interactionRipple(heading), inset, mask).mutate() : inset);
         // Explicit padding after the inset background prevents its padding from moving the text.
         int horizontal = 36;
-        int vertical = 12;
+        int vertical = 8;
         row.setPaddingRelative(dp(row, horizontal), dp(row, vertical) + above,
-                dp(row, horizontal), dp(row, vertical + 3));
+                dp(row, horizontal), dp(row, vertical + 1));
         row.setMinimumHeight(dp(row, "hushgram_view_toggle".equals(preference.getKey()) ? 48
-                : "hushgram_status".equals(preference.getKey()) ? 56 : opensPage(preference) ? 76 : 68));
+                : "hushgram_status".equals(preference.getKey()) ? 56 : opensPage(preference) ? 64 : 56));
     }
 
     /** A section title. */

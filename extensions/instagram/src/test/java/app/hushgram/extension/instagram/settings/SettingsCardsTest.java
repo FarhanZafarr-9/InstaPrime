@@ -56,6 +56,7 @@ public class SettingsCardsTest {
     private HushgramPreferenceFragment page;
 
     @Before public void prepare() {
+        RuntimeEnvironment.getApplication().getSharedPreferences(NewRowDots.FILE, 0).edit().clear().commit();
         RuntimeEnvironment.getApplication().getApplicationInfo().targetSdkVersion = 37;
         BaseSettings.PAUSED.save(false);
         PauseForTests.resume();
@@ -127,7 +128,7 @@ public class SettingsCardsTest {
             assertTrue(node.opener instanceof HushgramPreferenceFragment.Row);
             View row = render(node.opener);
             assertNotNull(row.findViewWithTag(ScreenColors.CHEVRON));
-            assertTrue(row.getHeight() >= 76 * row.getResources().getDisplayMetrics().density);
+            assertTrue(row.getHeight() >= 64 * row.getResources().getDisplayMetrics().density);
         }
         assertNull(screen.findPreference("hushgram_view_toggle"));
         assertNull(screen.findPreference(Settings.CATEGORY_PAGES.key));
@@ -216,7 +217,7 @@ public class SettingsCardsTest {
         Preference setting = page.findPreference(Settings.HIDE_ADS.key);
         View row = render(setting);
         TextView title = row.findViewById(android.R.id.title);
-        assertTrue(title.getCompoundDrawablesRelative()[2] instanceof DescriptionInfo.Mark);
+        assertNotNull(row.findViewWithTag(DescriptionInfo.TAG));
         page.searchSettings("Hide ads");
         assertTrue(DescriptionInfo.searching);
         page.searchSettings("");
@@ -224,7 +225,7 @@ public class SettingsCardsTest {
         assertSame(setting, page.getPreferenceScreen().findPreference(setting.getKey()));
         row = render(setting);
         title = row.findViewById(android.R.id.title);
-        assertTrue(title.getCompoundDrawablesRelative()[2] instanceof DescriptionInfo.Mark);
+        assertNotNull(row.findViewWithTag(DescriptionInfo.TAG));
     }
 
     @Test public void backClearsSearchBeforeLeavingItsSourcePage() throws Exception {
@@ -424,7 +425,7 @@ public class SettingsCardsTest {
         float density = row.getResources().getDisplayMetrics().density;
         assertEquals(Math.round(18 * density), content.getDrawable().getBounds().left);
         assertEquals(row.getWidth() - Math.round(18 * density), content.getDrawable().getBounds().right);
-        assertEquals(Math.round(16 * density), content.getDrawable().getBounds().top);
+        assertEquals(Math.round(8 * density), content.getDrawable().getBounds().top);
         ListView list = page.getView().findViewById(android.R.id.list);
         assertEquals(Math.round(32 * density), list.getPaddingBottom());
         assertFalse(list.getClipToPadding());
@@ -549,5 +550,92 @@ public class SettingsCardsTest {
             assertEquals(controller.get().getColor(android.R.color.system_accent1_200), colors.accent);
             assertEquals(controller.get().getColor(android.R.color.system_neutral1_900), colors.card);
         } else assertEquals(ScreenColors.DEFAULT.card, colors.card);
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    public void compactEnableAllFitsWithInfoAndProducesPreview() throws Exception {
+        Settings.DESCRIPTIONS_BEHIND_INFO.save(true);
+        open(EnumSet.allOf(PatchFamily.class));
+        tap(category("Ads and privacy").opener);
+        Preference all = page.getPreferenceScreen().findPreference(HushgramPreferenceFragment.ENABLE_ALL_KEY);
+        assertNotNull(all);
+        for (float scale : new float[]{1f, 2f}) {
+            RuntimeEnvironment.setFontScale(scale);
+            LinearLayout preview = new LinearLayout(controller.get());
+            preview.setOrientation(LinearLayout.VERTICAL);
+            preview.setBackgroundColor(ScreenColors.current().background);
+            Preference normal = page.findPreference(Settings.HIDE_ADS.key);
+            java.util.Map<PreferenceCategory, java.util.List<Preference>> fresh = new java.util.LinkedHashMap<>();
+            fresh.put(new PreferenceCategory(controller.get()), java.util.Arrays.asList(normal));
+            controller.get().getSharedPreferences(NewRowDots.FILE, 0).edit()
+                    .putStringSet(NewRowDots.SEEN, new java.util.HashSet<>()).commit();
+            NewRowDots.start(controller.get(), fresh);
+            NewRowDots.opens(category("Ads and privacy").opener, category("Ads and privacy"));
+            for (Preference setting : new Preference[]{all, normal, category("Ads and privacy").opener}) {
+                View row = render(setting);
+                preview.addView(row);
+            }
+            int width = Math.round(320 * controller.get().getResources().getDisplayMetrics().density);
+            preview.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+            preview.layout(0, 0, width, preview.getMeasuredHeight());
+            View row = preview.getChildAt(0);
+            View control = row.findViewById(android.R.id.switch_widget);
+            View button = row.findViewWithTag(DescriptionInfo.TAG);
+            assertNotNull(button);
+            ViewGroup frame = (ViewGroup) control.getParent();
+            assertTrue("switch fits frame horizontally", control.getRight() <= frame.getWidth());
+            assertTrue("switch fits frame vertically", control.getBottom() <= frame.getHeight());
+            android.graphics.Rect rect = new android.graphics.Rect();
+            control.getDrawingRect(rect);
+            ((ViewGroup) row).offsetDescendantRectToMyCoords(control, rect);
+            assertTrue("switch stays inside row", rect.right <= row.getWidth() - row.getPaddingRight());
+            assertTrue("switch stays above row bottom", rect.bottom <= row.getHeight());
+            java.io.File root = new java.io.File(System.getProperty("user.dir"));
+            while (!new java.io.File(root, "README.md").isFile() && root.getParentFile() != null) root = root.getParentFile();
+            java.io.File folder = new java.io.File(root, ".mockups"); folder.mkdirs();
+            android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(width, preview.getHeight(), android.graphics.Bitmap.Config.ARGB_8888);
+            preview.draw(new android.graphics.Canvas(bitmap));
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(new java.io.File(folder,
+                    "settings-rows-api" + Build.VERSION.SDK_INT + "-font" + scale + ".png"))) {
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
+            }
+            bitmap.recycle();
+            NewRowDots.stop();
+        }
+        RuntimeEnvironment.setFontScale(1f);
+    }
+
+    @Test public void leavingNestedPageKeepsUnvisitedSiblingAndAncestorBadges() throws Exception {
+        open(EnumSet.allOf(PatchFamily.class));
+        SettingsNavigation.Node feed = category("Feed");
+        SettingsNavigation.Node first = feed.children.get(0), second = feed.children.get(1);
+        String firstKey = first.rows.stream().filter(row -> row.getKey() != null
+                && app.hushgram.extension.shared.settings.Setting.getSettingFromPath(row.getKey()) != null)
+                .findFirst().get().getKey();
+        String secondKey = second.rows.stream().filter(row -> row.getKey() != null
+                && app.hushgram.extension.shared.settings.Setting.getSettingFromPath(row.getKey()) != null)
+                .findFirst().get().getKey();
+        controller.close();
+        android.content.SharedPreferences store = org.robolectric.RuntimeEnvironment.getApplication()
+                .getSharedPreferences(NewRowDots.FILE, 0);
+        Set<String> seen = new java.util.HashSet<>(store.getStringSet(NewRowDots.SEEN, new java.util.HashSet<>()));
+        assertTrue(seen.remove(firstKey));
+        assertTrue(seen.remove(secondKey));
+        store.edit().putStringSet(NewRowDots.SEEN, seen).commit();
+        open(EnumSet.allOf(PatchFamily.class));
+        feed = category("Feed"); first = feed.children.get(0); second = feed.children.get(1);
+        assertTrue(NewRowDots.freshRow(feed.opener));
+        tap(feed.opener);
+        assertTrue(NewRowDots.freshRow(first.opener));
+        assertTrue(NewRowDots.freshRow(second.opener));
+        tap(first.opener);
+        assertTrue(page.closeCategory());
+        assertFalse(NewRowDots.freshRow(first.opener));
+        assertTrue(NewRowDots.freshRow(second.opener));
+        assertTrue(NewRowDots.freshRow(feed.opener));
+        assertTrue(page.closeCategory());
+        assertTrue(NewRowDots.freshRow(feed.opener));
+        assertFalse(store.getStringSet(NewRowDots.SEEN, new java.util.HashSet<>()).contains(secondKey));
     }
 }

@@ -470,9 +470,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         exportConfiguration = importConfiguration = undoConfiguration = null;
         recovery = null;
         interruptedSaves = null;
-        for (PreferenceCategory group : searchableRows.keySet()) {
-            if (navigation.find(lastCategory) != null && navigation.find(lastCategory).category == group) NewRowDots.left(group);
-        }
+        SettingsNavigation.Node leaving = navigation.find(lastCategory);
+        if (leaving != null) NewRowDots.leftRows(leaving.rows);
         super.onDestroyView();
     }
 
@@ -759,6 +758,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     private void openPage(SettingsNavigation.Node page) { openPage(page, true); }
 
     private void openPage(SettingsNavigation.Node page, boolean remember) {
+        SettingsNavigation.Node leaving = navigation.find(lastCategory);
+        if (leaving != null && leaving != page) NewRowDots.leftRows(leaving.rows);
         if (remember) rememberPosition();
         lastCategory = page == null ? null : page.id;
         focusPage();
@@ -776,7 +777,6 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         if (endSearch()) return true;
         SettingsNavigation.Node page = navigation.find(lastCategory);
         if (page == null) return false;
-        NewRowDots.left(page.category);
         openPage(page.parent);
         return true;
     }
@@ -5824,6 +5824,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             super.onBindView(view);
             showAllText(view);
             ScreenColors.row(view, this);
+            DescriptionInfo.bind(view, isEnabled() && isSelectable() ? getSummary() : null);
             view.setAccessibilityDelegate(isSelectable() ? new RowSemantics(this, Button.class) : null);
             view.setAccessibilityLiveRegion(("hushgram_export_configuration".equals(getKey())
                     || "hushgram_settings_search_empty".equals(getKey()))

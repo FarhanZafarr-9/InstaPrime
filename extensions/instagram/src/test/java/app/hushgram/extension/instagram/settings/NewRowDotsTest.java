@@ -1,265 +1,155 @@
-/*
- * Copyright 2026 HushGram contributors
- * https://github.com/SysAdminDoc/HushGram
- */
+/* Copyright 2026 HushGram and InstaPrime contributors. */
 package app.hushgram.extension.instagram.settings;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
-import android.graphics.drawable.Drawable;
-import android.preference.Preference;
-import android.preference.PreferenceCategory;
+import android.preference.*;
 import android.view.View;
-import android.widget.ListView;
-import android.widget.TextView;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import android.widget.*;
+import java.util.*;
+import org.junit.*;
 import org.junit.runner.RunWith;
-import org.robolectric.Robolectric;
-import org.robolectric.RobolectricTestRunner;
-import org.robolectric.RuntimeEnvironment;
+import org.robolectric.*;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
-import org.robolectric.shadows.ShadowLooper;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import app.hushgram.extension.shared.SettingsContextRule;
-import app.hushgram.extension.shared.settings.BaseSettings;
-import app.hushgram.extension.shared.settings.PauseForTests;
 
-/**
- * The dot beside a setting added since the settings were last opened (#274): none on a first
- * open, one on the row and on its category's opener when the stored set lacks it, gone once the
- * page has been left, none in a search, and no harm done by a stored value that isn't a set.
- */
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 30, qualifiers = "w411dp-h891dp-xxhdpi")
-@SuppressWarnings("deprecation")
+@Config(sdk = {28, 37})
 public class NewRowDotsTest {
     @Rule public final SettingsContextRule settings = new SettingsContextRule();
+    ActivityController<Activity> controller;
+    SharedPreferences store;
+    Preference a, b;
+    PreferenceCategory group;
+    Map<PreferenceCategory, List<Preference>> pages;
 
-    /** Built when asked: a static field would load Settings before the rule gives it a context. */
-    private static String key() {
-        return Settings.SCROLL_BREAK.key;
+    @Before public void setup() {
+        controller = Robolectric.buildActivity(Activity.class).setup();
+        store = controller.get().getSharedPreferences(NewRowDots.FILE, 0);
+        store.edit().clear().commit();
+        group = new PreferenceCategory(controller.get());
+        a = HushgramPreferenceFragment.toggle(controller.get(), Settings.HIDE_ADS, "Hide ads", "Description");
+        b = HushgramPreferenceFragment.toggle(controller.get(), Settings.START_ON_FOLLOWING, "Following feed", "Description");
+        HushgramPreferenceFragment.mark(a, SettingsIcons.SETTINGS);
+        HushgramPreferenceFragment.mark(b, SettingsIcons.SETTINGS);
+        pages = new LinkedHashMap<>();
+        pages.put(group, Arrays.asList(a, b));
     }
 
-    private ActivityController<Activity> controller;
-    private HushgramPreferenceFragment page;
-    private String categoryTitle;
-    private String rowTitle;
-
-    @Before public void prepare() {
-        PatchFamily.inBuildForTests = EnumSet.allOf(PatchFamily.class);
-        BaseSettings.PAUSED.save(false);
-        PauseForTests.resume();
-        Settings.SIGN_IN_NOTICE_HIDDEN.save(true);
-        Settings.CATEGORY_PAGES.save(true);
-        // The one setting's page and title, read once from the long list.
-        Settings.CATEGORY_PAGES.save(false);
-        open();
-        Preference row = page.findPreference(key());
-        assertNotNull(row);
-        categoryTitle = String.valueOf(((PreferenceCategory) row.getParent()).getTitle());
-        rowTitle = String.valueOf(row.getTitle());
+    @After public void close() {
+        NewRowDots.stop();
+        Settings.DESCRIPTIONS_BEHIND_INFO.resetToDefault();
         controller.close();
-        controller = null;
-        Settings.CATEGORY_PAGES.save(true);
-        SharedPreferences store = store();
-        assertTrue(store.edit().clear().commit());
-    }
-
-    @After public void restore() {
-        if (controller != null) controller.close();
-        Settings.CATEGORY_PAGES.resetToDefault();
-        Settings.SIGN_IN_NOTICE_HIDDEN.resetToDefault();
-        BaseSettings.PAUSED.resetToDefault();
-        PatchFamily.inBuildForTests = null;
         ScreenColors.shown = null;
     }
-
-    /** Opens the settings on a fresh screen, as after the app was closed. */
-    private void open() {
-        if (controller != null) controller.close();
-        controller = Robolectric.buildActivity(Activity.class).setup().visible();
-        page = DownloadSettingsTest.pageIn(controller);
-        ShadowLooper.idleMainLooper();
+    void unseen() {
+        store.edit().putStringSet(NewRowDots.SEEN, new HashSet<>()).commit();
+        NewRowDots.start(controller.get(), pages);
+    }
+    Preference opener(SettingsNavigation.Node node) {
+        Preference p = new HushgramPreferenceFragment.Row(controller.get());
+        p.setTitle(node.title);
+        HushgramPreferenceFragment.mark(p, SettingsIcons.SETTINGS);
+        NewRowDots.opens(p, node);
+        return p;
+    }
+    View render(Preference p) {
+        return p.getView(null, new FrameLayout(controller.get()));
     }
 
-    private SharedPreferences store() {
-        return RuntimeEnvironment.getApplication().getSharedPreferences(NewRowDots.FILE, 0);
+    @Test public void firstOpenSeedsSeenKeys() {
+        NewRowDots.start(controller.get(), pages);
+        assertFalse(NewRowDots.freshRow(a));
+        assertFalse(NewRowDots.freshRow(b));
+        assertTrue(store.getStringSet(NewRowDots.SEEN, null).contains(a.getKey()));
     }
 
-    private ListView list() {
-        return page.getView().findViewById(android.R.id.list);
+    @Test public void ancestorsAggregateOnlyTheirOwnDescendants() {
+        unseen();
+        SettingsNavigation.Node root = new SettingsNavigation.Node("root", null, group, "Root", SettingsIcons.SETTINGS);
+        SettingsNavigation.Node one = new SettingsNavigation.Node("one", root, group, "One", SettingsIcons.SETTINGS);
+        SettingsNavigation.Node two = new SettingsNavigation.Node("two", root, group, "Two", SettingsIcons.SETTINGS);
+        one.rows.add(a);
+        two.rows.add(b);
+        root.children.add(one);
+        root.children.add(two);
+        Preference r = opener(root), x = opener(one), y = opener(two);
+        assertTrue(NewRowDots.freshRow(r));
+        assertTrue(NewRowDots.freshRow(x));
+        assertTrue(NewRowDots.freshRow(y));
+        NewRowDots.leftRows(root.rows);
+        assertTrue(NewRowDots.freshRow(x));
+        NewRowDots.leftRows(one.rows);
+        assertFalse(NewRowDots.freshRow(x));
+        assertTrue(NewRowDots.freshRow(y));
+        assertTrue(NewRowDots.freshRow(r));
+        NewRowDots.leftRows(two.rows);
+        assertFalse(NewRowDots.freshRow(r));
     }
 
-    /** The views the list draws now, in order. */
-    private List<View> views() {
-        ListView list = list();
-        List<View> views = new ArrayList<>();
-        for (int i = 0; i < list.getAdapter().getCount(); i++) {
-            View row = list.getAdapter().getView(i, null, list);
-            // These inspection views never attach, so their Material button/switch animators
-            // won't receive the detach cleanup the real list performs when recycling rows.
-            row.jumpDrawablesToCurrentState();
-            views.add(row);
-        }
-        return views;
+    @Test public void badgeIsOnIconAndCoexistsWithInfoButton() {
+        unseen();
+        Settings.DESCRIPTIONS_BEHIND_INFO.save(true);
+        View row = render(a);
+        ImageView icon = row.findViewById(android.R.id.icon);
+        assertEquals(NewRowDots.TAG, icon.getTag());
+        assertTrue(icon.getDrawable() instanceof NewRowDots.BadgedIcon);
+        assertNotNull(row.findViewWithTag(DescriptionInfo.TAG));
+        assertNull(((TextView)row.findViewById(android.R.id.title)).getCompoundDrawablesRelative()[2]);
+        NewRowDots.leftRows(Arrays.asList(a));
+        row = render(a);
+        icon = row.findViewById(android.R.id.icon);
+        assertNull(icon.getTag());
+        assertFalse(icon.getDrawable() instanceof NewRowDots.BadgedIcon);
+        assertNotNull(row.findViewWithTag(DescriptionInfo.TAG));
     }
 
-    private static boolean dotted(View row) {
-        TextView title = row.findViewById(android.R.id.title);
-        return title != null && NewRowDots.TAG.equals(title.getTag());
+    @Test public void seenKeysSurviveReopening() {
+        unseen();
+        NewRowDots.leftRows(Arrays.asList(a));
+        NewRowDots.stop();
+        NewRowDots.start(controller.get(), pages);
+        assertFalse(NewRowDots.freshRow(a));
+        assertTrue(NewRowDots.freshRow(b));
     }
 
-    private List<String> dottedTitles() {
-        List<String> titles = new ArrayList<>();
-        for (View row : views()) {
-            if (dotted(row)) titles.add(String.valueOf(((TextView) row.findViewById(android.R.id.title)).getText()));
-        }
-        return titles;
+    @Test public void searchesNeitherDotNorMarkUnvisitedRowsSeen() {
+        unseen();
+        NewRowDots.searching(true);
+        assertFalse(NewRowDots.freshRow(a));
+        NewRowDots.leftRows(Arrays.asList(a));
+        NewRowDots.searching(false);
+        assertTrue(NewRowDots.freshRow(a));
     }
 
-    private void forget(String key) {
-        open();
-        // Closed before the store is edited, so its leaving can't write over the edit.
-        controller.close();
-        controller = null;
-        Set<String> seen = new HashSet<>(store().getStringSet(NewRowDots.SEEN, new HashSet<>()));
-        assertTrue(key + " was never seen", seen.remove(key));
-        assertTrue(store().edit().putStringSet(NewRowDots.SEEN, seen).commit());
-        open();
+    @Test public void corruptSeenValueRecoversAndSeenSetStaysOutOfBackups() {
+        store.edit().putString(NewRowDots.SEEN, "bad").commit();
+        NewRowDots.start(controller.get(), pages);
+        assertFalse(NewRowDots.freshRow(a));
+        for(String key:ConfigurationBackup.eligible().keySet())assertFalse(key.contains(NewRowDots.FILE)||key.equals(NewRowDots.SEEN));
     }
 
-    private Preference opener() {
-        for (int i = 0; i < page.getPreferenceScreen().getPreferenceCount(); i++) {
-            Preference each = page.getPreferenceScreen().getPreference(i);
-            String key = each.getKey();
-            if (key != null && key.startsWith(HushgramPreferenceFragment.CATEGORY_ROW_KEY)
-                    && categoryTitle.contentEquals(String.valueOf(each.getTitle()))) return each;
-        }
-        throw new AssertionError("no opener for " + categoryTitle);
-    }
-
-    private void enter() {
-        Preference opener = opener();
-        assertTrue(opener.getOnPreferenceClickListener().onPreferenceClick(opener));
-        ShadowLooper.idleMainLooper();
-    }
-
-    @Test public void aFirstOpenShowsNoDotAnywhere() {
-        open();
-        assertTrue(store().getStringSet(NewRowDots.SEEN, null).contains(key()));
-        assertEquals(new ArrayList<String>(), dottedTitles());
-        enter();
-        assertEquals(new ArrayList<String>(), dottedTitles());
-        enter();
-        ShadowLooper.idleMainLooper();
-        assertEquals(new ArrayList<String>(), dottedTitles());
-    }
-
-    @Test public void aKeyMissingFromTheStoredSetDotsItsRowAndItsOpenerUntilThePageIsLeft() {
-        forget(key());
-        assertEquals("only the category's opener", Collections.singletonList(categoryTitle), dottedTitles());
-
-        enter();
-        assertEquals("only the new row", Collections.singletonList(rowTitle), dottedTitles());
-        TextView title = null;
-        for (View view : views()) if (dotted(view)) title = view.findViewById(android.R.id.title);
-        assertNotNull(title);
-        assertTrue(title.getContentDescription().toString().endsWith(", New"));
-        // Opening it doesn't clear it: the dot shows for the whole visit.
-        assertFalse(store().getStringSet(NewRowDots.SEEN, null).contains(key()));
-
-        enter();
-        ShadowLooper.idleMainLooper();
-        assertTrue(store().getStringSet(NewRowDots.SEEN, null).contains(key()));
-        assertEquals("the opener is clear once the page was seen", new ArrayList<String>(), dottedTitles());
-        enter();
-        assertEquals(new ArrayList<String>(), dottedTitles());
-    }
-
-    @Test public void closingTheSettingsOnAPageCountsItAsSeen() {
-        forget(key());
-        enter();
-        open();
-        assertEquals(new ArrayList<String>(), dottedTitles());
-    }
-
-    @Test public void leavingTheListWithoutOpeningTheCategoryKeepsItsDot() {
-        forget(key());
-        open();
-        assertEquals(Collections.singletonList(categoryTitle), dottedTitles());
-        assertFalse(store().getStringSet(NewRowDots.SEEN, null).contains(key()));
-    }
-
-    @Test public void withTheCategoriesOffTheListShowsTheRowAndClosingClearsIt() {
-        Settings.CATEGORY_PAGES.save(false);
-        forget(key());
-        assertEquals(Collections.singletonList(rowTitle), dottedTitles());
-        open();
-        assertEquals(new ArrayList<String>(), dottedTitles());
-    }
-
-    @Test public void searchResultsShowNoDots() {
-        forget(key());
-        page.searchSettings(rowTitle);
-        ShadowLooper.idleMainLooper();
-        assertTrue(list().getAdapter().getCount() > 0);
-        assertEquals(new ArrayList<String>(), dottedTitles());
-        page.searchSettings("");
-        ShadowLooper.idleMainLooper();
-        assertEquals(Collections.singletonList(categoryTitle), dottedTitles());
-    }
-
-    @Test public void aStoredValueThatIsNotASetFailsOpenAndIsStartedAgain() {
-        open();
-        assertTrue(store().edit().remove(NewRowDots.SEEN).putString(NewRowDots.SEEN, "garbage").commit());
-        open();
-        assertEquals(new ArrayList<String>(), dottedTitles());
-        assertTrue(store().getStringSet(NewRowDots.SEEN, null).contains(key()));
-    }
-
-    @Test public void theSeenSetIsNotInAConfigurationBackup() {
-        open();
-        for (String key : ConfigurationBackup.eligible().keySet()) {
-            assertFalse(key, key.contains(NewRowDots.FILE) || key.equals(NewRowDots.SEEN));
-        }
-    }
-
-    @Test public void theDotIsAfterTheTitleAndTheSameSizeAsTheOthersAcrossTheRow() {
-        forget(key());
-        enter();
-        int width = controller.get().getResources().getDisplayMetrics().widthPixels;
-        int checked = 0;
-        for (View row : views()) {
-            if (!dotted(row)) continue;
-            row.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-            row.layout(0, 0, width, row.getMeasuredHeight());
-            TextView title = row.findViewById(android.R.id.title);
-            Drawable[] sides = title.getCompoundDrawablesRelative();
-            assertNotNull("the dot is not after the title", sides[2]);
-            assertNull(sides[0]);
-            int size = Math.round(8 * controller.get().getResources().getDisplayMetrics().density);
-            assertEquals(size, sides[2].getBounds().width());
-            checked++;
-        }
-        assertEquals(1, checked);
+    @Test @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void unseenHighlightClearsWithBadgeAndBadgeDrawsAtTopLeft() {
+        unseen();
+        View row = render(a);
+        android.graphics.drawable.RippleDrawable ripple = (android.graphics.drawable.RippleDrawable)row.getBackground();
+        android.graphics.drawable.GradientDrawable surface = (android.graphics.drawable.GradientDrawable)((android.graphics.drawable.InsetDrawable)ripple.getDrawable(0)).getDrawable();
+        int freshColor = surface.getColor().getDefaultColor();
+        NewRowDots.BadgedIcon badge = (NewRowDots.BadgedIcon)((ImageView)row.findViewById(android.R.id.icon)).getDrawable();
+        android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(24, 24, android.graphics.Bitmap.Config.ARGB_8888);
+        badge.setBounds(0, 0, 24, 24);
+        badge.draw(new android.graphics.Canvas(bitmap));
+        assertEquals(ScreenColors.current().accent, bitmap.getPixel(4, 4));
+        bitmap.recycle();
+        NewRowDots.leftRows(Arrays.asList(a));
+        row = render(a);
+        ripple = (android.graphics.drawable.RippleDrawable)row.getBackground();
+        surface = (android.graphics.drawable.GradientDrawable)((android.graphics.drawable.InsetDrawable)ripple.getDrawable(0)).getDrawable();
+        assertNotEquals(freshColor, surface.getColor().getDefaultColor());
+        assertEquals(ScreenColors.current().card, surface.getColor().getDefaultColor());
     }
 }
