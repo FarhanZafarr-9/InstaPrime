@@ -79,8 +79,9 @@ public final class CallButtons {
             if (view == null) return;
             String kind = model == null ? null : access.kindOf(model);
             // A recycled view this hid can come back bound to another kind of button, or none, which shows again.
-            boolean hide = kind != null && CALL_KINDS.contains(kind) &&
-                    Utils.settingsReady() && !HushgramPause.isPaused() && Settings.HIDE_CALL_BUTTONS.get();
+            boolean hide = kind != null && Utils.settingsReady() && !HushgramPause.isPaused() &&
+                    ((CALL_KINDS.contains(kind) && Settings.HIDE_CALL_BUTTONS.get()) ||
+                            (("BLEND".equals(kind) || "BLEND_ADD".equals(kind)) && Settings.HIDE_BLEND_BUTTON.get()));
             if (hide) {
                 view.setVisibility(View.GONE);
                 hidden.put(view, Boolean.TRUE);

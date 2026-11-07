@@ -892,6 +892,7 @@ public class Settings extends BaseSettings {
      * ({@link app.hushgram.extension.instagram.direct.CallButtons}, #217). Off to start.
      */
     public static final BooleanSetting HIDE_CALL_BUTTONS = new BooleanSetting("hushgram_hide_call_buttons", FALSE);
+    public static final BooleanSetting HIDE_BLEND_BUTTON = new BooleanSetting("instaprime_hide_blend_button", FALSE);
 
     /**
      * The Like button under a post asks before it likes or unlikes the post

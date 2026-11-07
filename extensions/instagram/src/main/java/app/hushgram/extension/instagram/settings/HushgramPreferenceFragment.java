@@ -473,6 +473,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
 
     @Override
     public void onDestroyView() {
+        ScreenColors.shown = null;
         AbstractPreferenceFragment.clearRestartFeedbackPresenter(restartFeedback);
         undoRefresh.removeCallbacks(refreshUndo);
         lockRefresh.removeCallbacks(lockTick);
@@ -1370,7 +1371,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             all.setPersistent(false);
             all.setKey(ENABLE_ALL_KEY);
             all.setTitle(L10n.t("Enable all"));
-            all.setSummary(L10n.t("Turn this section's switches on or off together."));
+            all.setSummary(L10n.t("Turn the available switches in this section on or off together. "
+                    + "Unavailable options are skipped, and choices such as colors and sizes keep their current values."));
             mark(all, SettingsIcons.SETTINGS);
             all.setOnPreferenceChangeListener((row, value) -> {
                 if (!allowMutation()) return false;

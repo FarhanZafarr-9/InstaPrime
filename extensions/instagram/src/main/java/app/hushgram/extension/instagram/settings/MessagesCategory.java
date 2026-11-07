@@ -190,6 +190,9 @@ final class MessagesCategory {
                 messages.addPreference(toggle(context, Settings.HIDE_CALL_BUTTONS, L10n.t("Hide the call buttons in chats"),
                         L10n.t("Takes the voice and video call buttons off the top of a chat. The name keeps its room. "
                                 + "Turn it off and they're back the next time a chat opens.")));
+                messages.addPreference(toggle(context, Settings.HIDE_BLEND_BUTTON, L10n.t("Hide Blend in chats"),
+                        L10n.t("Hides the Blend and create Blend buttons from the chat header. "
+                                + "Reopen the chat after changing this option.")));
             }
             if (build.contains(PatchFamily.MESSAGE_BOX)) {
                 messages.addPreference(page.messageBoxRow(context));

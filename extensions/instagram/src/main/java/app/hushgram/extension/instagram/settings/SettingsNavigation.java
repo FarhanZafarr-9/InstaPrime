@@ -163,7 +163,7 @@ final class SettingsNavigation {
         }
         if (icon.equals(SettingsIcons.CHATS)) {
             split(node, "inbox", L10n.t("Inbox appearance"), keys(Settings.HIDE_NOTES_ROW.key, Settings.HIDE_INBOX_SEARCH.key, Settings.HIDE_INBOX_SUGGESTIONS.key, Settings.HIDE_INSTANTS.key, Settings.FULL_SCREEN_MESSAGES.key));
-            split(node, "controls", L10n.t("Chat and call controls"), keys(Settings.KEEP_IN_CHAT.key, Settings.SWIPE_CHAT_REELS.key, Settings.ASK_BEFORE_CALL.key, Settings.HIDE_CALL_BUTTONS.key));
+            split(node, "controls", L10n.t("Chat and call controls"), keys(Settings.KEEP_IN_CHAT.key, Settings.SWIPE_CHAT_REELS.key, Settings.ASK_BEFORE_CALL.key, Settings.HIDE_CALL_BUTTONS.key, Settings.HIDE_BLEND_BUTTON.key));
             split(node, "security", L10n.t("App and chat locks"), keys(Settings.LOCK_MESSAGES.key, Settings.LOCK_APP.key, Settings.DOUBLE_TAP_HIDDEN_CHATS.key, Settings.LOCK_AGAIN.key, Settings.UNLOCK_WITH.key, HushgramPreferenceFragment.CHANGE_PIN_ROW, HushgramPreferenceFragment.LOCKED_CHATS_ROW, HushgramPreferenceFragment.HIDDEN_CHATS_ROW));
             remainder(node, L10n.t("Privacy and receipts"));
         }

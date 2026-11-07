@@ -1,0 +1,52 @@
+# Theme surface audit
+
+Source review only. The app-surface changes below are proposals, not implemented or verified on a phone.
+
+## Consistency edits prepared
+
+- Settings card/dialog surfaces ignore the app-wide Pure black patch. Only Black settings page selects black settings surfaces.
+- Runtime popup/dialog palettes resolve wallpaper colors from their own context instead of fixed popup grays or a context-free fallback.
+- Closing settings clears its cached displayed palette.
+- Clock/eye menu options have independent 8dp horizontal insets, 12dp rounded surfaces and matching ripple masks.
+- Chat loading/export progress and the clock menu's fallback dialog use shared dialog styling. The Android date picker is unchanged.
+
+## App surfaces requiring a targeted follow-up
+
+| Surface | Source finding | Proposed work |
+| --- | --- | --- |
+| Messages inbox | Accent backgrounds currently depend on a selected set of theme attributes; there is no inbox-specific background hook. | Trace the inbox root/list/header contexts in Instagram 454 and map opaque background roles to the selected accent palette. |
+| Conversation | GlassChat changes the header and button discs, not the thread root or composer background. | Trace thread, composer, and header surfaces independently, preserving a chat's chosen wallpaper and message bubble colors. |
+| Activity/notifications tab | ComposePalettes rewrites recognized accent blues, not its neutral/black background palette. | Identify the Activity palette's background roles and give them explicit background coverage. |
+| Other Compose screens | The same palette limitation can affect profile, search, and Explore surfaces. This is a coverage risk, not confirmation that every screen is affected. | Inspect their actual palette/background sources before extending hooks. |
+| Sheets, cards, and separately themed overlays | AccentTheme covers 12 named background attributes and skips an indirect primary-background attribute even if it eventually resolves to an opaque color. | Classify opaque application surfaces separately from media viewers and transparent overlays; expand only verified surface roles. |
+
+## Existing behavior to preserve
+
+- Media/Reels/story loading backgrounds and transparent blur/toast surfaces are intentionally excluded from background styles.
+- MessagesLock and ViewingHistoryPage paint their roots from ScreenColors. Their treatment should be explicitly reviewed rather than swept into a global black-color replacement.
+- The current settings palette is a dark palette; this work does not introduce a new light-settings mode.
+- Native date picker styling remains Android-managed.
+
+## Follow-up after phone feedback
+
+- Popup options form one connected group: 12dp outer corners on the first/last rows and 4dp joining corners. A trailing tick replaces the radio circles. Spacing was subsequently increased to 4dp below.
+- Popup height is measured from the wrapped options at the real popup width, with viewport clamping for scrolling when space is limited.
+- Enable all has a longer explanatory summary and retains natural wrap-content height.
+- AccentTheme now follows aliases through its existing 12 application-surface roles rather than rejecting all aliases. Opaque final colors are still required; viewer/media aliases and transparent surfaces remain excluded.
+- This is a narrow theme-path correction, not proof that inbox, thread, or Activity rendering is fully covered. Their independently painted/Compose backgrounds still require targeted on-device verification. ComposePalettes still only remaps accent blues.
+- Reels' video/loading backdrop is intentionally excluded from accent-background styling. No blanket replacement of black playback pixels or media surfaces was added.
+
+## Validation
+
+The initial theme changes passed 121 targeted settings-surface, popup, preview, and chat-history tests and Android lint. Later popup/Blend edits passed the focused checks recorded below. Device feedback still governs native surface coverage.
+
+## Second device-feedback pass
+
+- Popup rows use a shared 52dp minimum and 8dp vertical content padding, including icon-bearing date actions. Inter-row gaps are 4dp; popup padding is 10dp. Wrapped labels can still grow naturally.
+- Added an independent, default-off Hide Blend in chats switch under Chat and call controls. The existing header binder hook filters BLEND and BLEND_ADD without changing the call-buttons switch.
+- Instagram 454 classes4.dex header enum LX/08TG; contains BLEND and BLEND_ADD alongside AUDIO_CALL and VIDEO_CALL. Confirmed from the supplied original APK and focused REA class inspection of the unchanged classes4 analysis carrier (ev_0db44c7fdc1bb7510066ef62cdd972e358d971768020b38a6a845b3d6ef6db15).
+- Phone feedback confirms the main inbox and notifications remain black while their request screens take the accent background. Source confirms the current hook covers theme backgrounds and Compose accent blues only. This difference is consistent with independently painted/neutral palette surfaces, but their exact runtime background fields have not yet been traced.
+- Next background fix: trace the main inbox list/header and Activity background-role consumers in 454, then hook those specific surface roles to the existing background palette under ACCENT_BACKGROUNDS. Preserve chat wallpapers, media surfaces and transparency; do not replace every black constant or every neutral Compose color.
+- No additional app-background changes were made in this pass.
+- Validation: popup and header behavior tests passed; settings navigation tests passed after correcting their old home-screen assumption. 26 focused cases passed across the initial run and settings-only recheck. No new bundle built in this pass.
+- Final packaging: buildAndroid passed; verified 156 patches and three non-empty DEX payloads. Packaged InstaPrime-0.0.19-popup-blend-test.mpp with matching SHA-256; removed the three previous test packages and their checksums.

@@ -235,16 +235,45 @@ public final class AccentTheme {
     }
 
     /**
-     * Whether [theme] holds a solid color of its own for its background [attribute]. A viewer's theme
-     * points it at another attribute, the media background, or at a see-through color, and what's
-     * behind it has to keep showing, so those keep their own.
+     * Whether [theme] holds an opaque application surface. Follow aliases only through the same
+     * application-surface roles the patch styles; media/viewer aliases and transparency keep their
+     * original behavior. Rejecting every alias also rejected ordinary wrapped screen themes.
      */
     static boolean paintsItsOwnBackground(Resources.Theme theme, int attribute) {
         TypedValue value = new TypedValue();
-        if (!theme.resolveAttribute(attribute, value, false) || value.type == TypedValue.TYPE_ATTRIBUTE) return false;
+        if (!theme.resolveAttribute(attribute, value, false)) return false;
+        try {
+            for (int depth = 0; value.type == TypedValue.TYPE_ATTRIBUTE; depth++) {
+                if (depth >= 8 || !backgroundSurfaceAlias(theme.getResources().getResourceEntryName(value.data))) return false;
+                if (!theme.resolveAttribute(value.data, value, false)) return false;
+            }
+        } catch (Resources.NotFoundException missing) {
+            return false;
+        }
         return theme.resolveAttribute(attribute, value, true)
                 && value.type >= TypedValue.TYPE_FIRST_COLOR_INT && value.type <= TypedValue.TYPE_LAST_COLOR_INT
                 && value.data >>> 24 == 0xff;
+    }
+
+    /** Kept aligned with BACKGROUND_ATTRIBUTES in the resource patch; never infer a role from black alone. */
+    private static boolean backgroundSurfaceAlias(String name) {
+        switch (name) {
+            case "igds_color_primary_background":
+            case "status_bar_background":
+            case "igds_color_cta_banner_background":
+            case "igds_color_elevated_background":
+            case "igds_color_elevated_background_dark":
+            case "igds_color_prism_card_background":
+            case "igds_color_generic_xma_background_color":
+            case "igds_color_secondary_background":
+            case "igds_color_tertiary_background":
+            case "igds_color_highlight_background":
+            case "igds_color_elevated_highlight_background":
+            case "igds_color_pill_background":
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**

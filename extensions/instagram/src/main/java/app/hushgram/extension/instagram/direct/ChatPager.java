@@ -41,6 +41,7 @@ import app.hushgram.extension.instagram.download.FeedDownloadButton;
 import app.hushgram.extension.instagram.download.TextGrab;
 import app.hushgram.extension.instagram.settings.FamilyNames;
 import app.hushgram.extension.instagram.settings.Settings;
+import app.hushgram.extension.instagram.settings.ScreenColors;
 import app.hushgram.extension.shared.L10n;
 import app.hushgram.extension.shared.Logger;
 import app.hushgram.extension.shared.Utils;
@@ -598,12 +599,13 @@ public final class ChatPager {
             } catch (Throwable t) {
                 // A theme that can't show a popup still gets the plain list.
                 log("popup failed, showing a list: " + t);
-                new AlertDialog.Builder(activity)
+                AlertDialog fallback = new AlertDialog.Builder(activity)
                         .setItems(labels.toArray(new String[0]), new DialogInterface.OnClickListener() {
                             @Override public void onClick(DialogInterface dialog, int which) {
                                 act(activity, root, name, actions.get(which));
                             }
                         }).show();
+                ScreenColors.dialog(fallback);
             }
             return true;
         } catch (Throwable t) {
@@ -695,6 +697,8 @@ public final class ChatPager {
             int pad = (int) (20 * activity.getResources().getDisplayMetrics().density);
             text.setPadding(pad, pad, pad, pad);
             text.setText(L10n.t("Loading older messages."));
+            text.setTextColor(ScreenColors.forScreen(activity).title);
+            text.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
             text.setTag("hushgram_pager_text");
             dialog = new AlertDialog.Builder(activity)
                     .setView(text)
@@ -710,6 +714,7 @@ public final class ChatPager {
                         }
                     }).create();
             dialog.show();
+            ScreenColors.dialog(dialog);
             MAIN.post(this);
         }
 

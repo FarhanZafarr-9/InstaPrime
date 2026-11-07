@@ -104,7 +104,7 @@ public enum PatchFamily {
     CHAT_HISTORY(FamilyNames.CHAT_HISTORY, "chatHistory", null, Settings.JUMP_IN_CHAT, Settings.EXPORT_CHAT),
     PREVIEW_CHATS(FamilyNames.PREVIEW_CHATS, "previewChats", null, Settings.PREVIEW_CHATS),
     ASK_BEFORE_CALL(FamilyNames.ASK_BEFORE_CALL, "askBeforeCall", null, Settings.ASK_BEFORE_CALL,
-            Settings.HIDE_CALL_BUTTONS),
+            Settings.HIDE_CALL_BUTTONS, Settings.HIDE_BLEND_BUTTON),
     MESSAGE_BOX(FamilyNames.MESSAGE_BOX, "messageBox", null),
     PLUS_MENU(FamilyNames.PLUS_MENU, "plusMenu", null, Settings.HIDE_PLUS_SAVED, Settings.HIDE_PLUS_AI_IMAGES,
             Settings.HIDE_PLUS_DRAW, Settings.HIDE_PLUS_META_AI, Settings.HIDE_PLUS_LOCATION, Settings.MOVE_TO_PLUS_MENU),

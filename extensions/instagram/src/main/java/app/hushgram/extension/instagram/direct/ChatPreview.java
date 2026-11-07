@@ -357,7 +357,7 @@ public final class ChatPreview {
 
     /** Puts the box up over [activity] and starts reading the chat into it. */
     static AlertDialog show(Activity activity, Object session, Object key, boolean canMark) {
-        ScreenColors colors = ScreenColors.current();
+        ScreenColors colors = ScreenColors.forScreen(activity);
         int gap = dp(activity, 12);
 
         LinearLayout list = new LinearLayout(activity);
@@ -468,7 +468,7 @@ public final class ChatPreview {
     /** Puts [lines] in the box, yours on the right and theirs on the left, each with its time. */
     static void fill(LinearLayout list, TextView status, List<Line> lines) {
         Context context = list.getContext();
-        ScreenColors colors = ScreenColors.current();
+        ScreenColors colors = ScreenColors.forScreen(context);
         list.removeAllViews();
         if (lines == null || lines.isEmpty()) {
             status.setText(lines == null ? L10n.t("Couldn't load this chat") : L10n.t("Nothing here yet"));

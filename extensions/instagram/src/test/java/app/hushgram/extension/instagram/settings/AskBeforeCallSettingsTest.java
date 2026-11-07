@@ -64,18 +64,31 @@ public class AskBeforeCallSettingsTest {
     }
     @Test public void theSwitchSitsUnderMessagesAndStartsOff() throws Exception {
         open(true);
+        Preference messages = titled(page.getPreferenceScreen(), "Messages");
+        assertNotNull(messages);
+        assertTrue(messages.getOnPreferenceClickListener().onPreferenceClick(messages));
         SwitchPreference row = (SwitchPreference) page.getPreferenceScreen().findPreference(Settings.ASK_BEFORE_CALL.key);
         assertNotNull(row);
         assertEquals("Ask before a call", row.getTitle().toString());
-        PreferenceCategory section = categoryHolding(page.getPreferenceScreen(), row);
-        assertNotNull(section);
-        assertEquals("Messages", section.getTitle().toString());
         assertFalse(row.isChecked());
         assertFalse(Settings.ASK_BEFORE_CALL.get());
-        assertEquals(java.util.Arrays.asList(Settings.ASK_BEFORE_CALL, Settings.HIDE_CALL_BUTTONS), PatchFamily.ASK_BEFORE_CALL.switches);
+        assertEquals(java.util.Arrays.asList(Settings.ASK_BEFORE_CALL, Settings.HIDE_CALL_BUTTONS, Settings.HIDE_BLEND_BUTTON), PatchFamily.ASK_BEFORE_CALL.switches);
+        assertNotNull(page.getPreferenceScreen().findPreference(Settings.HIDE_BLEND_BUTTON.key));
+        assertFalse(Settings.HIDE_BLEND_BUTTON.defaultValue);
         assertTrue(ConfigurationBackup.eligible().containsKey(Settings.ASK_BEFORE_CALL.key));
         row.setChecked(true);
         assertTrue(Settings.ASK_BEFORE_CALL.get());
+    }
+    private static Preference titled(PreferenceGroup group, String title) {
+        for (int i = 0; i < group.getPreferenceCount(); i++) {
+            Preference child = group.getPreference(i);
+            if (title.contentEquals(child.getTitle() == null ? "" : child.getTitle())) return child;
+            if (child instanceof PreferenceGroup) {
+                Preference found = titled((PreferenceGroup) child, title);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
     private static PreferenceCategory categoryHolding(PreferenceGroup group, Preference row) {
         for (int i = 0; i < group.getPreferenceCount(); i++) {

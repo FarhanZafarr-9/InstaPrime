@@ -42,6 +42,7 @@ public class CallButtonsTest {
         BaseSettings.PAUSED.save(false);
         PauseForTests.resume();
         Settings.HIDE_CALL_BUTTONS.save(true);
+        Settings.HIDE_BLEND_BUTTON.resetToDefault();
         CallButtons.access = BY_TEXT;
         view = new View(RuntimeEnvironment.getApplication());
         HookStatus.clear();
@@ -50,10 +51,29 @@ public class CallButtonsTest {
     @After
     public void restore() {
         Settings.HIDE_CALL_BUTTONS.resetToDefault();
+        Settings.HIDE_BLEND_BUTTON.resetToDefault();
         BaseSettings.PAUSED.save(false);
         PauseForTests.resume();
         CallButtons.access = CallButtons.PATCHED;
         HookStatus.clear();
+    }
+
+    @Test
+    public void blendHasItsOwnSwitchAndRestoresRecycledViews() {
+        CallButtons.bound(view, "BLEND");
+        assertEquals(View.VISIBLE, view.getVisibility());
+        Settings.HIDE_CALL_BUTTONS.save(false);
+        Settings.HIDE_BLEND_BUTTON.save(true);
+        for (String kind : new String[]{"BLEND", "BLEND_ADD"}) {
+            CallButtons.bound(view, kind);
+            assertEquals(View.GONE, view.getVisibility());
+        }
+        CallButtons.bound(view, "VIDEO_CALL");
+        assertEquals(View.VISIBLE, view.getVisibility());
+        CallButtons.bound(view, "BLEND");
+        Settings.HIDE_BLEND_BUTTON.save(false);
+        CallButtons.bound(view, "BLEND");
+        assertEquals(View.VISIBLE, view.getVisibility());
     }
 
     @Test

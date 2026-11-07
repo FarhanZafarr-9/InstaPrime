@@ -80,7 +80,7 @@ public final class ScreenColors {
     /** The colours the screen on show was built with, or null for the black page. */
     @Nullable
     static volatile ScreenColors shown;
-    public static final ScreenColors DEFAULT = new ScreenColors(SettingsStatus.pureBlack());
+    public static final ScreenColors DEFAULT = new ScreenColors(false);
     /** Black cards and dialogs, for the black look (#455). */
     static final ScreenColors BLACK = new ScreenColors(true);
 
@@ -91,10 +91,11 @@ public final class ScreenColors {
     public static ScreenColors current() {
         ScreenColors colors = shown;
         if (colors != null) return colors;
-        return Utils.settingsReady() && Settings.SETTINGS_BLACK_LOOK.savedValue() ? BLACK : DEFAULT;
+        Context context = Utils.settingsReady() ? Utils.getContext() : null;
+        return context == null ? DEFAULT : forScreen(context);
     }
 
-    int choiceSelected() {
+    public int choiceSelected() {
         return android.graphics.Color.rgb(
                 (Color.red(iconSurface) * 9 + Color.red(accent)) / 10,
                 (Color.green(iconSurface) * 9 + Color.green(accent)) / 10,
@@ -106,7 +107,7 @@ public final class ScreenColors {
     }
 
     private ScreenColors(@Nullable Context context) {
-        this(context, SettingsStatus.pureBlack());
+        this(context, false);
     }
 
     private ScreenColors(@Nullable Context context, boolean pureBlack) {
@@ -195,10 +196,9 @@ public final class ScreenColors {
     }
 
     /** Wallpaper-derived Material tones, refreshed when opening the screen. */
-    @Nullable
-    static ScreenColors forScreen(Context context) {
-        return new ScreenColors(context, SettingsStatus.pureBlack()
-                || Utils.settingsReady() && Settings.SETTINGS_BLACK_LOOK.savedValue());
+    public static ScreenColors forScreen(Context context) {
+        return new ScreenColors(context,
+                Utils.settingsReady() && Settings.SETTINGS_BLACK_LOOK.savedValue());
     }
 
     /** The framework theme rows and dialogs are built with, so what this class doesn't paint still reads. */
@@ -767,17 +767,17 @@ public final class ScreenColors {
 
     /** Paints a dialog with the colours on show, if there are any. */
     public static void dialog(@Nullable AlertDialog dialog) {
-        current().paint(dialog);
+        if (dialog != null) forScreen(dialog.getContext()).paint(dialog);
     }
 
     /** Styles a runtime dialog's own input without changing its validation or input type. */
     public static void styleField(EditText field) {
-        current().paintField(field);
+        forScreen(field.getContext()).paintField(field);
     }
 
     /** Styles an existing action without replacing its content, listeners or accessibility delegate. */
     public static void styleAction(TextView action, boolean primary) {
-        current().paintAction(action, primary);
+        forScreen(action.getContext()).paintAction(action, primary);
     }
 
     void paintAction(TextView action, boolean primary) {
@@ -810,7 +810,7 @@ public final class ScreenColors {
 
     /** Compact actions retain the shared interaction states without becoming filled buttons. */
     public static void styleIconAction(View action) {
-        ScreenColors colors = current();
+        ScreenColors colors = forScreen(action.getContext());
         GradientDrawable surface = new GradientDrawable();
         surface.setColor(Color.TRANSPARENT);
         surface.setCornerRadius(dp(action, 8));

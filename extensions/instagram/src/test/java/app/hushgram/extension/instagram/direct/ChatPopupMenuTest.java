@@ -47,7 +47,7 @@ public class ChatPopupMenuTest {
             assertNotNull(row.getCheckMarkDrawable());
             android.view.accessibility.AccessibilityNodeInfo info = entry.createAccessibilityNodeInfo();
             assertTrue(info.isCheckable());
-            assertEquals("android.widget.RadioButton", info.getClassName());
+            assertEquals(CheckedTextView.class.getName(), info.getClassName());
             list.performItemClick(entry, 0, 4);
             assertEquals(4, picked[0]);
             assertFalse(popup.windowForTests().isShowing());
@@ -98,11 +98,23 @@ public class ChatPopupMenuTest {
                 ListView list = popup.windowForTests().getListView();
                 assertTrue(list.getClipToOutline());
                 GradientDrawable background = (GradientDrawable) list.getBackground();
+                app.hushgram.extension.instagram.settings.ScreenColors palette =
+                        app.hushgram.extension.instagram.settings.ScreenColors.forScreen(activity.get());
+                assertEquals("the panel uses the shared wallpaper surface", palette.dialog,
+                        background.getColor().getDefaultColor());
                 assertEquals(16 * list.getResources().getDisplayMetrics().density, background.getCornerRadius(), 0.1f);
                 View large = list.getAdapter().getView(1, null, list);
+                assertTrue("each option has its own inset", large.getBackground()
+                        instanceof android.graphics.drawable.InsetDrawable);
+                android.graphics.drawable.RippleDrawable option = (android.graphics.drawable.RippleDrawable)
+                        ((android.graphics.drawable.InsetDrawable) large.getBackground()).getDrawable();
+                GradientDrawable mask = (GradientDrawable) option.findDrawableByLayerId(android.R.id.mask);
+                float inner = 4 * list.getResources().getDisplayMetrics().density;
+                assertArrayEquals("middle options use the connected inner corners",
+                        new float[]{inner, inner, inner, inner, inner, inner, inner, inner}, mask.getCornerRadii(), 0.1f);
                 CheckedTextView row = large.findViewById(android.R.id.text1);
                 row.setTextSize(32);
-                int width = Math.round(280 * list.getResources().getDisplayMetrics().density);
+                int width = popup.windowForTests().getWidth();
                 large.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                         View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                 large.layout(0, 0, width, large.getMeasuredHeight());
@@ -115,6 +127,7 @@ public class ChatPopupMenuTest {
                             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                     height += entry.getMeasuredHeight();
                 }
+                assertTrue("the popup reserves the complete measured options height", popup.windowForTests().getHeight() >= height);
                 list.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                         View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
                 list.layout(0, 0, width, list.getMeasuredHeight());
