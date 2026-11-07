@@ -21,8 +21,8 @@ import app.hushgram.extension.shared.settings.HushgramPause;
 
 /**
  * Helper for the "Chat plus menu" patch (#448): takes Saved, AI images and Draw off the menu the plus
- * button of a chat's message bar opens, each by its own switch, and can move the bar's gallery and
- * microphone buttons into that menu.
+ * button of a chat's message bar opens, each by its own switch, and can move the gallery button
+ * into that menu. The microphone remains on the message bar.
  *
  * <p>Instagram builds a map from each button's enum constant to the item that draws it, then fills
  * the plus menu's list with the items of the constants the menu shows. The patch hands this the
@@ -40,6 +40,10 @@ public final class PlusMenu {
     static final String DRAW = "DOODLES";
     static final String GALLERY = "GALLERY";
     static final String VOICE = "VOICE_MESSAGE";
+    static final String LOCATION = "LOCATION";
+    /** Verified against 454's native composer enum, separately from IMAGINE and DOODLES. */
+    private static final Set<String> META_AI = new HashSet<>(java.util.Arrays.asList(
+            "META_AI_DISCOVERY", "META_AI_INVOCATION", "META_AI_VOICE"));
 
     /** What's counted for each row taken out of, or put into, a menu. */
     static final String REMOVED = "plus menu rows removed";
@@ -69,13 +73,14 @@ public final class PlusMenu {
             if (Settings.HIDE_PLUS_SAVED.get()) out.add(SAVED);
             if (Settings.HIDE_PLUS_AI_IMAGES.get()) out.add(AI_IMAGES);
             if (Settings.HIDE_PLUS_DRAW.get()) out.add(DRAW);
+            if (Settings.HIDE_PLUS_META_AI.get()) out.addAll(META_AI);
+            if (Settings.HIDE_PLUS_LOCATION.get()) out.add(LOCATION);
             boolean move = Settings.MOVE_TO_PLUS_MENU.get();
             if (out.isEmpty() && !move) return;
             HookStatus.invoked(FamilyNames.PLUS_MENU);
             @SuppressWarnings("unchecked")
             List<Object> rows = (List<Object>) menu;
             Object gallery = null;
-            Object voice = null;
             for (Map.Entry<?, ?> entry : byButton.entrySet()) {
                 if (!(entry.getKey() instanceof Enum<?>)) continue;
                 String name = ((Enum<?>) entry.getKey()).name();
@@ -83,13 +88,12 @@ public final class PlusMenu {
                     takeOut(rows, entry.getValue());
                 } else if (GALLERY.equals(name)) {
                     gallery = entry.getValue();
-                } else if (VOICE.equals(name)) {
-                    voice = entry.getValue();
                 }
             }
             if (move) {
                 putIn(rows, gallery);
-                putIn(rows, voice);
+                // The native voice recorder is absent from 454's overflow map and needs its
+                // message-bar gestures. Do not advertise a non-working menu replacement.
             }
         } catch (Throwable failure) {
             HookStatus.threw(FamilyNames.PLUS_MENU, "plus menu", failure);
@@ -97,7 +101,7 @@ public final class PlusMenu {
     }
 
     /**
-     * Whether the gallery and microphone buttons are meant to be in the menu, so the bar leaves them
+     * Whether Gallery is meant to be in the menu, so the bar leaves it
      * out. A build without Chat plus menu has no menu to hold them, so they stay on the bar there.
      */
     public static boolean moved() {

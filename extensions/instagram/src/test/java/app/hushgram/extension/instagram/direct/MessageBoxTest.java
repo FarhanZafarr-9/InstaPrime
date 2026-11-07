@@ -70,7 +70,7 @@ public class MessageBoxTest {
         Settings.MOVE_TO_PLUS_MENU.save(true);
         PlusMenu.inBuildForTests = true;
         assertFalse(MessageBox.button(Button.GALLERY, 1));
-        assertFalse(MessageBox.button(Button.VOICE_MESSAGE, 1));
+        assertTrue(MessageBox.button(Button.VOICE_MESSAGE, 1));
         assertTrue(MessageBox.button(Button.STICKER, 1));
     }
 

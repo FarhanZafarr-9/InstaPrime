@@ -384,7 +384,7 @@ public final class ChatPreview {
 
         LinearLayout composer = new LinearLayout(activity);
         composer.setOrientation(LinearLayout.HORIZONTAL);
-        composer.setGravity(Gravity.CENTER_VERTICAL);
+        composer.setGravity(Gravity.BOTTOM);
         composer.addView(field, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         LinearLayout.LayoutParams sendAt = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -393,7 +393,7 @@ public final class ChatPreview {
 
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(activity, 20), gap, dp(activity, 20), 0);
+        root.setPadding(dp(activity, 20), gap, dp(activity, 20), dp(activity, 8));
         // Weighted, so when the keyboard shortens the box the chat gives up the room, not the reply field.
         root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -413,6 +413,12 @@ public final class ChatPreview {
             box.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
         ScreenColors.dialog(box);
+        if (box.getWindow() != null) {
+            GradientDrawable panel = new GradientDrawable();
+            panel.setColor(colors.dialog);
+            panel.setCornerRadius(dp(activity, 16));
+            box.getWindow().setBackgroundDrawable(panel);
+        }
 
         List<List<Line>> shown = new ArrayList<>(Collections.singletonList(null));
         Runnable load = () -> load(box, list, status, scroll, session, key, shown);

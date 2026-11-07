@@ -103,7 +103,7 @@ public final class MessageBox {
         if (!PlusMenu.moved()) return named;
         Set<String> all = new LinkedHashSet<>(named);
         all.add("GALLERY");
-        all.add("VOICE_MESSAGE");
+        // 454's plus-menu map has no VOICE_MESSAGE entry. Keep the native recorder accessible.
         return all;
     }
 

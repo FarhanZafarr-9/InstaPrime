@@ -616,7 +616,7 @@ public final class ChatPager {
     /** The menu as a popup under what was pressed, each line with Instagram's glyph for it (#453). */
     private static void popup(final Activity activity, View pressed, final View root, final String name, List<String> labels,
                               List<Integer> actions) {
-        PopupMenu popup = new PopupMenu(activity, pressed, BUTTON_TAG.equals(pressed.getTag()) ? Gravity.END : Gravity.NO_GRAVITY);
+        PopupMenu popup = new ChatPopupMenu(activity, pressed, BUTTON_TAG.equals(pressed.getTag()) ? Gravity.END : Gravity.NO_GRAVITY);
         Menu items = popup.getMenu();
         int color = FeedDownloadButton.iconColor(activity);
         for (int i = 0; i < labels.size(); i++) {

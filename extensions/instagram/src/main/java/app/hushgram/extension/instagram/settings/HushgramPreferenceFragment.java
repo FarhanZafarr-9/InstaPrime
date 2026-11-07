@@ -979,26 +979,24 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
 
     /**
      * The summary for [saved] with Gallery and microphone in the plus menu [moved] or not. Moved, the
-     * bar leaves Gallery and Voice message out whatever's ticked here ({@link MessageBox}), so the
+     * bar leaves Gallery out whatever's ticked here ({@link MessageBox}), so the
      * summary says where they went rather than calling them shown or left off.
      */
     static String messageBoxSummary(String saved, boolean moved) {
         Set<String> hidden = MessageBox.parse(saved);
         List<String> labels = new ArrayList<>();
         for (String name : MessageBox.OFFERED) {
-            if (moved && ("GALLERY".equals(name) || "VOICE_MESSAGE".equals(name))) continue;
+            if (moved && "GALLERY".equals(name)) continue;
             if (hidden.contains(name)) labels.add(L10n.isolate(messageBoxLabel(name)));
         }
         if (labels.isEmpty()) {
             return moved
-                    ? L10n.t("Gallery and Voice message are in the plus menu while Gallery and microphone in the plus "
-                            + "menu is on. The text box and Send always stay.")
+                    ? L10n.t("Gallery is in the More menu. The microphone stays in the message bar. The text box and Send always stay.")
                     : L10n.t("Every button in the message box shows. Untick the ones you don't use. The text box and Send always stay.");
         }
         String left = String.join(", ", labels);
         return moved
-                ? L10n.f("Left off the message box: %1$s. Gallery and Voice message are in the plus menu while Gallery "
-                        + "and microphone in the plus menu is on. The text box and Send stay.", left)
+                ? L10n.f("Left off the message box: %1$s. Gallery is in the More menu. The text box and Send stay.", left)
                 : L10n.f("Left off the message box: %1$s. The text box and Send stay.", left);
     }
 

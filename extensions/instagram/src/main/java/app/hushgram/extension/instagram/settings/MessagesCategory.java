@@ -201,9 +201,12 @@ final class MessagesCategory {
                         L10n.t("Takes AI images off the menu the plus button opens in a chat's message bar.")));
                 messages.addPreference(toggle(context, Settings.HIDE_PLUS_DRAW, L10n.t("Hide Draw in the plus menu"),
                         L10n.t("Takes Draw off the menu the plus button opens in a chat's message bar.")));
-                messages.addPreference(toggle(context, Settings.MOVE_TO_PLUS_MENU, L10n.t("Gallery and microphone in the plus menu"),
-                        L10n.t("Moves the gallery and microphone buttons off the message bar and into the plus menu. "
-                                + "They work as before. Turn it off and they're back the next time a chat opens.")));
+                messages.addPreference(toggle(context, Settings.HIDE_PLUS_META_AI, L10n.t("Hide Meta AI in the More menu"),
+                        L10n.t("Removes Meta AI from the menu the plus button opens in a chat.")));
+                messages.addPreference(toggle(context, Settings.HIDE_PLUS_LOCATION, L10n.t("Hide Location in the More menu"),
+                        L10n.t("Removes location sharing from the menu the plus button opens in a chat.")));
+                messages.addPreference(toggle(context, Settings.MOVE_TO_PLUS_MENU, L10n.t("Gallery in the More menu"),
+                        L10n.t("Moves Gallery into the plus menu. The microphone stays in the message bar so voice recording remains available. Reopen the chat after changing this.")));
             }
             if (build.contains(PatchFamily.GLASS_CHAT)) {
                 messages.addPreference(toggle(context, Settings.GLASS_CHAT, L10n.t("Glass in chats"),

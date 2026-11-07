@@ -416,6 +416,30 @@ public class ChatPreviewTest {
         assertFalse(ChatPreview.PATCHED.isMessage(new Object()));
     }
 
+    @Test @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void roundedPreviewKeepsItsReplyAndActionsInView() throws Exception {
+        fake.messages.add(new Message("Are we still meeting later?", 1_700_000_000_000_000L, false));
+        fake.messages.add(new Message("Yes, see you at six!", 1_700_000_060_000_000L, true));
+        AlertDialog dialog = box(true);
+        View decor = dialog.getWindow().getDecorView();
+        float density = decor.getResources().getDisplayMetrics().density;
+        int width = Math.round(320 * density);
+        decor.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(Math.round(600 * density), View.MeasureSpec.AT_MOST));
+        decor.layout(0, 0, width, decor.getMeasuredHeight());
+        assertTrue(find(decor, EditText.class).getHeight() > 0);
+        assertTrue(sendButton(dialog).getHeight() > 0);
+        android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(width, decor.getHeight(),
+                android.graphics.Bitmap.Config.ARGB_8888);
+        decor.draw(new android.graphics.Canvas(bitmap));
+        java.io.File output = new java.io.File("build/chat-preview-" + android.os.Build.VERSION.SDK_INT + ".png");
+        output.getParentFile().mkdirs();
+        try (java.io.FileOutputStream stream = new java.io.FileOutputStream(output)) {
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream);
+        }
+        bitmap.recycle();
+    }
+
     private AlertDialog box(boolean canMark) throws Exception {
         Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
         AlertDialog box = ChatPreview.show(activity, SESSION, KEY, canMark);

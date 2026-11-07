@@ -60,7 +60,7 @@ public class PlusMenuSettingsTest {
         Utils.awaitBackgroundTasksForTests();
     }
     private static BooleanSetting[] all() {
-        return new BooleanSetting[]{Settings.HIDE_PLUS_SAVED, Settings.HIDE_PLUS_AI_IMAGES, Settings.HIDE_PLUS_DRAW, Settings.MOVE_TO_PLUS_MENU};
+        return new BooleanSetting[]{Settings.HIDE_PLUS_SAVED, Settings.HIDE_PLUS_AI_IMAGES, Settings.HIDE_PLUS_DRAW, Settings.HIDE_PLUS_META_AI, Settings.HIDE_PLUS_LOCATION, Settings.MOVE_TO_PLUS_MENU};
     }
     private static void resetAll() {
         for (BooleanSetting each : all()) each.resetToDefault();
@@ -72,13 +72,14 @@ public class PlusMenuSettingsTest {
     @Test public void theSwitchesSitUnderMessagesAndStartOff() throws Exception {
         open(true);
         String[] titles = {"Hide Saved in the plus menu", "Hide AI images in the plus menu", "Hide Draw in the plus menu",
-                "Gallery and microphone in the plus menu"};
+                "Hide Meta AI in the More menu", "Hide Location in the More menu", "Gallery in the More menu"};
         BooleanSetting[] switches = all();
         for (int i = 0; i < switches.length; i++) {
-            SwitchPreference row = (SwitchPreference) page.getPreferenceScreen().findPreference(switches[i].key);
+            SwitchPreference row = (SwitchPreference) page.findPreference(switches[i].key);
             assertNotNull(titles[i], row);
             assertEquals(titles[i], row.getTitle().toString());
-            PreferenceCategory section = categoryHolding(page.getPreferenceScreen(), row);
+            SettingsNavigation nav = org.robolectric.util.ReflectionHelpers.getField(page, "navigation");
+            PreferenceCategory section = nav.destination(row).category;
             assertNotNull(section);
             assertEquals("Messages", section.getTitle().toString());
             assertFalse(row.isChecked());

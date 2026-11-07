@@ -121,7 +121,7 @@ public final class SeenChoiceButton {
             return;
         }
         SeenChoices.Choice now = ThreadSeen.choiceOf(account, thread);
-        PopupMenu popup = new PopupMenu(anchor.getContext(), anchor);
+        PopupMenu popup = new ChatPopupMenu(anchor.getContext(), anchor);
         Menu menu = popup.getMenu();
         menu.add(GROUP, 0, 0, L10n.t("Use the HushGram setting"));
         menu.add(GROUP, 1, 1, L10n.t("Hold Seen in this chat"));
@@ -135,7 +135,9 @@ public final class SeenChoiceButton {
             if (index >= 0 && index < ROWS.length) pick(account, thread, ROWS[index]);
             return true;
         });
-        popup.setOnDismissListener(closed -> shown = new WeakReference<>(null));
+        popup.setOnDismissListener(closed -> {
+            if (shown.get() == closed) shown = new WeakReference<>(null);
+        });
         shown = new WeakReference<>(popup);
         popup.show();
     }

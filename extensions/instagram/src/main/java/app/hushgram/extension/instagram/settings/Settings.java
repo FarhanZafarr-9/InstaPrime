@@ -865,6 +865,8 @@ public class Settings extends BaseSettings {
     public static final BooleanSetting HIDE_PLUS_SAVED = new BooleanSetting("hushgram_hide_plus_saved", FALSE);
     public static final BooleanSetting HIDE_PLUS_AI_IMAGES = new BooleanSetting("hushgram_hide_plus_ai_images", FALSE);
     public static final BooleanSetting HIDE_PLUS_DRAW = new BooleanSetting("hushgram_hide_plus_draw", FALSE);
+    public static final BooleanSetting HIDE_PLUS_META_AI = new BooleanSetting("instaprime_hide_plus_meta_ai", FALSE);
+    public static final BooleanSetting HIDE_PLUS_LOCATION = new BooleanSetting("instaprime_hide_plus_location", FALSE);
 
     /**
      * A chat's header shows the glass of the See-through top bar, and its buttons sit on glass discs
@@ -872,7 +874,7 @@ public class Settings extends BaseSettings {
      */
     public static final BooleanSetting GLASS_CHAT = new BooleanSetting("hushgram_glass_chat", FALSE);
 
-    /** The message bar's gallery and microphone buttons move into the plus menu. Off to start. */
+    /** Gallery moves into the plus menu; the native microphone stays accessible. The saved key is retained. */
     public static final BooleanSetting MOVE_TO_PLUS_MENU = new BooleanSetting("hushgram_move_to_plus_menu", FALSE);
 
     /**

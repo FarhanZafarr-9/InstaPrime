@@ -39,7 +39,6 @@ import org.robolectric.RuntimeEnvironment;
 import org.robolectric.Shadows;
 import org.robolectric.shadows.ShadowAlertDialog;
 import org.robolectric.shadows.ShadowLooper;
-import org.robolectric.shadows.ShadowPopupMenu;
 import org.robolectric.shadows.ShadowToast;
 
 import java.util.ArrayList;
@@ -185,7 +184,7 @@ public class ChatPagerTest {
 
     /** The menu that opened, as a popup (#453); fails when none did. */
     private static Menu menuOpened() {
-        PopupMenu popup = ShadowPopupMenu.getLatestPopupMenu();
+        PopupMenu popup = ChatPopupMenu.latestForTests();
         assertNotNull("no menu opened", popup);
         assertNull("the old list opened too", ShadowAlertDialog.getLatestAlertDialog());
         Menu menu = popup.getMenu();
@@ -198,7 +197,7 @@ public class ChatPagerTest {
     }
 
     private static void assertNoMenu() {
-        assertNull(ShadowPopupMenu.getLatestPopupMenu());
+        assertNull(ChatPopupMenu.latestForTests());
         assertNull(ShadowAlertDialog.getLatestAlertDialog());
     }
 
@@ -215,6 +214,7 @@ public class ChatPagerTest {
 
     @After
     public void restore() {
+        ChatPopupMenu.resetForTests();
         if (screen != null) ChatPager.closed(screen.fragment);
         MessagesLock.idsForTests = null;
         ChatPager.iconsForTests = null;
@@ -1101,7 +1101,7 @@ public class ChatPagerTest {
         assertEquals("Export chat", String.valueOf(ours.getContentDescription()));
 
         assertTrue(ours.performClick());
-        PopupMenu popup = ShadowPopupMenu.getLatestPopupMenu();
+        PopupMenu popup = ChatPopupMenu.latestForTests();
         assertEquals(1, popup.getMenu().size());
         Shadows.shadowOf(popup).getOnMenuItemClickListener().onMenuItemClick(popup.getMenu().getItem(0));
         ShadowLooper.idleMainLooper();

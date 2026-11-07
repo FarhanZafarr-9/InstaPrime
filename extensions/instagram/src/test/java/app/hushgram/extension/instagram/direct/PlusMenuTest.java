@@ -40,7 +40,8 @@ import app.hushgram.extension.shared.settings.PauseForTests;
 @Config(sdk = {28, 37})
 public class PlusMenuTest {
     /** Stand-in for Instagram's button enum: the names are all the hook reads. */
-    private enum Kind { CROSS_APP_SAVES, IMAGINE, DOODLES, GALLERY, VOICE_MESSAGE, STICKER, OTHER }
+    private enum Kind { CROSS_APP_SAVES, IMAGINE, DOODLES, GALLERY, VOICE_MESSAGE, STICKER, OTHER,
+        META_AI_DISCOVERY, META_AI_INVOCATION, META_AI_VOICE, LOCATION }
 
     @Rule public final SettingsContextRule settings = new SettingsContextRule();
 
@@ -72,6 +73,8 @@ public class PlusMenuTest {
         Settings.HIDE_PLUS_SAVED.resetToDefault();
         Settings.HIDE_PLUS_AI_IMAGES.resetToDefault();
         Settings.HIDE_PLUS_DRAW.resetToDefault();
+        Settings.HIDE_PLUS_META_AI.resetToDefault();
+        Settings.HIDE_PLUS_LOCATION.resetToDefault();
         Settings.MOVE_TO_PLUS_MENU.resetToDefault();
     }
 
@@ -81,6 +84,41 @@ public class PlusMenuTest {
             for (Map.Entry<Kind, Object> entry : byButton.entrySet()) if (entry.getValue() == row) kinds.add(entry.getKey());
         }
         return kinds;
+    }
+
+    @Test public void metaAiAndLocationFiltersAreIndependentAndLeaveAiImagesAlone() {
+        menu.add(byButton.get(Kind.META_AI_DISCOVERY));
+        menu.add(byButton.get(Kind.META_AI_INVOCATION));
+        menu.add(byButton.get(Kind.META_AI_VOICE));
+        menu.add(byButton.get(Kind.LOCATION));
+        assertFalse(Settings.HIDE_PLUS_META_AI.get());
+        assertFalse(Settings.HIDE_PLUS_LOCATION.get());
+        Settings.HIDE_PLUS_META_AI.save(true);
+        PlusMenu.menu(menu, byButton);
+        assertFalse(kinds().contains(Kind.META_AI_DISCOVERY));
+        assertFalse(kinds().contains(Kind.META_AI_INVOCATION));
+        assertFalse(kinds().contains(Kind.META_AI_VOICE));
+        assertTrue(kinds().contains(Kind.LOCATION));
+        assertTrue(kinds().contains(Kind.IMAGINE));
+        assertTrue(kinds().contains(Kind.DOODLES));
+        Settings.HIDE_PLUS_LOCATION.save(true);
+        PlusMenu.menu(menu, byButton);
+        assertFalse(kinds().contains(Kind.LOCATION));
+        assertTrue(kinds().contains(Kind.IMAGINE));
+    }
+
+    @Test public void nativeMapWithoutVoiceNeverMakesTheMicrophoneDisappear() {
+        byButton.remove(Kind.VOICE_MESSAGE);
+        Settings.MOVE_TO_PLUS_MENU.save(true);
+        PlusMenu.menu(menu, byButton);
+        assertTrue(kinds().contains(Kind.GALLERY));
+        assertTrue(MessageBox.button(Kind.VOICE_MESSAGE, 1));
+        android.view.View mic = new android.view.View(org.robolectric.RuntimeEnvironment.getApplication());
+        MessageBox.composerCreated(null, null, mic);
+        assertEquals(android.view.View.VISIBLE, mic.getVisibility());
+        Settings.HIDDEN_MESSAGE_BOX_BUTTONS.save("VOICE_MESSAGE");
+        assertFalse(MessageBox.button(Kind.VOICE_MESSAGE, 1));
+        Settings.HIDDEN_MESSAGE_BOX_BUTTONS.resetToDefault();
     }
 
     /** Every switch starts off, and then the menu is exactly what Instagram built. */
@@ -123,9 +161,8 @@ public class PlusMenuTest {
         Settings.MOVE_TO_PLUS_MENU.save(true);
         PlusMenu.menu(menu, byButton);
         PlusMenu.menu(menu, byButton);
-        assertEquals(Arrays.asList(Kind.CROSS_APP_SAVES, Kind.IMAGINE, Kind.DOODLES, Kind.OTHER, Kind.GALLERY, Kind.VOICE_MESSAGE), kinds());
+        assertEquals(Arrays.asList(Kind.CROSS_APP_SAVES, Kind.IMAGINE, Kind.DOODLES, Kind.OTHER, Kind.GALLERY), kinds());
         assertSame(byButton.get(Kind.GALLERY), menu.get(4));
-        assertSame(byButton.get(Kind.VOICE_MESSAGE), menu.get(5));
         assertTrue(PlusMenu.moved());
     }
 
