@@ -6,9 +6,18 @@ package app.morphe.patches.instagram.coexist
 
 import app.morphe.ExtensionDex
 import app.morphe.PatchContexts
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.patch.PatchException
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.immutable.ImmutableClassDef
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -16,7 +25,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The code half on every build of Instagram 453.0.0.57.79. Each build names its own package by the same
+ * The code half on every build of Instagram 454.0.0.54.77. Each build names its own package by the same
  * uses, Redex's names aside, and every use that means the running app moves while the rest stay.
  */
 class CloneCodeTest {
@@ -24,30 +33,38 @@ class CloneCodeTest {
 
     /**
      * The const-string loads of an authority each build has, and the loads of Instagram's package that stay,
-     * as each build's plan counts them. The screen density builds differ from their kind's declared one:
-     * 385914546 keeps five more package loads and has one authority load fewer, and 385914510 has three more.
+     * as each build's plan counts them. 454's builds differ more than 453's did: between 35 and 39 authority
+     * loads, and 386014704 keeps one package load fewer than the rest.
      */
     private val authorityLoads = mapOf(
-        "385914557" to 35, "385914517" to 35, "385914546" to 34,
-        "385914503" to 35, "385914510" to 38, "385914556" to 35,
-        "385914518" to 31, "385914558" to 31,
+        "386014704" to 38, "386014705" to 37, "386014712" to 39, "386014714" to 35, "386014718" to 39,
+        "386014747" to 39, "386014757" to 37, "386014758" to 39, "386014759" to 37, "386014760" to 35,
     )
     private val keptLoads = mapOf(
-        "385914557" to 86, "385914517" to 86, "385914546" to 91,
-        "385914503" to 86, "385914510" to 86, "385914556" to 86,
-        "385914518" to 86, "385914558" to 86,
+        "386014704" to 87, "386014705" to 88, "386014712" to 88, "386014714" to 88, "386014718" to 88,
+        "386014747" to 88, "386014757" to 88, "386014758" to 88, "386014759" to 88, "386014760" to 88,
     )
     private val uses = mapOf(
-        SelfUse.INLINED to 4, SelfUse.PACKAGE_MANAGER to 6, SelfUse.OWN_INTENT to 9,
-        SelfUse.NAME_CHECK to 6, SelfUse.CALLER_CHECK to 3, SelfUse.PROVIDER_OWNER to 4, SelfUse.RELEASE_AND_DEBUG to 5,
+        SelfUse.INLINED to 5, SelfUse.PACKAGE_MANAGER to 7, SelfUse.OWN_INTENT to 9,
+        SelfUse.NAME_CHECK to 6, SelfUse.CALLER_CHECK to 3, SelfUse.PROVIDER_OWNER to 4, SelfUse.RELEASE_AND_DEBUG to 7,
         SelfUse.DEX_LOAD_REPORT to 2,
+    )
+
+    /**
+     * The builds whose uses differ from the rest. 386014704 and 386014757 open one more screen of their own
+     * from a click (0JOV.onClick, 0UoN.onClick), and 386014704 and 386014705 lack the pair of checks of the
+     * running app's release and debug names (01Gh.A08 and A0C on 386014758): neither loads the debug name there.
+     */
+    private val usesBy = mapOf(
+        "386014704" to mapOf(SelfUse.OWN_INTENT to 10, SelfUse.RELEASE_AND_DEBUG to 5),
+        "386014705" to mapOf(SelfUse.RELEASE_AND_DEBUG to 5),
+        "386014757" to mapOf(SelfUse.OWN_INTENT to 10),
     )
 
     /** Google Play's uses, the one count that differs by build: R8 keeps more or fewer of its helpers in each. */
     private val googlePlayUses = mapOf(
-        "385914557" to 6, "385914517" to 6, "385914546" to 7,
-        "385914503" to 7, "385914510" to 7, "385914556" to 7,
-        "385914518" to 7, "385914558" to 7,
+        "386014704" to 7, "386014705" to 7, "386014712" to 7, "386014714" to 7, "386014718" to 7,
+        "386014747" to 7, "386014757" to 7, "386014758" to 7, "386014759" to 7, "386014760" to 7,
     )
 
     /** The uses in classes Redex leaves named, the same in every build. 453 renames the Play billing classes, so theirs count among the LX/ ones. */
@@ -78,7 +95,7 @@ class CloneCodeTest {
         run {
             val authorities = readCloneManifest(CloneFixtures.manifest(file)).authorities
             val classes = CloneFixtures.classes(file, authorities)
-            if (build == "385914557") {
+            if (build == "386014758") {
                 val withoutAnswer = PatchContexts.of(classes).planClone(clone, authorities)
                 val refusal = assertThrows(PatchException::class.java) { withoutAnswer.requireComplete() }
                 assertTrue(refusal.message, refusal.message!!.contains("OwnPackage.name()"))
@@ -89,7 +106,7 @@ class CloneCodeTest {
             println("[$build] ${plan.summary()}")
             plan.sites.forEach { println("[$build]   $it") }
 
-            assertEquals("[$build] uses", uses + (SelfUse.GOOGLE_PLAY to googlePlayUses[build]), SelfUse.entries.associateWith(plan::count))
+            assertEquals("[$build] uses", uses + usesBy[build].orEmpty() + (SelfUse.GOOGLE_PLAY to googlePlayUses[build]), SelfUse.entries.associateWith(plan::count))
             assertEquals("[$build] uses in named classes", namedUses, plan.sites.filter { it.use != null && !it.type.startsWith("LX/") }
                 .map { "${it.type} ${it.use!!.name}" }.sorted())
             assertTrue("[$build] each use moves to the copy", plan.sites.filter { it.use != null }.all { it.to == clone })
@@ -121,5 +138,51 @@ class CloneCodeTest {
         val method = ownPackage().methods.single { it.name == "name" }
         val strings = method.implementation!!.instructions.mapNotNull { ((it as? ReferenceInstruction)?.reference as? StringReference)?.string }
         assertEquals(listOf(INSTAGRAM), strings)
+    }
+
+    @Test fun languagePackReturnUsesTheActivityAndKeepsTheScopedLauncher() {
+        for (registers in listOf(4, 20)) {
+            val context = PatchContexts.of(listOf(waitingForStrings(registers)))
+            context.keepLanguagePackReturnInTask()
+            val code = context.classDefBy(WAITING_FOR_STRINGS).methods.single().implementation!!.instructions.toList()
+            val move = code.single { it.opcode == Opcode.MOVE_OBJECT_FROM16 } as TwoRegisterInstruction
+            assertEquals(1, move.registerA)
+            assertEquals(registers - 1, move.registerB)
+            val calls = code.mapNotNull { ((it as? ReferenceInstruction)?.reference as? MethodReference)?.name }
+            assertEquals(listOf("setPackage", "openPublic", "finish"), calls)
+            assertEquals(registers, context.classDefBy(WAITING_FOR_STRINGS).methods.single().implementation!!.registerCount)
+        }
+    }
+
+    @Test fun ambiguousLanguagePackReturnIsRefusedWithoutChangingCode() {
+        val original = waitingForStrings(4, 2)
+        val context = PatchContexts.of(listOf(original))
+        val before = context.mutableClassDefBy(WAITING_FOR_STRINGS).methods.single().implementation!!.instructions.toList()
+        assertThrows(PatchException::class.java) { context.keepLanguagePackReturnInTask() }
+        assertEquals(before,
+            context.classDefBy(WAITING_FOR_STRINGS).methods.single().implementation!!.instructions.toList())
+    }
+
+    private fun waitingForStrings(registers: Int, copies: Int = 1): ImmutableClassDef {
+        val method = MutableMethod(ImmutableMethod(
+            WAITING_FOR_STRINGS, "resume", listOf(ImmutableMethodParameter(WAITING_FOR_STRINGS, null, null)), "V",
+            AccessFlags.PUBLIC.value or AccessFlags.STATIC.value, null, null,
+            ImmutableMethodImplementation(registers, emptyList(), null, null),
+        ))
+        val launch = """
+            invoke-static/range {p0 .. p0}, Lx/Contexts;->application(Landroid/content/Context;)Landroid/content/Context;
+            move-result-object v1
+            invoke-static {v1, v2}, Lx/Launchers;->openPublic(Landroid/content/Context;Landroid/content/Intent;)Z
+        """.trimIndent()
+        method.addInstructionsWithLabels(0, """
+            const/4 v2, 0x0
+            const-string v0, "com.instagram.android"
+            invoke-virtual {v2, v0}, Landroid/content/Intent;->setPackage(Ljava/lang/String;)Landroid/content/Intent;
+            ${List(copies) { launch }.joinToString("\n")}
+            invoke-virtual/range {p0 .. p0}, Landroid/app/Activity;->finish()V
+            return-void
+        """.trimIndent())
+        return ImmutableClassDef(WAITING_FOR_STRINGS, AccessFlags.PUBLIC.value, "Landroid/app/Activity;",
+            null, null, null, emptyList(), listOf(method))
     }
 }

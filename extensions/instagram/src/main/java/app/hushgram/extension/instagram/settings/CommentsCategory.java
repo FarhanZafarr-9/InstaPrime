@@ -34,6 +34,8 @@ final class CommentsCategory {
                         L10n.t("Adds Copy to a selected comment's menu. Copies the original text, including line breaks.")));
                 comments.addPreference(toggle(context, Settings.COPY_COMMENTS_WITHOUT_MENTIONS, L10n.t("Copy without the @names at the start"),
                         L10n.t("When a comment starts with @names, like most replies do, Copy leaves them out. The comment in Instagram stays the same.")));
+                comments.addPreference(toggle(context, Settings.SELECT_TEXT, L10n.t("Select text to copy"),
+                        L10n.t("Adds Select text to a selected comment's menu, a post's details and a profile's menu. It opens the text in a window where you can select part of it and copy it. Links work there.")));
                 if (PatchFamily.commentAuthorInBuild()) {
                     comments.addPreference(toggle(context, Settings.COPY_COMMENT_AUTHORS, L10n.t("Copy the commenter's username"),
                             L10n.t("Adds Copy username to a selected comment's menu, for the account that wrote it.")));
@@ -45,6 +47,10 @@ final class CommentsCategory {
                 if (PatchFamily.commentGifReplyInBuild()) {
                     comments.addPreference(toggle(context, Settings.REPLY_WITH_COMMENT_GIFS, L10n.t("Reply with a comment's GIF"),
                             L10n.t("When a comment has a GIF, its menu gets a GIF reply that sends that same GIF back as your reply, animated.")));
+                }
+                if (PatchFamily.commentGifNameInBuild()) {
+                    comments.addPreference(toggle(context, Settings.SHOW_COMMENT_GIF_NAMES, L10n.t("Show a comment GIF's name"),
+                            L10n.t("When a comment has a GIF or sticker, its menu shows its name. Tap the name to copy it.")));
                 }
             }
             if (build.contains(PatchFamily.HIDE_COMMENTS)) {

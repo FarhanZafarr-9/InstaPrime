@@ -62,6 +62,105 @@ public final class ProfileExtras {
     private static final class State {
         WeakReference<ViewGroup> row = new WeakReference<>(null);
         Object user;
+        /** The signed-in session the bar was bound with, which Instagram's About this account is opened through. */
+        Object session;
+    }
+
+    static final String ABOUT_PLACED = "about this account button placed";
+    static final String ABOUT_OPENED = "about this account opened";
+
+    /** Filled in by the patch: whether this build has the call that opens About this account. */
+    public static boolean aboutAvailable() {
+        return false;
+    }
+
+    /** Filled in by the patch: an account's id, or null. */
+    @Nullable
+    public static String userId(Object user) {
+        return null;
+    }
+
+    /** Filled in by the patch: opens Instagram's About this account for [id] from [context], through [session], saying it came from [referer]. */
+    public static void openAbout(Context context, Object session, String id, @Nullable String referer) {
+    }
+
+    /**
+     * #507: what Instagram's own profile menu tells the screen it came from. Left out, the call says
+     * FeedAds, its entry from an ad, and the screen fails on a Page.
+     */
+    static final String ABOUT_REFERER = "ProfileMore";
+
+    /** What opens the screen. A test swaps it. */
+    interface Opener {
+        void open(Context context, Object session, String id, String referer);
+    }
+
+    static java.util.function.Function<Object, String> ids = ProfileExtras::userId;
+
+    static java.util.function.BooleanSupplier available = ProfileExtras::aboutAvailable;
+
+    static Opener opener = ProfileExtras::openAbout;
+
+    /** Whether the About this account button is switched on and usable. */
+    static boolean aboutWanted() {
+        try {
+            return Utils.settingsReady() && !HushgramPause.isPaused() && Settings.ABOUT_ACCOUNT_BUTTON.get()
+                    && available.getAsBoolean();
+        } catch (Throwable failure) {
+            HookStatus.threw(ROUTE, "about this account switch", failure);
+            return false;
+        }
+    }
+
+    /** The button: a circled i of its own kind, so it's told from the profile extras one. */
+    static final class AboutButton extends ImageView {
+        AboutButton(Context context) {
+            super(context);
+        }
+    }
+
+    @Nullable
+    static AboutButton findAbout(ViewGroup row) {
+        for (int i = 0; i < row.getChildCount(); i++) {
+            if (row.getChildAt(i) instanceof AboutButton) return (AboutButton) row.getChildAt(i);
+        }
+        return null;
+    }
+
+    /** The tap: opens About this account for the account the bar shows. Never throws. */
+    static void pressAbout(View button, @Nullable View bar) {
+        try {
+            if (!aboutWanted() || bar == null) return;
+            State state = stateOf(bar);
+            if (state.user == null || state.session == null) return;
+            String id = ids.apply(state.user);
+            if (id == null || id.isEmpty()) return;
+            HookStatus.counted(ROUTE, ABOUT_OPENED);
+            opener.open(activityOf(button), state.session, id, ABOUT_REFERER);
+        } catch (Throwable failure) {
+            HookStatus.threw(ROUTE, "about this account tap", failure);
+            Logger.printException(() -> "Profile extras: About this account failed to open", failure);
+        }
+    }
+
+    private static AboutButton createAbout(Context context, View bar, @Nullable View neighbor) {
+        AboutButton button = new AboutButton(context);
+        button.setImageDrawable(new Info(context.getResources().getDisplayMetrics().density,
+                FeedDownloadButton.iconColor(context)));
+        button.setScaleType(ImageView.ScaleType.CENTER);
+        HomeHeader.padLike(button, neighbor);
+        button.setClickable(true);
+        button.setFocusable(true);
+        button.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        TypedValue ripple = new TypedValue();
+        if (context.getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, ripple, true)
+                && ripple.resourceId != 0) {
+            button.setBackgroundResource(ripple.resourceId);
+        }
+        button.setContentDescription(L10n.t(context, "About this account"));
+        final WeakReference<View> owner = new WeakReference<>(bar);
+        button.setOnClickListener(view -> pressAbout(view, owner.get()));
+        return button;
     }
 
     private static final WeakHashMap<View, State> BARS = new WeakHashMap<>();
@@ -89,11 +188,13 @@ public final class ProfileExtras {
      * behind the bind, which empties the row and fills it again before the queued work runs. Never
      * throws, and does nothing to the bar itself.
      */
-    public static void bound(View bar, View row) {
+    public static void bound(View bar, View row, Object session) {
         try {
             HookStatus.invoked(ROUTE);
             if (bar == null || !(row instanceof ViewGroup)) return;
-            stateOf(bar).row = new WeakReference<>((ViewGroup) row);
+            State state = stateOf(bar);
+            state.row = new WeakReference<>((ViewGroup) row);
+            state.session = session;
             bar.post(() -> place(bar));
         } catch (Throwable failure) {
             HookStatus.threw(ROUTE, "profile extras bind", failure);
@@ -108,7 +209,6 @@ public final class ProfileExtras {
     static Account account = ProfileExtras::accountOf;
 
     private static final String SCREEN_MODEL = "com.instagram.profile.fragment.UserDetailViewModel";
-    private static final String USER_TYPE = "com.instagram.user.model.User";
 
     /**
      * Injected right after each call that binds the bar, with the bar and the profile screen that
@@ -130,61 +230,24 @@ public final class ProfileExtras {
         stateOf(bar).user = user;
     }
 
-    /** The screen's one view model field, then that model's one account field, by type; null when either is missing. */
+    /** The screen's one view model field, then the account that model holds; null when either is missing. */
     static Object accountOf(Object screen) {
         try {
             Object model = fieldOfType(screen, SCREEN_MODEL);
-            if (model == null) return null;
-            Object field = fieldOfType(model, USER_TYPE);
-            if (field != null) return field;
-            Object getter = getterOf(model, USER_TYPE);
-            return getter != null ? getter : liveUser(model);
+            return model == null ? null : modelUser(model);
         } catch (Throwable failure) {
             HookStatus.threw(ROUTE, "profile extras account read", failure);
             return null;
         }
     }
 
-
-    /** The account wrapped in the model's live data, by reflecting the value and its fields. */
-    private static Object liveUser(Object model) throws Exception {
-        for (Class<?> type = model.getClass(); type != null && type != Object.class; type = type.getSuperclass()) {
-            for (java.lang.reflect.Field field : type.getDeclaredFields()) {
-                if (java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
-                Object value;
-                try {
-                    field.setAccessible(true);
-                    value = field.get(model);
-                } catch (Throwable ignored) {
-                    continue;
-                }
-                if (value == null || value instanceof String || value instanceof Number || value instanceof Boolean) continue;
-                for (Class<?> valueType = value.getClass(); valueType != null && valueType != Object.class; valueType = valueType.getSuperclass()) {
-                    for (java.lang.reflect.Field held : valueType.getDeclaredFields()) {
-                        if (java.lang.reflect.Modifier.isStatic(held.getModifiers())) continue;
-                        try {
-                            held.setAccessible(true);
-                            Object candidate = held.get(value);
-                            if (candidate != null && candidate.getClass().getName().equals(USER_TYPE)) return candidate;
-                        } catch (Throwable ignored) {
-                            // The live value's other fields aren't the account.
-                        }
-                    }
-                }
-            }
-        }
-        return null;
-    }
-    /** The model's static getter taking itself and answering the account, by type; null when missing. */
-    private static Object getterOf(Object holder, String typeName) throws Exception {
-        Class<?> holderType = holder.getClass();
-        for (java.lang.reflect.Method method : holderType.getDeclaredMethods()) {
-            if (!java.lang.reflect.Modifier.isStatic(method.getModifiers()) || method.getReturnType().getName().equals(typeName) == false) continue;
-            Class<?>[] parameters = method.getParameterTypes();
-            if (parameters.length != 1 || parameters[0] != holderType) continue;
-            method.setAccessible(true);
-            return method.invoke(null, holder);
-        }
+    /**
+     * Filled in by the patch: the account the profile screen's [model] holds, or null. 453 keeps it in
+     * the model's live data, wrapped in a holder, so it's read the way Show if a profile follows you
+     * reads it rather than by walking fields (#234).
+     */
+    @Nullable
+    public static Object modelUser(Object model) {
         return null;
     }
 
@@ -224,28 +287,49 @@ public final class ProfileExtras {
             View existing = find(row);
             if (!wanted() || state.user == null) {
                 if (existing != null) row.removeView(existing);
-                return;
-            }
-            if (existing != null) {
+                existing = null;
+            } else if (existing != null) {
                 if (row.indexOfChild(existing) != 0) {
                     row.removeView(existing);
                     row.addView(existing, 0, params(row));
                 }
-                return;
+            } else {
+                View neighbor = row.getChildCount() > 0 ? row.getChildAt(0) : null;
+                existing = create(row.getContext(), bar, neighbor);
+                row.addView(existing, 0, params(row));
+                HookStatus.counted(ROUTE, PLACED);
             }
-            View neighbor = row.getChildCount() > 0 ? row.getChildAt(0) : null;
-            row.addView(create(row.getContext(), bar, neighbor), 0, params(row));
-            HookStatus.counted(ROUTE, PLACED);
+            placeAbout(row, bar, state, existing != null ? 1 : 0);
         } catch (Throwable failure) {
             HookStatus.threw(ROUTE, "profile extras button", failure);
             Logger.printException(() -> "Profile extras: could not put the button on the profile's top bar", failure);
         }
     }
 
+    /** Puts the About this account button at [index] of the row, leaves it there, or takes it out. */
+    private static void placeAbout(ViewGroup row, View bar, State state, int index) {
+        AboutButton existing = findAbout(row);
+        if (!aboutWanted() || state.user == null || state.session == null) {
+            if (existing != null) row.removeView(existing);
+            return;
+        }
+        if (existing != null) {
+            if (row.indexOfChild(existing) != index) {
+                row.removeView(existing);
+                row.addView(existing, Math.min(index, row.getChildCount()), params(row));
+            }
+            return;
+        }
+        View neighbor = row.getChildCount() > index ? row.getChildAt(index) : null;
+        row.addView(createAbout(row.getContext(), bar, neighbor), Math.min(index, row.getChildCount()), params(row));
+        HookStatus.counted(ROUTE, ABOUT_PLACED);
+    }
+
     @Nullable
     static ImageView find(ViewGroup row) {
         for (int i = 0; i < row.getChildCount(); i++) {
             View child = row.getChildAt(i);
+            if (child instanceof AboutButton) continue;
             if (child instanceof ImageView && ((ImageView) child).getDrawable() instanceof Info) return (ImageView) child;
         }
         return null;
@@ -263,7 +347,7 @@ public final class ProfileExtras {
 
     private static ImageView create(Context context, View bar, @Nullable View neighbor) {
         ImageView button = new ImageView(context);
-        button.setImageDrawable(new Info(context.getResources().getDisplayMetrics().density,
+        button.setImageDrawable(new Actions(context.getResources().getDisplayMetrics().density,
                 FeedDownloadButton.iconColor(context)));
         button.setScaleType(ImageView.ScaleType.CENTER);
         HomeHeader.padLike(button, neighbor);
@@ -316,7 +400,7 @@ public final class ProfileExtras {
      * from a link hands its rows a context with no activity under it, while the screen's content
      * view has one. [view]'s own context when none does.
      */
-    static Context activityOf(View view) {
+    public static Context activityOf(View view) {
         for (Object at = view; at instanceof View; at = ((View) at).getParent()) {
             Context context = ((View) at).getContext();
             for (int depth = 0; depth < 16 && context instanceof ContextWrapper; depth++) {
@@ -327,10 +411,24 @@ public final class ProfileExtras {
         return view.getContext();
     }
 
+    /** The extras button's mark, a circled arrow pointing down at its menu, so it isn't taken for About's "i" beside it. */
+    static final class Actions extends Info {
+        Actions(float density, int color) {
+            super(density, color);
+        }
+
+        @Override
+        void mark(Canvas canvas, float x, float y) {
+            paint.setStyle(Paint.Style.STROKE);
+            canvas.drawLine(x - 4 * unit, y - 1.5f * unit, x, y + 2.5f * unit, paint);
+            canvas.drawLine(x, y + 2.5f * unit, x + 4 * unit, y - 1.5f * unit, paint);
+        }
+    }
+
     /** A circled "i", drawn rather than taken from Instagram's resources, in Instagram's own icon color. */
-    static final class Info extends Drawable {
-        private final float unit;
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    static class Info extends Drawable {
+        final float unit;
+        final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
         Info(float density, int color) {
             unit = density;
@@ -350,6 +448,11 @@ public final class ProfileExtras {
             float y = bounds.exactCenterY();
             paint.setStyle(Paint.Style.STROKE);
             canvas.drawCircle(x, y, 9 * unit, paint);
+            mark(canvas, x, y);
+        }
+
+        /** What sits inside the circle. */
+        void mark(Canvas canvas, float x, float y) {
             canvas.drawLine(x, y - unit, x, y + 4.5f * unit, paint);
             paint.setStyle(Paint.Style.FILL);
             canvas.drawCircle(x, y - 4.2f * unit, 1.3f * unit, paint);

@@ -67,6 +67,13 @@ public class BuildIdentityDisplayTest {
         HushgramPreferenceFragment page = new HushgramPreferenceFragment();
         controller.get().getFragmentManager().beginTransaction().add(android.R.id.content, page).commitNow();
         Utils.awaitBackgroundTasksForTests();
+        for (int i = 0; i < page.getPreferenceScreen().getPreferenceCount(); i++) {
+            Preference row = page.getPreferenceScreen().getPreference(i);
+            if ("Fork info".contentEquals(row.getTitle())) {
+                row.getOnPreferenceClickListener().onPreferenceClick(row);
+                break;
+            }
+        }
         return page;
     }
 

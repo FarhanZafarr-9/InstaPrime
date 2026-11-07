@@ -42,6 +42,7 @@ import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 
+import app.hushgram.extension.shared.Utils;
 import app.hushgram.extension.shared.settings.preference.ImmediateAction;
 
 /** Wallpaper-derived Material tonal surfaces for settings and runtime controls. */
@@ -55,6 +56,11 @@ public final class ScreenColors {
     public final int title;
     /** Row summaries and a dialog's message. */
     public final int summary;
+    /**
+     * A dialog field's placeholder. Quieter than {@link #summary}, so an example in an empty field
+     * doesn't read as a value already saved, and still 4.5:1 on every surface.
+     */
+    public final int hint;
     /** Section titles. */
     public final int heading;
     /** A switch that's on, and the buttons of a dialog. */
@@ -75,16 +81,24 @@ public final class ScreenColors {
     @Nullable
     static volatile ScreenColors shown;
     public static final ScreenColors DEFAULT = new ScreenColors(SettingsStatus.pureBlack());
+    /** Black cards and dialogs, for the black look (#455). */
+    static final ScreenColors BLACK = new ScreenColors(true);
+
+    /**
+     * The colours to paint with now: the screen's own, or the black ones while Black settings page
+     * is on, or {@link #DEFAULT}. Read each time, so a flip of the switch shows on the next bind.
+     */
+    public static ScreenColors current() {
+        ScreenColors colors = shown;
+        if (colors != null) return colors;
+        return Utils.settingsReady() && Settings.SETTINGS_BLACK_LOOK.savedValue() ? BLACK : DEFAULT;
+    }
 
     int choiceSelected() {
         return android.graphics.Color.rgb(
                 (Color.red(iconSurface) * 9 + Color.red(accent)) / 10,
                 (Color.green(iconSurface) * 9 + Color.green(accent)) / 10,
                 (Color.blue(iconSurface) * 9 + Color.blue(accent)) / 10);
-    }
-
-    static ScreenColors current() {
-        return shown == null ? DEFAULT : shown;
     }
 
     ScreenColors(boolean pureBlack) {
@@ -102,6 +116,7 @@ public final class ScreenColors {
         dialog = pureBlack ? Color.BLACK : tone(context, "system_neutral1_900", 0xFF211F26);
         title = tone(context, "system_neutral1_100", 0xFFE6E0E9);
         summary = tone(context, "system_neutral2_200", 0xFFCAC4D0);
+        hint = tone(context, "system_neutral2_300", 0xFFB0A9B7);
         heading = tone(context, "system_accent1_200", 0xFFD0BCFF);
         accent = heading;
         switchOff = tone(context, "system_neutral2_500", 0xFF79747E);
@@ -130,6 +145,16 @@ public final class ScreenColors {
      */
     static ColorStateList dimmedWhenDisabled(int color) {
         int dimmed = (color & 0x00FFFFFF) | 0x61000000;
+        return new ColorStateList(new int[][]{{-android.R.attr.state_enabled}, {}}, new int[]{dimmed, color});
+    }
+
+    /**
+     * [color] for a disabled row's summary, at 75%. The summary is where a greyed-out row says
+     * what to turn on first, and at 38% it read at about 2:1 on the card. The title and switch
+     * keep the 38% that shows the row is off.
+     */
+    static ColorStateList readableWhenDisabled(int color) {
+        int dimmed = (color & 0x00FFFFFF) | 0xC0000000;
         return new ColorStateList(new int[][]{{-android.R.attr.state_enabled}, {}}, new int[]{dimmed, color});
     }
 
@@ -172,7 +197,8 @@ public final class ScreenColors {
     /** Wallpaper-derived Material tones, refreshed when opening the screen. */
     @Nullable
     static ScreenColors forScreen(Context context) {
-        return new ScreenColors(context);
+        return new ScreenColors(context, SettingsStatus.pureBlack()
+                || Utils.settingsReady() && Settings.SETTINGS_BLACK_LOOK.savedValue());
     }
 
     /** The framework theme rows and dialogs are built with, so what this class doesn't paint still reads. */
@@ -203,7 +229,7 @@ public final class ScreenColors {
         }
         TextView summary = row.findViewById(android.R.id.summary);
         if (summary != null) {
-            summary.setTextColor(dimmedWhenDisabled(this.summary));
+            summary.setTextColor(readableWhenDisabled(this.summary));
             summary.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
             summary.setLineSpacing(0, 1);
             summary.setMaxLines(Integer.MAX_VALUE);
@@ -612,6 +638,28 @@ public final class ScreenColors {
         stackDialogActions(dialog);
         View field = dialog.findViewById(android.R.id.edit);
         if (field instanceof EditText) paintField((EditText) field);
+        if (window != null) startTextAtTheStart(window.getDecorView());
+    }
+
+    /**
+     * Text set to start at its start edge starts at the layout's: on the right in a right-to-left
+     * layout, under the title, where HushGram's English otherwise sits flush left. Centred text and
+     * buttons keep their gravity, a field keeps the direction of what's typed, and a list's rows
+     * are its adapter's.
+     */
+    public static void startTextAtTheStart(View view) {
+        if (view instanceof android.widget.AdapterView) return;
+        if (view instanceof TextView && !(view instanceof EditText)) {
+            TextView text = (TextView) view;
+            if ((text.getGravity() & android.view.Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK) == android.view.Gravity.START
+                    && text.getTextAlignment() == View.TEXT_ALIGNMENT_GRAVITY) {
+                text.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+            }
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int index = 0; index < group.getChildCount(); index++) startTextAtTheStart(group.getChildAt(index));
+        }
     }
 
     /** Reuse the framework buttons to preserve listeners, enabled states and dismissal. */
@@ -645,7 +693,7 @@ public final class ScreenColors {
      * the framework's teal, so they take the accent the buttons have.
      */
     void paintField(EditText field) {
-        field.setHintTextColor(dimmedWhenDisabled(summary));
+        field.setHintTextColor(dimmedWhenDisabled(hint));
         GradientDrawable outline = new GradientDrawable();
         outline.setColor(iconSurface);
         outline.setStroke(dp(field, 2), interactionOutline(Color.TRANSPARENT));
@@ -700,8 +748,7 @@ public final class ScreenColors {
 
     /** Paints a row with the colours on show, if there are any. */
     static void row(View row, Preference preference) {
-        ScreenColors colors = shown;
-        ScreenColors used = colors == null ? DEFAULT : colors;
+        ScreenColors used = current();
         used.paintRow(row, preference);
         DescriptionInfo.bind(row, preference.isEnabled() && preference.isSelectable() ? preference.getSummary() : null);
         NewRowDots.paint(row, preference, used.accent);
@@ -709,8 +756,7 @@ public final class ScreenColors {
 
     /** Paints a section title with the colours on show, if there are any. */
     static void heading(View row) {
-        ScreenColors colors = shown;
-        (colors == null ? DEFAULT : colors).paintHeading(row);
+        current().paintHeading(row);
     }
 
     /** Paints both recovery actions even if the ordinary settings page failed to initialize. */
@@ -721,20 +767,17 @@ public final class ScreenColors {
 
     /** Paints a dialog with the colours on show, if there are any. */
     public static void dialog(@Nullable AlertDialog dialog) {
-        ScreenColors colors = shown;
-        (colors == null ? DEFAULT : colors).paint(dialog);
+        current().paint(dialog);
     }
 
     /** Styles a runtime dialog's own input without changing its validation or input type. */
     public static void styleField(EditText field) {
-        ScreenColors colors = shown;
-        (colors == null ? DEFAULT : colors).paintField(field);
+        current().paintField(field);
     }
 
     /** Styles an existing action without replacing its content, listeners or accessibility delegate. */
     public static void styleAction(TextView action, boolean primary) {
-        ScreenColors colors = shown;
-        (colors == null ? DEFAULT : colors).paintAction(action, primary);
+        current().paintAction(action, primary);
     }
 
     void paintAction(TextView action, boolean primary) {
@@ -767,7 +810,7 @@ public final class ScreenColors {
 
     /** Compact actions retain the shared interaction states without becoming filled buttons. */
     public static void styleIconAction(View action) {
-        ScreenColors colors = shown == null ? DEFAULT : shown;
+        ScreenColors colors = current();
         GradientDrawable surface = new GradientDrawable();
         surface.setColor(Color.TRANSPARENT);
         surface.setCornerRadius(dp(action, 8));

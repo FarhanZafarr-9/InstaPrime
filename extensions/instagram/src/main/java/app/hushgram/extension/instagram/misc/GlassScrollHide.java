@@ -24,6 +24,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.function.BooleanSupplier;
 
+import app.hushgram.extension.instagram.direct.ChatReelsExit;
 import app.hushgram.extension.instagram.download.HoldDownload;
 import app.hushgram.extension.instagram.reels.BurnInGuard;
 import app.hushgram.extension.instagram.settings.FamilyNames;
@@ -90,7 +91,7 @@ final class GlassScrollHide {
     }
 
     /**
-     * What hands the bar's room to the screens while a scroll has it away, so Instagram's own bar leaves no
+     * What hands the bar's room to the screens while it's away, so Instagram's own bar leaves no
      * empty strip behind it (#343). Told as the bar starts to slide away, and again once it's all the way back.
      */
     interface Room {
@@ -242,7 +243,7 @@ final class GlassScrollHide {
     }
 
     /**
-     * @param room what takes the bar's room while a scroll has it away, or null to leave the screens as they are
+     * @param room what takes the bar's room while it's away, or null to leave the screens as they are
      */
     GlassScrollHide(View bar, BooleanSupplier running, boolean onScroll, long reelsMillis, @Nullable Shrinker shrinker,
             @Nullable Room room) {
@@ -283,8 +284,8 @@ final class GlassScrollHide {
     static void install(Window window, GlassScrollHide hide) {
         Window.Callback inner = window.getCallback();
         if (inner == null) return;
-        // Hold to download's, Burn-in guard's and the tab slide's watchers may have wrapped this one
-        // since, in any order, so they're looked through.
+        // Hold to download's, Burn-in guard's, the tab slide's and a chat's reels' watchers may have
+        // wrapped this one since, in any order, so they're looked through.
         for (Window.Callback seen = inner; seen != null; ) {
             if (Proxy.isProxyClass(seen.getClass()) && Proxy.getInvocationHandler(seen) instanceof Watcher) {
                 Watcher watcher = (Watcher) Proxy.getInvocationHandler(seen);
@@ -297,7 +298,8 @@ final class GlassScrollHide {
                 hide.arm();
                 return;
             }
-            Window.Callback next = GlassTabSlide.innerOf(BurnInGuard.innerOf(HoldDownload.innerOf(seen)));
+            Window.Callback next = ChatReelsExit.innerOf(
+                    GlassTabSlide.innerOf(BurnInGuard.innerOf(HoldDownload.innerOf(seen))));
             if (next == seen) break;
             seen = next;
         }

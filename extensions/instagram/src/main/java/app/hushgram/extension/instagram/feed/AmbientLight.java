@@ -7,21 +7,29 @@ package app.hushgram.extension.instagram.feed;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.ColorFilter;
+import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.Shader;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.DrawableWrapper;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.util.TypedValue;
 import android.view.PixelCopy;
+import android.view.SurfaceView;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
@@ -37,7 +45,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
+import app.hushgram.extension.instagram.misc.GlassTabBar;
 import app.hushgram.extension.instagram.reels.ReelBlurBars;
 import app.hushgram.extension.instagram.settings.FamilyNames;
 import app.hushgram.extension.instagram.settings.Settings;
@@ -60,8 +70,19 @@ import app.hushgram.extension.shared.diagnostics.HookStatus;
  * background is wrapped in a {@link Glow} that draws the original first and then each light's glow
  * around it, and is put back the moment the stage has no lights left.
  *
+ * <p>A story's stage stops at the status bar and the gesture bar, so the black under them stayed
+ * black (#487). A story light also lights the nearest view round its stage that spans the window
+ * ({@link #bandsHostOf}): that view's glow is the same one, reaching to the window's edges, drawn
+ * everywhere but over the stage, which draws its own part. A picture that fills its stage glows
+ * only there. A reel on the Reels tab lights its bands the same way, and Instagram's tab bar under
+ * it, which covers that view's glow, draws the same glow over its own colour: in its background, or
+ * round a docked glass pill through what the pill paints there ({@link #drawUnderPill}). A floating
+ * pill has the host's glow round it already.
+ *
  * <p>Every {@link AmbientSpeed#sampleMillis} each light on screen takes a small copy of its picture
- * (a video's own frame, or the window's pixels for a photo). The colors along its edges are carried
+ * (a video's own frame, or the window's pixels for a photo). A story video Instagram still plays on a
+ * SurfaceView is copied from that view's own layer, since the window only has a hole where it shows
+ * (#492). The colors along its edges are carried
  * out into a ring, blurred and faded with distance, and the glow fades to them over
  * {@link AmbientSpeed#fadeMillis}. A copy that barely changed leaves the glow as it is. While Blur
  * the bars around Reels is on, reels are left to it.
@@ -76,6 +97,12 @@ public final class AmbientLight {
     static final String REEL_FRAME = ReelCorners.FRAME;
     /** The frame a story's photo or video sits in, the same one Rounded corners on stories finds. */
     static final String STORY_FRAME = StoryCorners.FRAME;
+    /** Instagram's tab bar, under the Reels tab's reels. */
+    static final String TAB_BAR = "tab_bar";
+    /** A chat's root. Its photos and stickers keep to themselves (#510). */
+    static final String CHAT = "thread_view_root";
+    /** The black bar with the comment box, under a reel opened from the feed. */
+    static final String REEL_FOOTER = "clips_footer_mask_container";
 
     /** What a light shines around. */
     enum Kind { POST, REEL, STORY }
@@ -95,6 +122,15 @@ public final class AmbientLight {
     /** A copy whose channels moved less than this on average leaves the glow as it is. */
     static final int CHANGE = 6;
 
+    /** How many copies in a row come out the same before a still picture is looked at less often. */
+    static final int STEADY = 3;
+
+    /** The longest a still picture goes without a copy, in milliseconds. */
+    static final long LONGEST_REST = 4000;
+
+    /** How far in Blend post edges fades a picture's edge, in dp, at most a fifth of the picture. */
+    static final int EDGE_DP = 28;
+
     /** A reel picture at least this share of its stage both ways fills it, and leaves no room to glow. */
     static final float FILLS = 0.98f;
 
@@ -104,6 +140,7 @@ public final class AmbientLight {
     static final String HOOK = "ambient light";
     static final String COUNT_LIT = "pictures lit";
     static final String COUNT_STORIES = "story pictures lit";
+    static final String COUNT_SURFACE_STORIES = "story videos read off a SurfaceView";
     static final String NO_COPY = "copies that failed";
 
     /** Copies [source]'s picture into [into], then answers whether it worked. Tests stand in for the screen. */
@@ -119,6 +156,11 @@ public final class AmbientLight {
             return;
         }
         try {
+            if (source instanceof SurfaceView) {
+                // The video's own layer: the window's pixels have only a hole where it shows.
+                PixelCopy.request((SurfaceView) source, into, result -> done.accept(result == PixelCopy.SUCCESS), main);
+                return;
+            }
             PixelCopy.request(owner.getWindow(), inWindow, into, result -> done.accept(result == PixelCopy.SUCCESS), main);
         } catch (IllegalArgumentException noSurface) {
             done.accept(false);
@@ -133,6 +175,13 @@ public final class AmbientLight {
     private static final Map<View, Light> lights = new WeakHashMap<>();
     /** Each stage wearing a glow, with it. Main thread only. */
     private static final Map<View, Glow> glows = new WeakHashMap<>();
+    /** Each tab bar wearing a docked glass pill, with the glow the pill paints round itself. Main thread only. */
+    private static final Map<View, Glow> pills = new WeakHashMap<>();
+    /** The tab bar last found, so each layout needn't search the window for it. */
+    @Nullable private static WeakReference<View> barRef;
+    /** Whether a tab bar wears the glass, and whether its pill floats. Swapped in tests. */
+    static volatile Predicate<View> wearsGlass = GlassTabBar::wearsGlass;
+    static volatile Predicate<View> floatingGlass = GlassTabBar::wearsFloatingGlass;
     /** Whether each view class asked about is Instagram's media frame. */
     private static final Map<Class<?>, Boolean> frames = new WeakHashMap<>();
     private static final Runnable TICK = AmbientLight::tick;
@@ -168,6 +217,11 @@ public final class AmbientLight {
     /** Whether posts and reels glow now. */
     static boolean feedWanted() {
         return Utils.settingsReady() && Settings.AMBIENT_LIGHT.get();
+    }
+
+    /** Whether Blend post edges is on now. */
+    static boolean blendWanted() {
+        return Utils.settingsReady() && Settings.AMBIENT_LIGHT_BLEND.get();
     }
 
     /** Whether stories glow now. */
@@ -269,11 +323,42 @@ public final class AmbientLight {
         return null;
     }
 
-    /** The first video, or with [video] false the first photo, that shows under [view]. */
+    /**
+     * The view whose background lights the bands under the system bars round a story's [stage]
+     * (#487): the nearest of its parents, up to the activity's content view, that spans the window
+     * from side to side and from top to bottom. On Instagram that is the container the story viewer's
+     * own container sits in, between the status bar and the gesture bar. Null when the stage spans the
+     * window itself or no parent does. The window's own views above the content (an action bar, the
+     * frame that keeps content off the system bars) are left alone: they aren't Instagram's, and a
+     * window that keeps its content off the bars paints them itself.
+     */
+    @Nullable
+    static ViewGroup bandsHostOf(ViewGroup stage) {
+        View root = stage.getRootView();
+        int width = root.getWidth(), height = root.getHeight();
+        int[] at = new int[2];
+        stage.getLocationInWindow(at);
+        if (at[1] <= 0 && at[1] + stage.getHeight() >= height) return null;
+        ViewParent parent = stage.getParent();
+        for (int i = 0; i < STAGE_DEPTH && parent instanceof ViewGroup && parent != root; i++, parent = parent.getParent()) {
+            ViewGroup group = (ViewGroup) parent;
+            group.getLocationInWindow(at);
+            if (at[0] <= 0 && at[0] + group.getWidth() >= width && at[1] <= 0 && at[1] + group.getHeight() >= height) return group;
+            if (group.getId() == android.R.id.content) break;
+        }
+        return null;
+    }
+
+    /**
+     * The first video, or with [video] false the first photo, that shows under [view]. A video is a
+     * TextureView, or a SurfaceView when Instagram chose one before a switch could keep it off (the
+     * player was made before the settings were read, or before the switch went on).
+     */
     @Nullable
     static View storyMediaIn(View view, boolean video, int[] budget) {
         if (budget[0]-- <= 0 || view.getVisibility() != View.VISIBLE) return null;
-        if (video ? view instanceof TextureView : view instanceof ImageView && ((ImageView) view).getDrawable() != null) {
+        if (video ? view instanceof TextureView || view instanceof SurfaceView
+                : view instanceof ImageView && ((ImageView) view).getDrawable() != null) {
             return view.getWidth() > 0 && view.getHeight() > 0 ? view : null;
         }
         if (view instanceof ViewGroup) {
@@ -299,7 +384,10 @@ public final class AmbientLight {
             Light old = entry.getValue();
             if (old.kind == Kind.STORY && old.anchor.get() == frame && entry.getKey() != media) drop(entry.getKey(), old);
         }
-        if (media != null) light(owner, media, Kind.STORY, frame, storyStageOf(media, window));
+        if (media != null && light(owner, media, Kind.STORY, frame, storyStageOf(media, window))
+                && media instanceof SurfaceView) {
+            HookStatus.counted(FamilyNames.AMBIENT_LIGHT, COUNT_SURFACE_STORIES);
+        }
     }
 
     /** Lights [media] on [stage], if it isn't already and there's room. True when it was. */
@@ -307,15 +395,29 @@ public final class AmbientLight {
         if (stage == null || media.getWidth() <= 0 || media.getHeight() <= 0) return false;
         Light old = lights.get(media);
         if (old != null) {
-            if (old.stage.get() == stage) return false;
+            if (old.stage.get() == stage) {
+                // Each layout asks again, as the tab bar can come and go under a reel that stays.
+                if (old.kind == Kind.REEL) {
+                    old.keepBar(barUnder(owner, old.host()));
+                    old.keepFooter(footerOn(owner, old.host()));
+                }
+                return false;
+            }
             drop(media, old);
         }
         if (lights.size() >= MAX_LIGHTS) return false;
         Glow glow = glowOn(stage);
-        Light light = new Light(owner, media, anchor, stage, kind);
+        ViewGroup host = kind == Kind.POST ? null : bandsHostOf(stage);
+        Light light = new Light(owner, media, anchor, stage, host, kind);
+        if (kind == Kind.REEL) {
+            light.keepBar(barUnder(owner, host));
+            light.keepFooter(footerOn(owner, host));
+        }
         lights.put(media, light);
         glow.lights.add(light);
+        if (host != null) glowOn(host).lights.add(light);
         light.place(media, stage);
+        dressBar(light, host);
         HookStatus.counted(FamilyNames.AMBIENT_LIGHT, kind == Kind.STORY ? COUNT_STORIES : COUNT_LIT);
         if (!logged) {
             logged = true;
@@ -329,9 +431,9 @@ public final class AmbientLight {
     }
 
     /** The glow [stage] wears, wrapping its background now. A background Instagram set since is wrapped afresh. */
-    static Glow glowOn(ViewGroup stage) {
+    static Glow glowOn(View stage) {
         Glow glow = glows.get(stage);
-        if (glow != null && stage.getBackground() == glow) return glow;
+        if (glow != null && glow.wornBy(stage)) return glow;
         Glow fresh = new Glow(stage, stage.getBackground());
         if (glow != null) {
             fresh.lights.addAll(glow.lights);
@@ -342,19 +444,121 @@ public final class AmbientLight {
         return fresh;
     }
 
-    /** Puts out [media]'s light, and gives its stage its own background back when it was the last. */
+    /**
+     * Instagram's tab bar in [owner]'s window while it shows, for a reel whose bands [host] lights, or
+     * null without a host, a bar or its id. The bar covers the host's glow under it (#487).
+     */
+    @Nullable
+    static View barUnder(Activity owner, @Nullable ViewGroup host) {
+        if (host == null) return null;
+        View root = owner.getWindow().getDecorView();
+        View bar = barRef == null ? null : barRef.get();
+        if (bar == null || !bar.isAttachedToWindow() || bar.getRootView() != root) {
+            int id = ids.resolve(owner.getResources(), owner.getPackageName(), TAB_BAR, false);
+            bar = id == 0 ? null : root.findViewById(id);
+            barRef = bar == null ? null : new WeakReference<>(bar);
+        }
+        return bar != null && bar.isShown() ? bar : null;
+    }
+
+    /**
+     * The black bar with the comment box in [host], while it shows, or null. It sits between a reel
+     * opened from the feed and the strip under it, so a glow in that strip looked cut off (#510).
+     */
+    @Nullable
+    static View footerOn(Activity owner, @Nullable ViewGroup host) {
+        if (host == null) return null;
+        int id = ids.resolve(owner.getResources(), owner.getPackageName(), REEL_FOOTER, false);
+        View footer = id == 0 ? null : host.findViewById(id);
+        return footer != null && footer.isShown() && footer.getHeight() > 0 ? footer : null;
+    }
+
+    /**
+     * Has the tab bar under [light]'s reel carry the host's glow the way the bar draws now: Instagram's
+     * own bar in its background, a docked glass pill round itself ({@link #drawUnderPill}), and a
+     * floating pill, which has the host's glow showing round it, or no bar not at all.
+     */
+    static void dressBar(Light light, @Nullable ViewGroup host) {
+        View bar = light.bar();
+        if (bar == null) return;
+        boolean shown = host != null && bar.isAttachedToWindow() && bar.isShown() && !floatingGlass.test(bar);
+        boolean glass = shown && wearsGlass.test(bar);
+        if (shown && !glass) {
+            Glow glow = glowOn(bar);
+            if (!glow.lights.contains(light)) glow.lights.add(light);
+        } else {
+            Glow worn = glows.get(bar);
+            if (worn != null && worn.lights.contains(light)) putOut(bar, light);
+        }
+        if (glass) {
+            Glow glow = pillOf(bar);
+            if (!glow.lights.contains(light)) {
+                glow.lights.add(light);
+                bar.invalidate();
+            }
+        } else {
+            dropPill(bar, light);
+        }
+    }
+
+    /** The glow a docked pill on [bar] paints round itself, made the first time it's asked for. */
+    private static Glow pillOf(View bar) {
+        Glow glow = pills.get(bar);
+        if (glow == null) {
+            glow = new Glow(bar, null);
+            glow.redraws(bar);
+            pills.put(bar, glow);
+        }
+        return glow;
+    }
+
+    /** Takes [light] off the glow round [bar]'s docked pill, and forgets that glow when it was the last. */
+    private static void dropPill(@Nullable View bar, Light light) {
+        Glow glow = bar == null ? null : pills.get(bar);
+        if (glow == null || !glow.lights.remove(light)) return;
+        if (glow.lights.isEmpty()) {
+            pills.remove(bar);
+            glow.unscheduleSelf(glow.again);
+        }
+        bar.invalidate();
+    }
+
+    /**
+     * Paints the ambient light of the reel above [bar] over the bar's own colour round its docked glass
+     * pill, in [canvas]'s coordinates, which are the bar's (#487). Paints nothing with no reel lit
+     * there. Never throws.
+     */
+    public static void drawUnderPill(Canvas canvas, View bar) {
+        try {
+            Glow glow = pills.get(bar);
+            if (glow != null) glow.draw(canvas);
+        } catch (Throwable failure) {
+            HookStatus.threw(FamilyNames.AMBIENT_LIGHT, HOOK + " under the pill", failure);
+        }
+    }
+
+    /** Puts out [media]'s light, and gives its stage, host and tab bar their own backgrounds back when it was the last. */
     private static void drop(View media, Light light) {
         lights.remove(media);
-        ViewGroup stage = light.stage.get();
-        Glow glow = stage == null ? null : glows.get(stage);
+        light.takeEdges(media);
+        putOut(light.stage.get(), light);
+        putOut(light.host(), light);
+        View bar = light.bar();
+        putOut(bar, light);
+        dropPill(bar, light);
+    }
+
+    /** Takes [light] off the glow [view] wears, and gives [view] its own background back when it was the last. */
+    private static void putOut(@Nullable View view, Light light) {
+        Glow glow = view == null ? null : glows.get(view);
         if (glow == null) return;
         glow.lights.remove(light);
         if (!glow.lights.isEmpty()) {
             glow.invalidateSelf();
             return;
         }
-        glows.remove(stage);
-        glow.takeOff(stage);
+        glows.remove(view);
+        glow.takeOff(view);
     }
 
     /** Whether [view] sits somewhere under [ancestor]. */
@@ -371,21 +575,40 @@ public final class AmbientLight {
      */
     static void follow() {
         boolean blurred = reelsBlurred();
-        boolean feed = feedWanted(), stories = storiesWanted();
+        boolean feed = feedWanted(), stories = storiesWanted(), blend = blendWanted();
         for (Map.Entry<View, Light> entry : new ArrayList<>(lights.entrySet())) {
             View media = entry.getKey();
             Light light = entry.getValue();
             if (media == null) continue;
             ViewGroup stage = light.stage.get();
+            ViewGroup host = light.host();
             boolean story = light.kind == Kind.STORY;
             if (stage == null || !media.isAttachedToWindow() || !stage.isAttachedToWindow() || !under(media, stage)
+                    || (light.host != null && (host == null || !host.isAttachedToWindow() || !under(stage, host)))
                     || (story ? !stories || !media.isShown() : !feed || (light.kind == Kind.REEL && blurred))) {
                 drop(media, light);
                 continue;
             }
             Glow glow = glowOn(stage);
-            if (light.place(media, stage)) glow.invalidateSelf();
+            Glow bands = host == null ? null : glowOn(host);
+            dressBar(light, host);
+            if (light.place(media, stage)) {
+                glow.invalidateSelf();
+                if (bands != null) bands.invalidateSelf();
+                redrawBar(light);
+            }
+            light.dressEdges(media, stage, blend);
         }
+    }
+
+    /** Has the tab bar carrying [light]'s glow draw it again. */
+    private static void redrawBar(Light light) {
+        View bar = light.bar();
+        if (bar == null) return;
+        Glow worn = glows.get(bar);
+        if (worn != null && worn.lights.contains(light)) worn.invalidateSelf();
+        Glow pill = pills.get(bar);
+        if (pill != null && pill.lights.contains(light)) pill.invalidateSelf();
     }
 
     /** Has each light on screen take a copy of its picture, and comes back after the speed chosen. */
@@ -405,6 +628,14 @@ public final class AmbientLight {
         View media = light.media.get();
         Activity owner = light.owner.get();
         if (media == null || owner == null || light.asking || !media.isShown() || !media.getGlobalVisibleRect(scratch)) return;
+        media.getLocationInWindow(where);
+        boolean moved = where[0] != light.atX || where[1] != light.atY;
+        light.atX = where[0];
+        light.atY = where[1];
+        if (moved) light.stir();
+        // Reading a picture back is what costs. While the list moves the copy waits for it to stop,
+        // and a still photo rests between copies. A picture with no glow yet still gets its first.
+        if (light.face != null && (moved || SystemClock.uptimeMillis() < light.restUntil)) return;
         light.asking = true;
         try {
             if (!light.inView.isEmpty()) {
@@ -433,7 +664,11 @@ public final class AmbientLight {
     static void took(Light light) {
         int[] pixels = new int[SAMPLE * SAMPLE];
         light.copy.getPixels(pixels, 0, SAMPLE, 0, 0, SAMPLE, SAMPLE);
-        if (light.face != null && light.seen != null && close(light.seen, pixels)) return;
+        if (light.face != null && light.seen != null && close(light.seen, pixels)) {
+            light.rest(SystemClock.uptimeMillis());
+            return;
+        }
+        light.stir();
         light.seen = pixels;
         light.taken++;
         int[] target = face(pixels);
@@ -451,6 +686,10 @@ public final class AmbientLight {
         View stage = light.stage.get();
         Glow glow = stage == null ? null : glows.get(stage);
         if (glow != null) glow.invalidateSelf();
+        View host = light.host();
+        Glow bands = host == null ? null : glows.get(host);
+        if (bands != null) bands.invalidateSelf();
+        redrawBar(light);
     }
 
     /** Whether two copies are close enough that the glow stays as it is. */
@@ -508,10 +747,18 @@ public final class AmbientLight {
     static void putBack() {
         main.removeCallbacks(TICK);
         ticking = false;
+        for (Map.Entry<View, Light> entry : new ArrayList<>(lights.entrySet())) {
+            if (entry.getKey() != null) entry.getValue().takeEdges(entry.getKey());
+        }
         for (Map.Entry<View, Glow> entry : new ArrayList<>(glows.entrySet())) {
             if (entry.getKey() != null) entry.getValue().takeOff(entry.getKey());
         }
         glows.clear();
+        for (Map.Entry<View, Glow> entry : new ArrayList<>(pills.entrySet())) {
+            entry.getValue().unscheduleSelf(entry.getValue().again);
+            if (entry.getKey() != null) entry.getKey().invalidate();
+        }
+        pills.clear();
         lights.clear();
     }
 
@@ -522,6 +769,25 @@ public final class AmbientLight {
 
     static void storyIdForTests(Context context, int id) {
         ids.putForTests(context.getPackageName(), STORY_FRAME, id);
+    }
+
+    static void barIdForTests(Context context, int id) {
+        ids.putForTests(context.getPackageName(), TAB_BAR, id);
+    }
+
+    static void footerIdForTests(Context context, int id) {
+        ids.putForTests(context.getPackageName(), REEL_FOOTER, id);
+    }
+
+    static void chatIdForTests(Context context, int id) {
+        ids.putForTests(context.getPackageName(), CHAT, id);
+    }
+
+    /** What Blend post edges lays over [media], or null with nothing there. */
+    @Nullable
+    static Drawable edgesForTests(View media) {
+        Light light = lights.get(media);
+        return light == null ? null : light.edges;
     }
 
     static void samplerForTests(@Nullable Sampler stand) {
@@ -536,6 +802,13 @@ public final class AmbientLight {
     static Rect litRectForTests(View media) {
         Light light = lights.get(media);
         return light == null ? null : new Rect(light.lit);
+    }
+
+    /** Where [media]'s picture is on the host lighting the bands round its stage, empty without one. */
+    @Nullable
+    static Rect hostLitForTests(View media) {
+        Light light = lights.get(media);
+        return light == null ? null : new Rect(light.hostLit);
     }
 
     /** The face's color at cell [x], [y] as it shows now, or 0 with no face. */
@@ -568,6 +841,9 @@ public final class AmbientLight {
         sampler = SCREEN;
         logged = false;
         blurInBuildForTests = null;
+        barRef = null;
+        wearsGlass = GlassTabBar::wearsGlass;
+        floatingGlass = GlassTabBar::wearsFloatingGlass;
     }
 
     /** One picture's glow: where it is on its stage, its last copy and the face it fades between. */
@@ -578,12 +854,29 @@ public final class AmbientLight {
         final Kind kind;
         /** For a story, the frame its picture sits in, which tells a picture that took another's place. */
         final WeakReference<View> anchor;
+        /** For a story or a reel, the view round its stage that lights the bands under the system bars, or null without one. */
+        @Nullable final WeakReference<ViewGroup> host;
+        /** For a reel with a host, Instagram's tab bar showing over that host, as of the last layout. */
+        @Nullable private WeakReference<View> bar;
         /** Where the picture is on the stage, empty while it fills the stage or doesn't show. */
         final Rect lit = new Rect();
+        /** Where the picture is on the host, empty without one or while it doesn't show. */
+        final Rect hostLit = new Rect();
+        /** Where the stage is on the host: its own glow draws there, so the host's leaves it alone. */
+        final Rect hostStage = new Rect();
         /** For a story's photo, where the picture is inside its view, which is all the copy takes. */
         final Rect inView = new Rect();
+        /** Where the bar over the reel's foot starts on the host, or -1: the host's glow stops there. */
+        int hostCut = -1;
+        /** How far in a rounded picture's corners are cut, in pixels: the glow goes on under them. */
+        int corner;
         /** How far the glow reaches past the picture, in pixels. */
         int spread;
+        /** Where the picture was at the last look, how many copies in a row came out the same, and when the next is due. */
+        int atX = Integer.MIN_VALUE, atY = Integer.MIN_VALUE, same;
+        long restUntil;
+        /** What Blend post edges lays over the picture, or null with nothing there. */
+        @Nullable Edges edges;
         final Bitmap copy = Bitmap.createBitmap(SAMPLE, SAMPLE, Bitmap.Config.ARGB_8888);
         @Nullable int[] seen;
         final int[] before = new int[SIDE * SIDE], shown = new int[SIDE * SIDE], current = new int[SIDE * SIDE];
@@ -592,26 +885,112 @@ public final class AmbientLight {
         int fadeMillis;
         boolean fading, asking;
         int taken;
-        private final Rect at = new Rect();
+        private final Rect at = new Rect(), onHost = new Rect(), stageOnHost = new Rect();
+        private final int[] footerAt = new int[2], hostAt = new int[2];
+        /** For a reel with a host, the black bar with the comment box, as of the last layout. */
+        @Nullable private WeakReference<View> footer;
         private final Matrix transform = new Matrix();
         private final RectF content = new RectF();
 
-        Light(Activity owner, View media, @Nullable View anchor, ViewGroup stage, Kind kind) {
+        Light(Activity owner, View media, @Nullable View anchor, ViewGroup stage, @Nullable ViewGroup host, Kind kind) {
             this.owner = new WeakReference<>(owner);
             this.media = new WeakReference<>(media);
             this.anchor = new WeakReference<>(anchor);
             this.stage = new WeakReference<>(stage);
+            this.host = host == null ? null : new WeakReference<>(host);
             this.kind = kind;
         }
 
+        /** The host lighting the bands round the stage, or null without one or once it's gone. */
+        @Nullable
+        ViewGroup host() {
+            return host == null ? null : host.get();
+        }
+
+        /** The tab bar carrying this light's glow over the host, or null. */
+        @Nullable
+        View bar() {
+            return bar == null ? null : bar.get();
+        }
+
+        /** Takes [found] as the tab bar now, and takes the glow off the one before when it changed. */
+        void keepBar(@Nullable View found) {
+            View before = bar();
+            if (before == found) return;
+            if (before != null) {
+                putOut(before, this);
+                dropPill(before, this);
+            }
+            bar = found == null ? null : new WeakReference<>(found);
+        }
+
+        /** Takes [found] as the bar over the reel's foot now. */
+        void keepFooter(@Nullable View found) {
+            footer = found == null ? null : new WeakReference<>(found);
+        }
+
+        /** Something moved or changed, so the next copy comes at the usual time. */
+        void stir() {
+            same = 0;
+            restUntil = 0;
+        }
+
         /**
-         * Finds where [media]'s picture is on [stage] now. A picture less than half across the screen,
-         * like a carousel's next page, gets no glow. True when it moved, or the spread changed.
+         * A copy came out the same as the one before. A photo doesn't change on its own, so after
+         * {@link #STEADY} of those each wait doubles, up to {@link #LONGEST_REST}. A video keeps its speed.
+         */
+        void rest(long now) {
+            same++;
+            View on = media.get();
+            if (same < STEADY || on == null || hasVideo(on)) return;
+            long wait = (long) Settings.AMBIENT_LIGHT_SPEED.get().sampleMillis << Math.min(same - STEADY + 1, 8);
+            restUntil = now + Math.min(wait, LONGEST_REST);
+        }
+
+        private static boolean hasVideo(View view) {
+            if (view.getVisibility() != View.VISIBLE) return false;
+            if (view instanceof TextureView || view instanceof SurfaceView) return true;
+            if (view instanceof ViewGroup) {
+                ViewGroup group = (ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    if (hasVideo(group.getChildAt(i))) return true;
+                }
+            }
+            return false;
+        }
+
+        /** Lays Blend post edges over a post's picture that has a glow beside it, or takes it off. */
+        void dressEdges(View media, ViewGroup stage, boolean wanted) {
+            if (!wanted || kind != Kind.POST || face == null || lit.isEmpty()) {
+                takeEdges(media);
+                return;
+            }
+            if (edges == null) {
+                edges = new Edges();
+                media.getOverlay().add(edges);
+            }
+            int depth = Math.round(EDGE_DP * stage.getResources().getDisplayMetrics().density);
+            boolean upAndDown = stage.getHeight() > media.getHeight();
+            edges.fit(media.getWidth(), media.getHeight(), depth, upAndDown, lit.left > 0, lit.right < stage.getWidth(), stage);
+        }
+
+        /** Takes Blend post edges off [media]. */
+        void takeEdges(View media) {
+            if (edges == null) return;
+            media.getOverlay().remove(edges);
+            edges = null;
+        }
+
+        /**
+         * Finds where [media]'s picture is on [stage] now, and on the host round it. A picture less
+         * than half across the screen, like a carousel's next page, gets no glow. A picture filling
+         * its stage glows on the host only. True when it moved, or the spread changed.
          */
         boolean place(View media, ViewGroup stage) {
             at.setEmpty();
             inView.setEmpty();
             boolean story = kind == Kind.STORY;
+            boolean fills = false;
             if (media.isShown() && media.getGlobalVisibleRect(at) && at.width() * 2 >= media.getWidth()) {
                 at.setEmpty();
                 if (kind != Kind.POST && media instanceof TextureView) {
@@ -634,20 +1013,59 @@ public final class AmbientLight {
                     at.set(0, 0, media.getWidth(), media.getHeight());
                 }
                 stage.offsetDescendantRectToMyCoords(media, at);
-                if (at.width() >= stage.getWidth() * FILLS && at.height() >= stage.getHeight() * FILLS) at.setEmpty();
+                fills = at.width() >= stage.getWidth() * FILLS && at.height() >= stage.getHeight() * FILLS;
             } else {
                 // The search above may have left the part that shows.
                 at.setEmpty();
             }
-            int reach = Math.round(Settings.AMBIENT_LIGHT_SPREAD.get().dp * stage.getResources().getDisplayMetrics().density);
-            // A story's bands can be deeper than the glow reaches, so the glow reaches the stage's edge.
-            if (story && !at.isEmpty()) {
-                reach = Math.max(reach, Math.max(Math.max(at.left, at.top), Math.max(stage.getWidth() - at.right, stage.getHeight() - at.bottom)));
+            onHost.setEmpty();
+            stageOnHost.setEmpty();
+            ViewGroup band = host();
+            if (band != null && !at.isEmpty() && band.isAttachedToWindow() && under(stage, band)) {
+                stageOnHost.set(0, 0, stage.getWidth(), stage.getHeight());
+                band.offsetDescendantRectToMyCoords(stage, stageOnHost);
+                onHost.set(at);
+                onHost.offset(stageOnHost.left, stageOnHost.top);
             }
-            if (at.equals(lit) && reach == spread) return false;
+            if (fills) at.setEmpty();
+            int reach = Math.round(Settings.AMBIENT_LIGHT_SPREAD.get().dp * stage.getResources().getDisplayMetrics().density);
+            // A story's bands can be deeper than the glow reaches, so the glow reaches the edge of the
+            // host, or of the stage without one. Both draw it the same way, so it runs on unbroken. A
+            // reel's reaches the host's edges too, past the tab bar, which draws the host's glow.
+            if ((story || kind == Kind.REEL) && !onHost.isEmpty()) {
+                reach = Math.max(reach, farthest(onHost, band));
+            } else if (story && !at.isEmpty()) {
+                reach = Math.max(reach, farthest(at, stage));
+            }
+            int cut = -1;
+            View foot = footer == null ? null : footer.get();
+            if (band != null && !onHost.isEmpty() && foot != null && foot.isShown()) {
+                foot.getLocationInWindow(footerAt);
+                band.getLocationInWindow(hostAt);
+                cut = footerAt[1] - hostAt[1];
+            }
+            int rounded = roundedIn(stage);
+            if (at.equals(lit) && onHost.equals(hostLit) && stageOnHost.equals(hostStage) && reach == spread && cut == hostCut
+                    && rounded == corner) return false;
             lit.set(at);
+            hostLit.set(onHost);
+            hostStage.set(stageOnHost);
+            hostCut = cut;
+            corner = rounded;
             spread = reach;
             return true;
+        }
+
+        /** How far in the Rounded corners switch for this kind of picture cuts it, in pixels, or 0 with it off. */
+        private int roundedIn(View stage) {
+            boolean on = (kind == Kind.POST ? Settings.ROUNDED_POST_CORNERS
+                    : kind == Kind.REEL ? Settings.ROUNDED_REEL_CORNERS : Settings.ROUNDED_STORY_CORNERS).get();
+            return on ? Math.round(Settings.ROUNDED_CORNER_SIZE.get().dp * stage.getResources().getDisplayMetrics().density) : 0;
+        }
+
+        /** The widest gap between [rect] and [view]'s edges, in [view]'s pixels. */
+        private static int farthest(Rect rect, View view) {
+            return Math.max(Math.max(rect.left, rect.top), Math.max(view.getWidth() - rect.right, view.getHeight() - rect.bottom));
         }
 
         /** Writes the face as it shows at [now], partway from before to shown. True while it is still fading. */
@@ -677,13 +1095,18 @@ public final class AmbientLight {
      */
     static final class Glow extends Drawable implements Drawable.Callback {
         @Nullable final Drawable original;
+        /** What the stage held right after the glow went on: the glow, or the stage's wrapper around it. */
+        @Nullable private Drawable worn;
         final List<Light> lights = new ArrayList<>();
         private final WeakReference<View> stage;
         private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
         private final Rect from = new Rect();
         private final RectF to = new RectF();
         private final float[] xs = new float[4], ys = new float[4];
+        private final int[] hostAt = new int[2], onAt = new int[2];
         private final Runnable again = this::invalidateSelf;
+        /** For a glow no view wears, what has its view draw it again. Held here, as a drawable holds its callback weakly. */
+        @Nullable private Drawable.Callback redraw;
         private static final int[] CELLS = {0, RING, RING + SAMPLE, SIDE};
 
         Glow(View stage, @Nullable Drawable original) {
@@ -692,18 +1115,69 @@ public final class AmbientLight {
             if (original != null) setBounds(original.getBounds());
         }
 
-        /** Sets the glow as [stage]'s background, keeping its padding. */
+        /** Makes this glow, which [view] paints without wearing it, ask [view] to draw again. */
+        void redraws(View view) {
+            WeakReference<View> held = new WeakReference<>(view);
+            redraw = new Drawable.Callback() {
+                @Override
+                public void invalidateDrawable(@NonNull Drawable who) {
+                    View on = held.get();
+                    if (on != null) on.invalidate();
+                }
+
+                @Override
+                public void scheduleDrawable(@NonNull Drawable who, @NonNull Runnable what, long when) {
+                    main.postAtTime(what, who, when);
+                }
+
+                @Override
+                public void unscheduleDrawable(@NonNull Drawable who, @NonNull Runnable what) {
+                    main.removeCallbacks(what, who);
+                }
+            };
+            setCallback(redraw);
+        }
+
+        /**
+         * Sets the glow as [stage]'s background, keeping its padding, and notes what the stage
+         * holds then. Instagram's rounded frame wraps whatever its background setter is given in a
+         * drawable of its own (#485), so that can be the wrapper rather than the glow.
+         */
         void wear(View stage) {
             keepPadding(stage, this);
+            worn = stage.getBackground();
             if (original != null) original.setCallback(this);
+        }
+
+        /**
+         * Whether [stage] still holds what it held once the glow went on. Asking for the glow
+         * itself fails on a stage that wrapped it, and wrapping it again each frame nested deeper
+         * every frame until drawing overflowed its stack.
+         */
+        boolean wornBy(View stage) {
+            return stage.getBackground() == worn;
         }
 
         /** Gives [stage] its original background back when it still wears this glow. */
         void takeOff(View stage) {
             unscheduleSelf(again);
-            if (stage.getBackground() != this) return;
+            if (!wornBy(stage)) return;
             release();
-            keepPadding(stage, original);
+            keepPadding(stage, givenBack());
+        }
+
+        /**
+         * What [takeOff] hands the stage. A stage that wrapped the glow had wrapped the original
+         * the same way, so it gets what it wrapped and wraps that once, as it did before the glow,
+         * rather than a wrapper inside a wrapper each time a post lights and goes out.
+         */
+        @Nullable
+        private Drawable givenBack() {
+            if (worn != this && worn instanceof DrawableWrapper && ((DrawableWrapper) worn).getDrawable() == this
+                    && original != null && original.getClass() == worn.getClass()) {
+                return ((DrawableWrapper) original).getDrawable();
+            }
+            return original;
         }
 
         /** Lets go of the original, which a new glow or the stage takes over. */
@@ -724,13 +1198,27 @@ public final class AmbientLight {
         @Override
         public void draw(@NonNull Canvas canvas) {
             if (original != null) original.draw(canvas);
+            View on = stage.get();
             long now = SystemClock.uptimeMillis();
             boolean fading = false;
             for (Light light : lights) {
-                if (light.face == null || light.lit.isEmpty()) continue;
+                // On a host the glow fills the bands round the stage, which draws its own part.
+                boolean bands = on != null && light.stage.get() != on;
+                Rect lit = bands ? light.hostLit : light.lit;
+                if (light.face == null || lit.isEmpty()) continue;
+                View host = bands ? light.host() : null;
+                if (bands && host == null) continue;
                 fading |= light.blend(now);
-                Rect lit = light.lit;
                 int spread = light.spread;
+                int saved = bands ? canvas.save() : 0;
+                if (bands && host != on) {
+                    // The tab bar over the host draws the host's glow where it covers it.
+                    host.getLocationInWindow(hostAt);
+                    on.getLocationInWindow(onAt);
+                    canvas.translate(hostAt[0] - onAt[0], hostAt[1] - onAt[1]);
+                }
+                if (bands) canvas.clipOutRect(light.hostStage);
+                if (bands && light.hostCut >= 0) canvas.clipOutRect(0, light.hostCut, host.getWidth(), host.getHeight());
                 xs[0] = lit.left - spread;
                 xs[1] = lit.left;
                 xs[2] = lit.right;
@@ -748,6 +1236,16 @@ public final class AmbientLight {
                         canvas.drawBitmap(light.face, from, to, paint);
                     }
                 }
+                if (light.corner > 0) {
+                    // A rounded picture's corners show what's behind it, so the glow carries on under them (#510).
+                    from.set(RING, RING, RING + SAMPLE, RING + 1);
+                    to.set(lit.left, lit.top, lit.right, lit.top + light.corner);
+                    canvas.drawBitmap(light.face, from, to, paint);
+                    from.set(RING, RING + SAMPLE - 1, RING + SAMPLE, RING + SAMPLE);
+                    to.set(lit.left, lit.bottom - light.corner, lit.right, lit.bottom);
+                    canvas.drawBitmap(light.face, from, to, paint);
+                }
+                if (bands) canvas.restoreToCount(saved);
             }
             if (fading) {
                 unscheduleSelf(again);
@@ -865,11 +1363,94 @@ public final class AmbientLight {
         }
     }
 
+    /**
+     * What Blend post edges lays over a post's picture (#510): at each edge with room past it for the
+     * glow, a strip in the page's color, as strong at the edge as what the glow lets through there and
+     * gone a little way in. Right at the edge the picture then reads like the glow beside it, so the
+     * edge stops showing as a line.
+     */
+    static final class Edges extends Drawable {
+        private final Paint paint = new Paint();
+        private final Shader[] shaders = new Shader[4];
+        private final Rect[] areas = {new Rect(), new Rect(), new Rect(), new Rect()};
+        private int width, height, depth;
+        private boolean upAndDown, left, right;
+
+        /** Fits the strips to a picture this big, doing nothing when they already fit. */
+        void fit(int width, int height, int depthAtMost, boolean upAndDown, boolean left, boolean right, View stage) {
+            int depth = Math.max(1, Math.min(depthAtMost, Math.min(width, height) / 5));
+            if (width == this.width && height == this.height && depth == this.depth
+                    && upAndDown == this.upAndDown && left == this.left && right == this.right) return;
+            this.width = width;
+            this.height = height;
+            this.depth = depth;
+            this.upAndDown = upAndDown;
+            this.left = left;
+            this.right = right;
+            setBounds(0, 0, width, height);
+            int page = pageColor(stage);
+            int strong = ((255 - STRENGTH) << 24) | (page & 0xFFFFFF), clear = page & 0xFFFFFF;
+            side(0, upAndDown, 0, 0, width, depth, 0, 0, 0, depth, strong, clear);
+            side(1, upAndDown, 0, height - depth, width, height, 0, height, 0, height - depth, strong, clear);
+            side(2, left, 0, 0, depth, height, 0, 0, depth, 0, strong, clear);
+            side(3, right, width - depth, 0, width, height, width, 0, width - depth, 0, strong, clear);
+            invalidateSelf();
+        }
+
+        private void side(int which, boolean shown, int l, int t, int r, int b, int x0, int y0, int x1, int y1, int strong, int clear) {
+            shaders[which] = shown ? new LinearGradient(x0, y0, x1, y1, strong, clear, Shader.TileMode.CLAMP) : null;
+            areas[which].set(l, t, r, b);
+        }
+
+        /** The page's color behind [stage]: its own solid background, or the theme's. */
+        private static int pageColor(View stage) {
+            Glow worn = glows.get(stage);
+            Drawable own = worn != null ? worn.original : stage.getBackground();
+            if (own instanceof ColorDrawable && Color.alpha(((ColorDrawable) own).getColor()) == 255) {
+                return ((ColorDrawable) own).getColor();
+            }
+            TypedValue value = new TypedValue();
+            if (stage.getContext().getTheme().resolveAttribute(android.R.attr.colorBackground, value, true)
+                    && value.type >= TypedValue.TYPE_FIRST_COLOR_INT && value.type <= TypedValue.TYPE_LAST_COLOR_INT) {
+                return value.data;
+            }
+            boolean night = (stage.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                    == Configuration.UI_MODE_NIGHT_YES;
+            return night ? Color.BLACK : Color.WHITE;
+        }
+
+        @Override
+        public void draw(@NonNull Canvas canvas) {
+            for (int i = 0; i < shaders.length; i++) {
+                if (shaders[i] == null) continue;
+                paint.setShader(shaders[i]);
+                canvas.drawRect(areas[i], paint);
+            }
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            paint.setAlpha(alpha);
+        }
+
+        @Override
+        public void setColorFilter(@Nullable ColorFilter filter) {
+            paint.setColorFilter(filter);
+        }
+
+        @Override
+        public int getOpacity() {
+            return PixelFormat.TRANSLUCENT;
+        }
+    }
+
     /** One activity's place in the shared view watcher. */
     private static final class Session implements ViewWatcher.Member {
         private final WeakReference<Activity> activity;
         /** Whether posts glow, as of the last search. */
         private boolean posts;
+        /** A chat's root, as of the last search: what's under it stays dark. */
+        private int chat;
 
         Session(Activity activity) {
             this.activity = new WeakReference<>(activity);
@@ -927,6 +1508,7 @@ public final class AmbientLight {
                         }
                     }
                     posts = feed;
+                    chat = feed ? ids.resolve(owner.getResources(), owner.getPackageName(), CHAT, false) : 0;
                     walk(owner, owner.getWindow().getDecorView(), frame, storyFrame, feed && !reelsBlurred(),
                             new int[] {ReelCorners.MAX_VIEWS});
                 }
@@ -940,6 +1522,7 @@ public final class AmbientLight {
         /** Lights each post's media frame and, with [reels], each reel's video in a frame with [frame], under [view]. */
         private void walk(Activity owner, View view, int frame, int storyFrame, boolean reels, int[] budget) {
             if (budget[0]-- <= 0 || view.getVisibility() != View.VISIBLE) return;
+            if (chat != 0 && view.getId() == chat) return;
             if (posts && mediaFrame(view)) {
                 light(owner, view, Kind.POST, null, stageOf(view));
                 return;

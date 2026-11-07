@@ -15,6 +15,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -115,7 +116,7 @@ public final class SettingsDialog extends DialogFragment {
         };
         Window window = dialog.getWindow();
         if (window != null) {
-            window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.BLACK));
+            window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(ScreenColors.current().background));
             window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
             // With three-button navigation Android lays a grey scrim under the buttons; the
             // screen is black edge to edge, so the scrim only shows as a grey band. Android 9 has
@@ -192,6 +193,8 @@ public final class SettingsDialog extends DialogFragment {
         title.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
         title.setPaddingRelative(dp(8), 0, 0, 0);
+        // Next to the back arrow in a right-to-left layout too, not at the bar's far end.
+        title.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
         title.setAccessibilityHeading(true);
         bar.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         root.addView(bar);
@@ -201,9 +204,19 @@ public final class SettingsDialog extends DialogFragment {
         root.addView(container, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         root.addView(restartBar(palette), restartBarSpace());
 
-        // Instagram targets a recent API, so its windows are edge to edge: keep the bars off the
-        // content. The keyboard too, since nothing resizes an edge-to-edge window for it: the
-        // search field, the matches under it and Restart now sat behind the keys (S25, 2026-10-13).
+        keepOffTheBars(root);
+        // A newly opened screen must not steal focus and raise the keyboard.
+        FocusRest.on(root);
+        root.requestFocus();
+        return root;
+    }
+
+    /**
+     * Instagram targets a recent API, so its windows are edge to edge: keeps the bars off [root]'s
+     * content. The keyboard too, since nothing resizes an edge-to-edge window for it: the search
+     * field, the matches under it and Restart now sat behind the keys (S25, 2026-10-13).
+     */
+    static void keepOffTheBars(View root) {
         root.setOnApplyWindowInsetsListener((view, insets) -> {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 android.graphics.Insets bars = insets.getInsets(
@@ -216,10 +229,6 @@ public final class SettingsDialog extends DialogFragment {
             }
             return insets;
         });
-        // A newly opened screen must not steal focus and raise the keyboard.
-        FocusRest.on(root);
-        root.requestFocus();
-        return root;
     }
 
     /**
@@ -285,10 +294,14 @@ public final class SettingsDialog extends DialogFragment {
         if (bar != null) bar.setVisibility(owed ? View.VISIBLE : View.GONE);
     }
 
-    /** Shows the search title, and HushGram again for null. */
-    void showTitle(@androidx.annotation.Nullable CharSequence title) {
+    /**
+     * Shows the category or search title, and InstaPrime again for null.
+     */
+    void showTitle(@androidx.annotation.Nullable CharSequence title, boolean pageHeader) {
         TextView bar = heading;
-        if (bar != null) bar.setText(title == null ? "InstaPrime" : title);
+        if (bar == null) return;
+        CharSequence text = title == null ? "InstaPrime" : title;
+        if (!TextUtils.equals(text, bar.getText())) bar.setText(text);
     }
 
     /** Clears a search before Back closes the dialog. Expanding a section adds no Back level. */
@@ -302,6 +315,12 @@ public final class SettingsDialog extends DialogFragment {
         // Back key or a tap outside: the person closed it.
         SettingsEntry.onClosedByUser();
         super.onCancel(dialog);
+    }
+
+    @Override
+    public void onDismiss(android.content.DialogInterface dialog) {
+        super.onDismiss(dialog);
+        GhostHeaderButton.settingsClosed();
     }
 
     @Override
@@ -473,9 +492,13 @@ public final class SettingsDialog extends DialogFragment {
             if (recovering) {
                 View list = container.findViewById(android.R.id.list);
                 if (list != null) list.requestFocus();
-                TextView pageHeading = heading;
+                TextView barTitle = heading;
                 owner.post(() -> {
-                    if (canOpenPage(owner) && !failed && heading == pageHeading) {
+                    if (!canOpenPage(owner) || failed || heading != barTitle) return;
+                    // The bar's title, or the header's name while the page shows it in its place.
+                    View pageHeading = barTitle.getVisibility() == View.VISIBLE
+                            ? barTitle : container.findViewWithTag(SettingsHeader.NAME);
+                    if (pageHeading != null) {
                         pageHeading.performAccessibilityAction(
                                 AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null);
                     }

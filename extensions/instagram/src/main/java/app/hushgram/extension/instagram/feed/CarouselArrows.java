@@ -13,6 +13,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,6 +27,7 @@ import androidx.annotation.Nullable;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -58,10 +60,12 @@ import app.hushgram.extension.shared.diagnostics.HookStatus;
  *
  * <p>Like {@link CarouselPeek}, a resumed activity joins the shared view watcher while either switch
  * is on: each layout looks through the window once for carousels, and each frame only checks the
- * carousels already holding arrows or a pill, so they follow a swipe. A carousel scrolled out of the
- * window loses them, and its dots come back. A flipped switch rebuilds what each carousel holds. With
- * both off, HushGram paused or the settings not read, every arrow and pill is taken away. Anything
- * thrown leaves the screen as Instagram drew it.
+ * carousels already holding arrows or a pill, so they follow a swipe. No frame is ever held back for
+ * them, since that stuttered the feed's scroll (#425). A carousel scrolled out of the window gives its
+ * dots back but keeps what it holds, because the feed reuses that row and adding them again lays the
+ * whole feed out each time. A flipped switch rebuilds what each carousel holds. With both off, HushGram
+ * paused or the settings not read, every arrow and pill is taken away. Anything thrown leaves the
+ * screen as Instagram drew it.
  */
 public final class CarouselArrows {
     static final String PAGE = CarouselPeek.PAGE;
@@ -88,6 +92,9 @@ public final class CarouselArrows {
     /** The pill's dots, the gap between them, its height, its padding at each end and its gap from the carousel's bottom edge, in dp. */
     static final float DOT = 6, DOT_GAP = 7, PILL_HEIGHT = 18, PILL_PAD = 8, PILL_MARGIN = 12;
 
+    /** The pill's gap above a feed seek bar along the bottom of a carousel's video, in dp (#471). */
+    static final float PILL_OVER_BAR = 4;
+
     /** The most dots a pill shows at once. A longer carousel's dots slide with its page, the end ones smaller. */
     static final int MAX_DOTS = 7;
 
@@ -108,10 +115,15 @@ public final class CarouselArrows {
 
     private static final ResourceIdCache ids = new ResourceIdCache();
     private static final WeakHashMap<Activity, Session> sessions = new WeakHashMap<>();
-    /** Each pager given arrows, with them. Main thread only. */
-    private static final Map<View, Arrows> pagers = new WeakHashMap<>();
+    /**
+     * Each pager given arrows, with them. Main thread only. Held weakly, since they lead through their
+     * host back to the pager and would keep every row scrolled past; the added views hold them instead.
+     */
+    private static final Map<View, WeakReference<Arrows>> pagers = new WeakHashMap<>();
     /** The page getters of each view class asked about, or null for a class that isn't a pager. */
     private static final Map<Class<?>, Pager> kinds = new WeakHashMap<>();
+    /** Whether each view class asked about is Instagram's page dots. A look asks every view in the window, and a class's name is slow to read. */
+    private static final Map<Class<?>, Boolean> dotKinds = new WeakHashMap<>();
     /** Instagram's page dots seen in the window's last look, while the pill is on. Main thread only. */
     private static final ArrayList<WeakReference<View>> dots = new ArrayList<>();
     private static final int[] spot = new int[2];
@@ -279,42 +291,50 @@ public final class CarouselArrows {
 
     /** Gives [pager] what the switches ask for in its host, if it doesn't hold that there yet. True when any were added. */
     static boolean give(ViewGroup pager) {
-        Arrows arrows = pagers.get(pager);
+        Arrows arrows = arrowsOf(pager);
         FrameLayout host = hostOf(pager);
         if (host == null) return false;
         if (arrows != null) {
             if (arrows.host.get() == host && arrows.matches()) return false;
             arrows.remove();
         }
-        pagers.put(pager, new Arrows(pager, host));
+        pagers.put(pager, new WeakReference<>(new Arrows(pager, host)));
         return true;
     }
 
+    @Nullable
+    private static Arrows arrowsOf(View pager) {
+        WeakReference<Arrows> held = pagers.get(pager);
+        return held == null ? null : held.get();
+    }
+
     /**
-     * Shows, hides and places the arrows and pill of every carousel holding some, and takes them off a
-     * carousel that left the window or its host, or holds what a switch no longer asks for. True when
-     * anything changed.
+     * Shows, hides and places the arrows and pill of every carousel in the window. One whose row is out
+     * of the window only gives its dots back. One that left its host, or holds what a switch no longer
+     * asks for, loses what it holds.
      */
-    static boolean follow() throws ReflectiveOperationException {
-        boolean changed = false;
-        for (Map.Entry<View, Arrows> entry : new ArrayList<>(pagers.entrySet())) {
+    static void follow() throws ReflectiveOperationException {
+        Iterator<Map.Entry<View, WeakReference<Arrows>>> entries = pagers.entrySet().iterator();
+        while (entries.hasNext()) {
+            Map.Entry<View, WeakReference<Arrows>> entry = entries.next();
             View pager = entry.getKey();
-            Arrows arrows = entry.getValue();
+            Arrows arrows = entry.getValue().get();
             if (pager == null) continue;
-            if (!arrows.holds(pager) || !arrows.matches()) {
-                arrows.remove();
-                pagers.remove(pager);
-                changed = true;
-                continue;
+            if (arrows == null || !arrows.holds(pager) || !arrows.matches()) {
+                if (arrows != null) arrows.remove();
+                entries.remove();
+            } else if (pager.isAttachedToWindow()) {
+                arrows.follow(pager, kind(pager));
+            } else {
+                arrows.fade(null);
             }
-            changed |= arrows.follow(pager, kind(pager));
         }
-        return changed;
     }
 
     /** Takes every arrow and pill away, brings Instagram's dots back, and forgets the carousels. */
     static void putBack() {
-        for (Arrows arrows : new ArrayList<>(pagers.values())) {
+        for (WeakReference<Arrows> held : new ArrayList<>(pagers.values())) {
+            Arrows arrows = held.get();
             if (arrows != null) arrows.remove();
         }
         pagers.clear();
@@ -350,7 +370,13 @@ public final class CarouselArrows {
     /** True when [view] is a set of Instagram's page dots: [dotsId] when known, else {@link #DOTS_CLASS}. */
     static boolean isDots(View view, int dotsId) {
         if (dotsId != 0 && view.getId() == dotsId) return true;
-        return DOTS_CLASS.equals(view.getClass().getSimpleName());
+        Class<?> kind = view.getClass();
+        Boolean known = dotKinds.get(kind);
+        if (known == null) {
+            known = DOTS_CLASS.equals(kind.getSimpleName());
+            dotKinds.put(kind, known);
+        }
+        return known;
     }
 
     /** Tests give the page frame an id of their own, since a test app has none of Instagram's. */
@@ -368,7 +394,7 @@ public final class CarouselArrows {
 
     @Nullable
     static Pill pillForTests(View pager) {
-        Arrows arrows = pagers.get(pager);
+        Arrows arrows = arrowsOf(pager);
         return arrows == null ? null : arrows.pill;
     }
 
@@ -382,13 +408,13 @@ public final class CarouselArrows {
 
     @Nullable
     static View backForTests(View pager) {
-        Arrows arrows = pagers.get(pager);
+        Arrows arrows = arrowsOf(pager);
         return arrows == null ? null : arrows.back;
     }
 
     @Nullable
     static View nextForTests(View pager) {
-        Arrows arrows = pagers.get(pager);
+        Arrows arrows = arrowsOf(pager);
         return arrows == null ? null : arrows.next;
     }
 
@@ -407,6 +433,7 @@ public final class CarouselArrows {
         }
         putBack();
         kinds.clear();
+        dotKinds.clear();
         turn = PATCHED;
         logged = false;
     }
@@ -420,6 +447,7 @@ public final class CarouselArrows {
         private WeakReference<View> faded = new WeakReference<>(null);
         private float fadedAlpha = 1f;
         private final Rect bounds = new Rect();
+        private final Rect barBounds = new Rect();
 
         Arrows(View pager, FrameLayout host) {
             this.host = new WeakReference<>(host);
@@ -442,6 +470,7 @@ public final class CarouselArrows {
                 int size = Math.round(TOUCH * density);
                 for (Arrow arrow : new Arrow[] {back, next}) {
                     arrow.setVisibility(View.INVISIBLE);
+                    arrow.setTag(this);
                     host.addView(arrow, new FrameLayout.LayoutParams(size, size, Gravity.TOP | Gravity.START));
                 }
             } else {
@@ -450,6 +479,7 @@ public final class CarouselArrows {
             if (Settings.CAROUSEL_DOTS_PILL.get()) {
                 pill = new Pill(context);
                 pill.setVisibility(View.INVISIBLE);
+                pill.setTag(this);
                 host.addView(pill, new FrameLayout.LayoutParams(Pill.widest(density), Math.round(PILL_HEIGHT * density),
                         Gravity.TOP | Gravity.START));
             } else {
@@ -462,11 +492,11 @@ public final class CarouselArrows {
             return (back != null) == Settings.CAROUSEL_ARROWS.get() && (pill != null) == Settings.CAROUSEL_DOTS_PILL.get();
         }
 
-        /** Whether [pager] is still in the window, under the host its arrows or pill are in. */
+        /** Whether [pager] is still under the host its arrows or pill are in, its row in the window or not. */
         boolean holds(View pager) {
             FrameLayout frame = host.get();
             View added = back != null ? back : pill;
-            if (frame == null || added == null || !pager.isAttachedToWindow() || added.getParent() != frame) return false;
+            if (frame == null || added == null || added.getParent() != frame) return false;
             for (ViewParent parent = pager.getParent(); parent != null; parent = parent.getParent()) {
                 if (parent == frame) return true;
             }
@@ -475,73 +505,83 @@ public final class CarouselArrows {
 
         /**
          * Shows the arrows that lead to a page of [pager]'s and places them over its edges, and shows the pill
-         * over its bottom with the page it's on, Instagram's dots faded under it. True when anything changed.
+         * over its bottom with the page it's on, Instagram's dots faded under it.
          */
-        boolean follow(View pager, @Nullable Pager methods) throws ReflectiveOperationException {
+        void follow(View pager, @Nullable Pager methods) throws ReflectiveOperationException {
             FrameLayout frame = host.get();
             boolean shown = methods != null && frame != null && pager.isShown() && pager.getWidth() > 0;
             int at = shown ? methods.index(pager) : -1;
             int count = shown ? methods.count(pager) : 0;
-            boolean changed = false;
             if (back != null && next != null) {
-                changed |= show(back, at > 0 && at < count);
-                changed |= show(next, at >= 0 && at < count - 1);
+                show(back, at > 0 && at < count);
+                show(next, at >= 0 && at < count - 1);
             }
             boolean dotted = pill != null && at >= 0 && at < count && count > 1;
             if (pill != null) {
-                changed |= show(pill, dotted);
-                changed |= pill.showing(at, count);
+                show(pill, dotted);
+                pill.look(Settings.CAROUSEL_PILL_LOOK.get());
+                pill.showing(at, count);
             }
-            changed |= fade(dotted ? dotsUnder(pager) : null);
-            if (!shown) return changed;
+            fade(dotted ? dotsUnder(pager) : null);
+            if (!shown) return;
             bounds.set(0, 0, pager.getWidth(), pager.getHeight());
             frame.offsetDescendantRectToMyCoords(pager, bounds);
             float density = pager.getResources().getDisplayMetrics().density;
             if (back != null && next != null) {
                 float inset = (MARGIN - (TOUCH - BUTTON) / 2) * density;
                 float top = bounds.centerY() - TOUCH * density / 2;
-                changed |= place(back, bounds.left + inset, top);
-                changed |= place(next, bounds.right - inset - TOUCH * density, top);
+                place(back, bounds.left + inset, top);
+                place(next, bounds.right - inset - TOUCH * density, top);
             }
             if (pill != null) {
-                changed |= place(pill, bounds.centerX() - pill.getLayoutParams().width / 2f,
-                        bounds.bottom - (PILL_MARGIN + PILL_HEIGHT) * density);
+                float left = bounds.centerX() - pill.getLayoutParams().width / 2f;
+                float top = bounds.bottom - (PILL_MARGIN + PILL_HEIGHT) * density;
+                place(pill, left, Math.min(top, overBar(frame, pager, left, left + pill.getLayoutParams().width, density)));
+                pill.frost(SystemClock.uptimeMillis());
             }
-            return changed;
+        }
+
+        /**
+         * Where the pill's top goes to sit above the feed seek bar on [pager]'s video, when that bar spans
+         * the pill from [left] to [right] (#471). The bar runs along the bottom of the video, where the
+         * pill sits, so it hid the bar's middle and its thumb. With no bar there, no limit.
+         */
+        private float overBar(FrameLayout frame, View pager, float left, float right, float density) {
+            View bar = FeedSeekBar.shownBar();
+            if (bar == null || !bar.isShown() || !within(bar, pager)) return Float.MAX_VALUE;
+            barBounds.set(0, 0, bar.getWidth(), bar.getHeight());
+            frame.offsetDescendantRectToMyCoords(bar, barBounds);
+            if (barBounds.right <= left || barBounds.left >= right) return Float.MAX_VALUE;
+            return barBounds.top - (PILL_OVER_BAR + PILL_HEIGHT) * density;
+        }
+
+        private static boolean within(View view, View ancestor) {
+            for (ViewParent parent = view.getParent(); parent != null; parent = parent.getParent()) {
+                if (parent == ancestor) return true;
+            }
+            return false;
         }
 
         /** Fades out [dots], Instagram's own under this carousel, and brings back the ones faded before if they're others. */
-        private boolean fade(@Nullable View dots) {
+        void fade(@Nullable View dots) {
             View before = faded.get();
-            boolean changed = false;
-            if (before != null && before != dots) {
-                before.setAlpha(fadedAlpha);
-                changed = true;
+            if (before != dots) {
+                if (before != null) before.setAlpha(fadedAlpha);
+                if (dots != null) fadedAlpha = dots.getAlpha();
+                faded = new WeakReference<>(dots);
             }
-            if (dots != null && dots != before) fadedAlpha = dots.getAlpha();
-            faded = new WeakReference<>(dots);
             // Set again each frame, in case Instagram set the dots' alpha back itself.
-            if (dots != null && dots.getAlpha() != 0f) {
-                dots.setAlpha(0f);
-                changed = true;
-            }
-            return changed;
+            if (dots != null && dots.getAlpha() != 0f) dots.setAlpha(0f);
         }
 
-        private static boolean show(View arrow, boolean shown) {
-            int visibility = shown ? View.VISIBLE : View.INVISIBLE;
-            if (arrow.getVisibility() == visibility) return false;
+        private static void show(View arrow, boolean shown) {
             // Invisible, not gone, so the host isn't laid out again each time a carousel reaches its end.
-            arrow.setVisibility(visibility);
-            return true;
+            arrow.setVisibility(shown ? View.VISIBLE : View.INVISIBLE);
         }
 
-        private static boolean place(View arrow, float left, float top) {
-            float x = Math.round(left) - arrow.getLeft(), y = Math.round(top) - arrow.getTop();
-            if (arrow.getTranslationX() == x && arrow.getTranslationY() == y) return false;
-            arrow.setTranslationX(x);
-            arrow.setTranslationY(y);
-            return true;
+        private static void place(View arrow, float left, float top) {
+            arrow.setTranslationX(Math.round(left) - arrow.getLeft());
+            arrow.setTranslationY(Math.round(top) - arrow.getTop());
         }
 
         void remove() {
@@ -554,24 +594,74 @@ public final class CarouselArrows {
     }
 
     /**
-     * A carousel's page dots on a round, see-through pill: the page showing in Instagram's blue, the rest
-     * dark. Up to {@link #MAX_DOTS} show, so a longer carousel's dots slide along with its page, an end dot
-     * drawn smaller while more pages lie past it. The view is as wide as the widest pill and draws its pill
-     * centered, so a carousel that grows never lays the post out again.
+     * A carousel's page dots on a round pill: the page showing in Instagram's blue. Up to {@link #MAX_DOTS}
+     * show, so a longer carousel's dots slide along with its page, an end dot drawn smaller while more pages
+     * lie past it. The view is as wide as the widest pill and draws its pill centered, so a carousel that
+     * grows never lays the post out again.
+     *
+     * <p>Its look is Pill look's choice (#471): a light pill with dark dots, as it always was, a see-through
+     * dark one with white dots, or frosted glass ({@link FrostedBackdrop}) that blurs the page under it,
+     * recorded as each frame is about to draw ({@link #frost}).
      */
     static final class Pill extends View {
         static final int BLUE = 0xFF0095F6, DARK = 0xFF3C3C3C, BACK = 0xCCDCDCDC;
+        /** The see-through pill and its dots. A frosted pill with no blur to draw takes the same shade. */
+        static final int SEE_THROUGH_BACK = 0x4D000000, LIGHT_DOT = 0xB3FFFFFF;
+        /** Over the blur, a lighter shade, so white dots still read on a bright page, and a hairline edge. */
+        static final int FROST_TINT = 0x26000000, FROST_EDGE = 0x59FFFFFF;
 
         private final Paint back = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint dot = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF shape = new RectF();
+        private final FrostedBackdrop backdrop =
+                new FrostedBackdrop(FamilyNames.CAROUSEL_ARROWS, HOOK + " pill glass", "hushgram-carousel-pill-glass");
         int at = -1, count;
+        OverlayLook look = OverlayLook.SOLID;
 
         Pill(Context context) {
             super(context);
             back.setColor(BACK);
+            edge.setStyle(Paint.Style.STROKE);
+            edge.setColor(FROST_EDGE);
             // Only a picture of the page, so TalkBack passes over it.
             setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+        }
+
+        /** Takes on [wanted], unless it has it already. */
+        void look(OverlayLook wanted) {
+            if (wanted == null || wanted == look) return;
+            look = wanted;
+            if (wanted != OverlayLook.FROSTED) backdrop.release();
+            invalidate();
+        }
+
+        /**
+         * Records the glass under a frosted pill at [now], once it's placed for the frame about to draw. The pill
+         * draws again only when the glass comes or goes, since it draws the recording by reference.
+         */
+        void frost(long now) {
+            if (look != OverlayLook.FROSTED || getVisibility() != VISIBLE) return;
+            boolean before = backdrop.recorded();
+            backdrop.record(this, now);
+            if (backdrop.recorded() != before) invalidate();
+        }
+
+        /** The shade behind the dots with [look], [blurred] when the glass drew under it. */
+        static int back(OverlayLook look, boolean blurred) {
+            switch (look) {
+                case SEE_THROUGH:
+                    return SEE_THROUGH_BACK;
+                case FROSTED:
+                    return blurred ? FROST_TINT : SEE_THROUGH_BACK;
+                default:
+                    return BACK;
+            }
+        }
+
+        /** The colour of a dot for a page not showing, with [look]. */
+        static int otherDot(OverlayLook look) {
+            return look == OverlayLook.SOLID ? DARK : LIGHT_DOT;
         }
 
         /** The view's width, which holds the pill of {@link #MAX_DOTS} dots, in pixels. */
@@ -585,13 +675,12 @@ public final class CarouselArrows {
             return Math.max(0, Math.min(count - MAX_DOTS, at - MAX_DOTS / 2));
         }
 
-        /** Shows page [at] of [count]. True when that's a change. */
-        boolean showing(int at, int count) {
-            if (this.at == at && this.count == count) return false;
+        /** Shows page [at] of [count]. */
+        void showing(int at, int count) {
+            if (this.at == at && this.count == count) return;
             this.at = at;
             this.count = count;
             invalidate();
-            return true;
         }
 
         @Override
@@ -603,21 +692,36 @@ public final class CarouselArrows {
             float wide = shown * size + (shown - 1) * gap + 2 * pad, height = getHeight();
             float left = (getWidth() - wide) / 2f;
             shape.set(left, 0, left + wide, height);
-            canvas.drawRoundRect(shape, height / 2f, height / 2f, back);
+            float radius = height / 2f;
+            boolean blurred = look == OverlayLook.FROSTED && backdrop.draw(canvas, shape, radius);
+            back.setColor(back(look, blurred));
+            canvas.drawRoundRect(shape, radius, radius, back);
+            if (look == OverlayLook.FROSTED) {
+                float line = Math.max(1f, density / 2f);
+                edge.setStrokeWidth(line);
+                shape.inset(line / 2f, line / 2f);
+                canvas.drawRoundRect(shape, radius, radius, edge);
+            }
+            int other = otherDot(look);
             for (int i = 0; i < shown; i++) {
                 boolean more = (i == 0 && from > 0) || (i == shown - 1 && from + shown < count);
-                dot.setColor(from + i == at ? BLUE : DARK);
+                dot.setColor(from + i == at ? BLUE : other);
                 canvas.drawCircle(left + pad + i * (size + gap) + size / 2, height / 2f, size / 2 * (more ? 0.6f : 1f), dot);
             }
         }
     }
 
-    /** A round arrow button: a light disc with a dark chevron, so it reads on dark and bright pages alike. */
+    /**
+     * An arrow button: a light rounded square with a dark chevron, so it reads on dark and bright
+     * pages alike. Its corners are HushGram's 8 dp, like the rest of what it adds.
+     */
     static final class Arrow extends View {
+        static final float CORNER = 8;
         private final boolean forward;
         private final Paint disc = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint chevron = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path path = new Path();
+        private final RectF square = new RectF();
 
         Arrow(Context context, boolean forward) {
             super(context);
@@ -636,7 +740,8 @@ public final class CarouselArrows {
                 public void getOutline(View view, Outline outline) {
                     int radius = Math.round(radius(view));
                     int x = view.getWidth() / 2, y = view.getHeight() / 2;
-                    outline.setOval(x - radius, y - radius, x + radius, y + radius);
+                    outline.setRoundRect(x - radius, y - radius, x + radius, y + radius,
+                            CORNER * view.getResources().getDisplayMetrics().density);
                 }
             });
         }
@@ -648,7 +753,9 @@ public final class CarouselArrows {
         @Override
         protected void onDraw(Canvas canvas) {
             float x = getWidth() / 2f, y = getHeight() / 2f, radius = radius(this);
-            canvas.drawCircle(x, y, radius, disc);
+            float corner = CORNER * getResources().getDisplayMetrics().density;
+            square.set(x - radius, y - radius, x + radius, y + radius);
+            canvas.drawRoundRect(square, corner, corner, disc);
             float reach = radius * 0.32f, lean = forward ? 1 : -1;
             chevron.setStrokeWidth(radius * 0.15f);
             path.reset();
@@ -691,7 +798,6 @@ public final class CarouselArrows {
 
         @Override
         public boolean preDraw(Activity owner, boolean laidOut) {
-            boolean changed = false;
             try {
                 if (!wanted()) {
                     putBack();
@@ -715,41 +821,39 @@ public final class CarouselArrows {
                         if (dotsId == 0) HookStatus.missingViewId(FamilyNames.CAROUSEL_ARROWS, DOTS);
                         else HookStatus.recoveredViewId(FamilyNames.CAROUSEL_ARROWS, DOTS);
                     }
-                    changed = walk(owner.getWindow().getDecorView(), id, video, dotted, dotsId, new int[] {ReelCorners.MAX_VIEWS});
+                    walk(owner.getWindow().getDecorView(), id, video, dotted, dotsId, new int[] {ReelCorners.MAX_VIEWS});
                 }
-                changed |= follow();
+                follow();
             } catch (Throwable failure) {
                 HookStatus.threw(FamilyNames.CAROUSEL_ARROWS, HOOK, failure);
             }
-            // Arrows and pills shown, hidden or moved now are drawn on the next frame.
-            return changed;
+            // Whatever moved or changed here is in this frame's draw, and an added view shows nothing until its layout.
+            return false;
         }
 
         /**
          * Gives arrows or a pill to the carousel of each photo page frame with [id], or video page frame with
          * [video], under [view], and while [dotted] keeps Instagram's page dots ({@link #isDots}) for
-         * {@link #dotsUnder}. True when any were added.
+         * {@link #dotsUnder}.
          */
-        private boolean walk(View view, int id, int video, boolean dotted, int dotsId, int[] budget) {
-            if (budget[0]-- <= 0) return false;
+        private void walk(View view, int id, int video, boolean dotted, int dotsId, int[] budget) {
+            if (budget[0]-- <= 0) return;
             if (dotted && isDots(view, dotsId)) dots.add(new WeakReference<>(view));
             if (view.getId() == id || (video != 0 && view.getId() == video)) {
                 ViewGroup pager = pagerOf(view);
-                if (pager == null || !give(pager)) return false;
+                if (pager == null || !give(pager)) return;
                 if (Settings.CAROUSEL_ARROWS.get()) HookStatus.counted(FamilyNames.CAROUSEL_ARROWS, COUNT_SHOWN);
                 if (Settings.CAROUSEL_DOTS_PILL.get()) HookStatus.counted(FamilyNames.CAROUSEL_ARROWS, COUNT_PILLS);
                 if (!logged) {
                     logged = true;
                     Logger.printDebug(() -> "Carousel arrows: gave a carousel its arrows or pill");
                 }
-                return true;
+                return;
             }
-            boolean changed = false;
             if (view instanceof ViewGroup) {
                 ViewGroup group = (ViewGroup) view;
-                for (int i = 0; i < group.getChildCount(); i++) changed |= walk(group.getChildAt(i), id, video, dotted, dotsId, budget);
+                for (int i = 0; i < group.getChildCount(); i++) walk(group.getChildAt(i), id, video, dotted, dotsId, budget);
             }
-            return changed;
         }
     }
 }

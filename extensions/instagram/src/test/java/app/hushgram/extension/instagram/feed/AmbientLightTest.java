@@ -13,6 +13,7 @@ import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -20,7 +21,9 @@ import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.DrawableWrapper;
 import android.os.Looper;
+import android.view.Gravity;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
@@ -115,6 +118,9 @@ public class AmbientLightTest {
         Settings.AMBIENT_LIGHT.resetToDefault();
         Settings.AMBIENT_LIGHT_SPREAD.resetToDefault();
         Settings.AMBIENT_LIGHT_SPEED.resetToDefault();
+        Settings.AMBIENT_LIGHT_BLEND.resetToDefault();
+        Settings.ROUNDED_POST_CORNERS.resetToDefault();
+        Settings.ROUNDED_CORNER_SIZE.resetToDefault();
         Settings.BLUR_REEL_BARS.resetToDefault();
     }
 
@@ -227,6 +233,136 @@ public class AmbientLightTest {
         assertTrue("faded to the new top: " + hex(above), Color.green(above) > 80 && Color.blue(above) < 20);
     }
 
+    /** Reading a picture back is what costs, and a list on the move would only be read again (#510). */
+    @Test
+    public void aPictureOnTheMoveWaitsForItToStopBeforeItsCopied() {
+        on();
+        int first = asked;
+
+        list.offsetTopAndBottom(-20);
+        advance(AmbientSpeed.MEDIUM.sampleMillis);
+        assertEquals("not while it moves", first, asked);
+
+        advance(AmbientSpeed.MEDIUM.sampleMillis);
+        assertEquals("once it stopped", first + 1, asked);
+    }
+
+    /** A photo doesn't change on its own, so it stops being read back at full speed (#510). */
+    @Test
+    public void aStillPhotoRestsBetweenCopiesUntilItChanges() {
+        long sample = AmbientSpeed.MEDIUM.sampleMillis;
+        on();
+        for (int i = 1; i <= AmbientLight.STEADY; i++) {
+            advance(sample);
+            assertEquals("at the usual speed at first", 1 + i, asked);
+        }
+        int rested = asked;
+
+        advance(sample);
+        assertEquals("the first rest is twice as long", rested, asked);
+        advance(sample);
+        assertEquals(rested + 1, asked);
+        advance(sample * 3);
+        assertEquals("the next is twice that", rested + 1, asked);
+        advance(sample);
+        assertEquals(rested + 2, asked);
+
+        top = Color.GREEN;
+        for (long waited = 0; waited < AmbientLight.LONGEST_REST && AmbientLight.copiesTakenForTests(media) == 1; waited += sample) {
+            advance(sample);
+        }
+        assertEquals("a change is still seen, at worst after the longest rest", 2, AmbientLight.copiesTakenForTests(media));
+        int changed = asked;
+        advance(sample);
+        assertEquals("and the speed is back", changed + 1, asked);
+    }
+
+    @Test
+    public void aVideoThatLooksTheSameKeepsItsSpeed() {
+        media.addView(new TextureView(activity), match());
+        shadowOf(Looper.getMainLooper()).idle();
+        on();
+        int first = asked;
+
+        for (int i = 1; i <= AmbientLight.STEADY + 3; i++) {
+            advance(AmbientSpeed.MEDIUM.sampleMillis);
+            assertEquals("no rest for a video", first + i, asked);
+        }
+    }
+
+    /** Photos and stickers in a chat aren't posts, and they glowed like posts (#510). */
+    @Test
+    public void aChatsPhotosAndStickersDontGlow() {
+        int chat = View.generateViewId();
+        list.setId(chat);
+        AmbientLight.chatIdForTests(activity, chat);
+
+        on();
+
+        assertEquals(0, AmbientLight.litForTests());
+        assertSame(black, list.getBackground());
+        assertEquals(0, asked);
+    }
+
+    /** The picture's edge against the glow read as a hard line, and Blend post edges softens it (#510). */
+    @Test
+    public void blendPostEdgesFadesThePicturesEdgesIntoItsGlow() {
+        on();
+        frame();
+        assertNull("off to start", AmbientLight.edgesForTests(media));
+
+        Settings.AMBIENT_LIGHT_BLEND.save(true);
+        frame();
+
+        Drawable edges = AmbientLight.edgesForTests(media);
+        assertNotNull(edges);
+        // A software draw of a group that draws nothing itself skips its overlay, so this draws it alone.
+        Bitmap drawn = Bitmap.createBitmap(WIDTH, MEDIA, Bitmap.Config.ARGB_8888);
+        edges.draw(new Canvas(drawn));
+        int strength = 255 - AmbientLight.STRENGTH;
+        int atTop = drawn.getPixel(WIDTH / 2, 0);
+        assertEquals("at the edge, as strong as the glow lets through: " + hex(atTop), strength, Color.alpha(atTop), 8);
+        assertEquals("in the page's color: " + hex(atTop), 0, Color.red(atTop));
+        int atBottom = drawn.getPixel(WIDTH / 2, MEDIA - 1);
+        assertEquals("and the bottom: " + hex(atBottom), strength, Color.alpha(atBottom), 8);
+        assertEquals("gone by the middle", 0, Color.alpha(drawn.getPixel(WIDTH / 2, MEDIA / 2)));
+        assertEquals("a picture as wide as the list has no glow beside it, so no strip there",
+                0, Color.alpha(drawn.getPixel(0, MEDIA / 2)));
+
+        Settings.AMBIENT_LIGHT_BLEND.save(false);
+        frame();
+        assertNull(AmbientLight.edgesForTests(media));
+    }
+
+    @Test
+    public void aRoundedPicturesCornersShowTheGlowNotThePage() {
+        on();
+        advance(AmbientSpeed.MEDIUM.fadeMillis);
+        // The stand-in draws nothing, so whatever would show through its corners reads here.
+        int topEdge = 3 + HEADER + 1, bottomEdge = 3 + HEADER + MEDIA - 2, deeper = 3 + HEADER + 12;
+        Bitmap square = drawn(list);
+        assertEquals("a square picture has nothing under it", Color.BLACK, square.getPixel(WIDTH / 2, topEdge));
+
+        Settings.ROUNDED_CORNER_SIZE.save(CornerSize.SMALL);
+        Settings.ROUNDED_POST_CORNERS.save(true);
+        frame();
+        Bitmap small = drawn(list);
+        assertTrue("the picture's top color: " + hex(small.getPixel(WIDTH / 2, topEdge)),
+                Color.blue(small.getPixel(WIDTH / 2, topEdge)) > 60 && Color.red(small.getPixel(WIDTH / 2, topEdge)) == 0);
+        assertTrue("and its bottom color: " + hex(small.getPixel(WIDTH / 2, bottomEdge)),
+                Color.red(small.getPixel(WIDTH / 2, bottomEdge)) > 60 && Color.blue(small.getPixel(WIDTH / 2, bottomEdge)) == 0);
+        assertEquals("no deeper than the corner", Color.BLACK, small.getPixel(WIDTH / 2, deeper));
+        assertEquals("nor across the middle", Color.BLACK, small.getPixel(WIDTH / 2, 3 + HEADER + MEDIA / 2));
+
+        Settings.ROUNDED_CORNER_SIZE.save(CornerSize.LARGE);
+        frame();
+        assertTrue("a bigger corner reaches further", Color.blue(drawn(list).getPixel(WIDTH / 2, deeper)) > 60);
+
+        Settings.ROUNDED_POST_CORNERS.save(false);
+        frame();
+        assertEquals("off puts it back", Color.BLACK, drawn(list).getPixel(WIDTH / 2, topEdge));
+    }
+
     @Test
     public void slowLooksAtThePictureLessOften() {
         Settings.AMBIENT_LIGHT_SPEED.save(AmbientSpeed.SLOW);
@@ -294,6 +430,64 @@ public class AmbientLightTest {
         assertTrue(String.valueOf(background), background instanceof AmbientLight.Glow);
         assertSame(white, ((AmbientLight.Glow) background).original);
         assertEquals(1, AmbientLight.litForTests());
+    }
+
+    /** Instagram's rounded frame: its background setter wraps what it's given in a drawable of its own (#485). */
+    static final class WrappingList extends LinearLayout {
+        int given;
+
+        WrappingList(Context context) {
+            super(context);
+        }
+
+        @Override
+        public void setBackground(Drawable background) {
+            given++;
+            super.setBackground(background == null ? null : new DrawableWrapper(background) {});
+        }
+    }
+
+    @Test
+    public void aStageThatWrapsItsBackgroundKeepsOneGlowFrameAfterFrame() {
+        FrameLayout roundedRoot = new FrameLayout(activity);
+        WrappingList rounded = new WrappingList(activity);
+        rounded.setOrientation(LinearLayout.VERTICAL);
+        rounded.setBackground(black);
+        Drawable stock = rounded.getBackground();
+        rounded.addView(new View(activity), new LinearLayout.LayoutParams(WIDTH, HEADER));
+        FrameLayout holder = new FrameLayout(activity);
+        MediaFrameLayout picture = new MediaFrameLayout(activity);
+        holder.addView(picture, new FrameLayout.LayoutParams(WIDTH, MEDIA));
+        rounded.addView(holder, new LinearLayout.LayoutParams(WIDTH, MEDIA));
+        rounded.addView(new View(activity), new LinearLayout.LayoutParams(WIDTH, FOOTER));
+        roundedRoot.addView(rounded, new FrameLayout.LayoutParams(WIDTH, HEADER + MEDIA + FOOTER));
+        activity.setContentView(roundedRoot);
+        root = roundedRoot;
+        shadowOf(Looper.getMainLooper()).idle();
+
+        on();
+        assertEquals(1, AmbientLight.litForTests());
+        Drawable worn = rounded.getBackground();
+        int given = rounded.given;
+        for (int i = 0; i < 30; i++) frame();
+
+        assertSame("the stage keeps the glow it was given", worn, rounded.getBackground());
+        assertEquals("and is never handed another", given, rounded.given);
+        assertTrue(String.valueOf(worn), worn instanceof DrawableWrapper);
+        Drawable glow = ((DrawableWrapper) worn).getDrawable();
+        assertTrue(String.valueOf(glow), glow instanceof AmbientLight.Glow);
+        assertSame("one glow over the stage's own background", stock, ((AmbientLight.Glow) glow).original);
+        advance(AmbientSpeed.MEDIUM.fadeMillis);
+        int above = drawn(rounded).getPixel(WIDTH / 2, HEADER - 4);
+        assertTrue("it glows through the wrapper: " + hex(above), Color.blue(above) > 80 && Color.red(above) < 20);
+
+        Settings.AMBIENT_LIGHT.save(false);
+        AmbientLight.switchChanged(activity);
+        shadowOf(Looper.getMainLooper()).idle();
+
+        Drawable back = rounded.getBackground();
+        assertTrue(String.valueOf(back), back instanceof DrawableWrapper);
+        assertSame("off, the stage wraps its own background once, as before", black, ((DrawableWrapper) back).getDrawable());
     }
 
     @Test
@@ -398,6 +592,166 @@ public class AmbientLightTest {
         Bitmap drawn = Bitmap.createBitmap(WIDTH, REEL, Bitmap.Config.ARGB_8888);
         ((View) video.getParent()).getBackground().draw(new Canvas(drawn));
         assertEquals(0, Color.alpha(drawn.getPixel(WIDTH / 2, 2)));
+    }
+
+    private static FrameLayout.LayoutParams match() {
+        return new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+    }
+
+    /** [view]'s background drawn alone, the size of [view], sized first as a view sizes its background before drawing it. */
+    private static Bitmap background(View view) {
+        Bitmap bitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.ARGB_8888);
+        view.getBackground().setBounds(0, 0, view.getWidth(), view.getHeight());
+        view.getBackground().draw(new Canvas(bitmap));
+        return bitmap;
+    }
+
+    /** What a docked glass pill on [bar] paints over the bar's colour, alone. */
+    private static Bitmap underPill(View bar) {
+        Bitmap bitmap = Bitmap.createBitmap(bar.getWidth(), bar.getHeight(), Bitmap.Config.ARGB_8888);
+        AmbientLight.drawUnderPill(new Canvas(bitmap), bar);
+        return bitmap;
+    }
+
+    /**
+     * The Reels tab stops a reel under the status bar and above Instagram's tab bar, and the black round
+     * it stayed black (#487). The view round the reel that spans the window glows under the system bars,
+     * and the tab bar, which covers that glow, draws the same one over its own colour: in its background,
+     * or round a docked glass pill through what the pill paints there. A floating pill has the host's glow
+     * showing round it, so it gets none of its own.
+     */
+    @Test
+    public void aReelOnTheReelsTabGlowsUnderTheSystemBarsAndTheTabBar() {
+        FrameLayout host = new FrameLayout(activity);
+        activity.setContentView(host);
+        root = host;
+        // Instagram's Reels tab draws from the window's top edge, with no action bar over it.
+        if (activity.getActionBar() != null) activity.getActionBar().hide();
+        shadowOf(Looper.getMainLooper()).idle();
+        View window = activity.getWindow().getDecorView();
+        int width = window.getWidth(), height = window.getHeight();
+        assertEquals("the test's host spans the window", height, host.getHeight());
+        int statusBar = height / 25, gestureBar = height / 20, barHeight = 50;
+        int stage = height - statusBar - barHeight - gestureBar;
+        FrameLayout frame = new FrameLayout(activity);
+        frame.setId(frameId);
+        FrameLayout container = new FrameLayout(activity);
+        TextureView video = new TextureView(activity);
+        container.addView(video, match());
+        frame.addView(container, match());
+        FrameLayout.LayoutParams between = match();
+        between.topMargin = statusBar;
+        between.bottomMargin = barHeight + gestureBar;
+        host.addView(frame, between);
+        View bar = new View(activity);
+        int barId = View.generateViewId();
+        bar.setId(barId);
+        ColorDrawable barColor = new ColorDrawable(Color.BLACK);
+        bar.setBackground(barColor);
+        FrameLayout.LayoutParams under = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, barHeight, Gravity.BOTTOM);
+        under.bottomMargin = gestureBar;
+        host.addView(bar, under);
+        AmbientLight.barIdForTests(activity, barId);
+        shadowOf(Looper.getMainLooper()).idle();
+
+        on();
+
+        assertEquals(1, AmbientLight.litForTests());
+        assertTrue("the reel fills its stage", AmbientLight.litRectForTests(video).isEmpty());
+        assertEquals(new Rect(0, statusBar, width, statusBar + stage), AmbientLight.hostLitForTests(video));
+        advance(AmbientSpeed.MEDIUM.fadeMillis);
+        Bitmap bands = background(host);
+        int status = bands.getPixel(width / 2, statusBar / 2);
+        assertTrue("under the status bar, the reel's top: " + hex(status),
+                Color.alpha(status) > 20 && Color.blue(status) > 60 && Color.red(status) < 30);
+        assertEquals("nothing over the stage", 0, Color.alpha(bands.getPixel(width / 2, statusBar + stage / 2)));
+
+        int barTop = statusBar + stage;
+        assertTrue(String.valueOf(bar.getBackground()), bar.getBackground() instanceof AmbientLight.Glow);
+        assertSame("the bar keeps its colour under the glow", barColor, ((AmbientLight.Glow) bar.getBackground()).original);
+        int onBar = background(bar).getPixel(width / 2, 4);
+        int hostThere = bands.getPixel(width / 2, barTop + 4);
+        assertTrue("the bar shows the reel's bottom: " + hex(onBar), Color.red(onBar) > 40 && Color.blue(onBar) < 30);
+        assertEquals("over black, as strong as the host's glow it covers: " + hex(onBar) + " over " + hex(hostThere),
+                Color.alpha(hostThere), Color.red(onBar), 4);
+
+        AmbientLight.wearsGlass = view -> view == bar;
+        frame();
+        assertSame("a docked pill's bar keeps its own background", barColor, bar.getBackground());
+        int round = underPill(bar).getPixel(width / 2, 4);
+        assertTrue("round the pill, the reel's bottom: " + hex(round), Color.alpha(round) > 40 && Color.red(round) > 60);
+
+        AmbientLight.floatingGlass = view -> view == bar;
+        frame();
+        assertEquals("a floating pill has the host's glow round it", 0, Color.alpha(underPill(bar).getPixel(width / 2, 4)));
+        assertSame(barColor, bar.getBackground());
+
+        AmbientLight.wearsGlass = view -> false;
+        AmbientLight.floatingGlass = view -> false;
+        frame();
+        assertTrue("Instagram's own bar again", bar.getBackground() instanceof AmbientLight.Glow);
+
+        Settings.AMBIENT_LIGHT.save(false);
+        AmbientLight.switchChanged(activity);
+        shadowOf(Looper.getMainLooper()).idle();
+        assertNull("the host has its own background back", host.getBackground());
+        assertSame("and the bar", barColor, bar.getBackground());
+        assertEquals(0, AmbientLight.litForTests());
+    }
+
+    /**
+     * A reel opened from the feed stops its comment bar over the reel, and the strip under that bar
+     * glowed, so the bar looked cut off from what's below it (#510). The host's glow stops at the bar.
+     */
+    @Test
+    public void nothingGlowsUnderAReelsCommentBar() {
+        FrameLayout host = new FrameLayout(activity);
+        activity.setContentView(host);
+        root = host;
+        if (activity.getActionBar() != null) activity.getActionBar().hide();
+        shadowOf(Looper.getMainLooper()).idle();
+        View window = activity.getWindow().getDecorView();
+        int width = window.getWidth(), height = window.getHeight();
+        int statusBar = height / 25, gestureBar = height / 20, footerHeight = 50;
+        FrameLayout frame = new FrameLayout(activity);
+        frame.setId(frameId);
+        FrameLayout container = new FrameLayout(activity);
+        container.addView(new TextureView(activity), match());
+        frame.addView(container, match());
+        FrameLayout.LayoutParams between = match();
+        between.topMargin = statusBar;
+        between.bottomMargin = gestureBar;
+        host.addView(frame, between);
+        View footer = new View(activity);
+        int footerId = View.generateViewId();
+        footer.setId(footerId);
+        footer.setVisibility(View.GONE);
+        FrameLayout.LayoutParams over = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, footerHeight, Gravity.BOTTOM);
+        over.bottomMargin = gestureBar;
+        host.addView(footer, over);
+        AmbientLight.footerIdForTests(activity, footerId);
+        shadowOf(Looper.getMainLooper()).idle();
+
+        on();
+        advance(AmbientSpeed.MEDIUM.fadeMillis);
+        int strip = height - gestureBar / 2;
+        int without = Color.alpha(background(host).getPixel(width / 2, strip));
+        assertTrue("with no bar shown, the strip glows: " + without, without > 20);
+
+        footer.setVisibility(View.VISIBLE);
+        shadowOf(Looper.getMainLooper()).idle();
+        relayout();
+
+        Bitmap bands = background(host);
+        assertEquals("nothing under the bar", 0, Color.alpha(bands.getPixel(width / 2, strip)));
+        int status = bands.getPixel(width / 2, statusBar / 2);
+        assertTrue("the band above the reel still glows: " + hex(status), Color.alpha(status) > 20);
+
+        footer.setVisibility(View.GONE);
+        shadowOf(Looper.getMainLooper()).idle();
+        relayout();
+        assertTrue("the bar gone, the strip glows again",
+                Color.alpha(background(host).getPixel(width / 2, strip)) > 20);
     }
 
     @Test

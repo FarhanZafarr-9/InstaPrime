@@ -20,6 +20,7 @@ import app.morphe.patches.shared.compat.AppCompatibilities
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.ClassDef
+import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
@@ -190,8 +191,7 @@ class CommentPhotoHookTest {
                 INTEGER, INTEGER), keys.map { it.second.returnType })
             for ((key, getter) in keys) {
                 val tree = classes.values.single { getter.definingClass in it.interfaces && treeBacked(it, classes) }
-                assertTrue("$label: $key", tree.methods.single { it.matches(getter) }.code()
-                    .any { it is NarrowLiteralInstruction && it.narrowLiteral == key.hashCode() })
+                assertTrue("$label: $key", readsKey(tree.methods.single { it.matches(getter) }, classes, key.hashCode()))
             }
             checked += label
         }
@@ -217,8 +217,20 @@ class CommentPhotoHookTest {
             var parent = type.superclass
             while (parent != null && chain.add(parent)) parent = parents[parent]
         }
-        pool.putAll(FixtureDex.classes(bundle, chain - pool.keys))
+        // And the static helpers Redex outlined a getter's read into.
+        val helpers = pool.values.flatMap { it.methods }.map { it.code() }.filter { it.size == 3 }
+            .mapNotNull { code -> code[0].takeIf { it.opcode == Opcode.INVOKE_STATIC }?.call()?.definingClass }.toSet()
+        pool.putAll(FixtureDex.classes(bundle, chain + helpers - pool.keys))
         return pool
+    }
+
+    /** Whether [method], or the static helper its whole body hands itself to, holds [literal]. */
+    private fun readsKey(method: Method, classes: Map<String, ClassDef>, literal: Int): Boolean {
+        fun holds(body: Method) = body.code().any { it is NarrowLiteralInstruction && it.narrowLiteral == literal }
+        if (holds(method)) return true
+        val code = method.code()
+        val helper = code.singleOrNull { it.opcode == Opcode.INVOKE_STATIC }?.call()?.takeIf { code.size == 3 } ?: return false
+        return classes[helper.definingClass]?.methods?.singleOrNull { it.matches(helper) }?.let(::holds) == true
     }
 
     @Test fun everyDeclaredFixtureSuppliesTheCommentsOwnPhotoAndInstagramsSaveAction() {
@@ -250,6 +262,10 @@ class CommentPhotoHookTest {
                 assertEquals(plan.surface.raw, plan.gif.definingClass)
                 assertNotNull("${bundle.name}: the comment GIF's model wasn't read", plan.gifModel)
                 assertNotEquals(plan.icon, plan.label)
+                // #502: a comment GIF's name, the one String getter that answers the tree's "title" read.
+                val gifName = plan.gifName ?: error("${bundle.name}: the comment GIF's title wasn't found")
+                assertEquals(listOf(GIPHY, "Ljava/lang/String;"), listOf(gifName.definingClass, gifName.returnType))
+                assertTrue("${bundle.name}: a GIF's title getter is a plain getter", gifName.parameterTypes.isEmpty())
                 // #402: Reply with a comment's GIF, labelled with the quick reply bar's own GIF button.
                 val gifReply = plan.gifReply ?: error("${bundle.name}: the comment screen's Reply or GIF send wasn't found")
                 GIF_BUTTONS[version]?.let { assertEquals("${bundle.name}: GIF button's icon and label", it, gifReply.icon to gifReply.label) }
@@ -345,6 +361,17 @@ class CommentPhotoHookTest {
             assertEquals(name, getter.definingClass, (code[0].reference() as TypeReference).type)
             assertEquals(name, getter.toString(), code[1].call().toString())
             assertEquals("$getter is read once", 1, native.sumOf { method -> method.code().count { it.call()?.toString() == getter.toString() } })
+        }
+        // A GIF's name goes in on its own getter, whatever the rest of the model did; otherwise it answers null.
+        val titleBridge = read(GIF_NAME_READ)
+        val title = plan.gifName
+        if (title == null) {
+            assertTrue(GIF_NAME_READ, titleBridge.none { it.call() != null })
+        } else {
+            assertEquals(GIF_NAME_READ, listOf(Opcode.CHECK_CAST, Opcode.INVOKE_INTERFACE, Opcode.MOVE_RESULT_OBJECT, Opcode.RETURN_OBJECT),
+                titleBridge.map { it.opcode })
+            assertEquals(GIF_NAME_READ, title.definingClass, (titleBridge[0].reference() as TypeReference).type)
+            assertEquals(GIF_NAME_READ, title.toString(), titleBridge[1].call().toString())
         }
         assertTrue("the old all-in-one bridge is gone", native.none { it.name == "photoMedia" })
         val factory = native.single { it.name == "newRow" }.code()
@@ -489,11 +516,15 @@ class CommentPhotoHookTest {
             it.methods.any { method -> method.name == "unsafeParseFromJson" &&
                 method.code().any { instruction -> instruction.call()?.definingClass in infoModels } } }
         load(references(focus))
-        // The media itself references most of the app, so only the kinds its media_type reads map through.
-        load(pool.getValue(MEDIA).methods.filter { method ->
+        // The media itself references most of the app, so only the kinds its media_type reads map through,
+        // by a static (Integer) call or, on 454, by a get on a static Map the kind keeps.
+        val kindReads = pool.getValue(MEDIA).methods.filter { method ->
             method.code().any { it is NarrowLiteralInstruction && it.narrowLiteral == "media_type".hashCode() }
-        }.flatMap { method -> method.code().mapNotNull { it.call() }.filter { it.parameters() == listOf(INTEGER) } }
-            .map { it.returnType })
+        }
+        load(kindReads.flatMap { method -> method.code().mapNotNull { it.call() }.filter { it.parameters() == listOf(INTEGER) } }
+            .map { it.returnType } +
+            kindReads.flatMap { method -> method.code().mapNotNull { it.field() }.filter { it.type == "Ljava/util/Map;" } }
+                .map { it.definingClass })
         // A comment GIF's model: its interfaces, the classes implementing them, and the trees' superclasses.
         gifFixture(bundle).forEach { (type, classDef) -> pool.putIfAbsent(type, classDef) }
         // The GIF reply: the quick reply bar its label and icon come from, the comment screen's Reply
@@ -508,6 +539,6 @@ class CommentPhotoHookTest {
 
     private companion object {
         /** Instagram's GIF icon and its GIF label on the quick reply bar, read from the declared build's resources. */
-        val GIF_BUTTONS = mapOf("453.0.0.57.79" to (0x7f0825e8 to 0x7f136e2a))
+        val GIF_BUTTONS = mapOf("454.0.0.54.77" to (0x7f082608 to 0x7f136f8c))
     }
 }

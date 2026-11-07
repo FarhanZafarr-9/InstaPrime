@@ -18,7 +18,8 @@
               "Open links in external browser",
               "Spoof location",
               "App-only proxy",
-              "Skip the contacts and location popups"
+              "Skip the contacts and location popups",
+              "Skip the ad data reminder"
             ]
           },
           {
@@ -31,7 +32,8 @@
               "View DM photos and videos anonymously",
               "Hide that you're typing",
               "Hide your active status",
-              "Don't report screenshots"
+              "Don't report screenshots",
+              "Don't report Blend visits"
             ]
           }
         ]
@@ -49,7 +51,8 @@
               "View DM photos and videos anonymously",
               "Hide that you're typing",
               "Hide your active status",
-              "Don't report screenshots"
+              "Don't report screenshots",
+              "Don't report Blend visits"
             ]
           }
         },
@@ -95,7 +98,9 @@
           "Full screen Reels and Home",
           "Hide Follow on feed posts",
           "Hide captions",
-          "Keep Home's top bar"
+          "Hide the audio icon on posts",
+          "Keep Home's top bar",
+          "Hide activity bubbles"
         ]
       },
       "anchors": [
@@ -232,13 +237,18 @@
           "Show when someone was last active",
           "Lock your messages",
           "Don't report screenshots",
+          "Don't report Blend visits",
           "Allow screenshots",
           "Keep in chat",
           "Mark one-time photos and videos",
           "Swipe through a chat's reels",
+          "Swipe through a chat's photos and posts",
           "Chat history tools",
+          "Preview chats",
           "Ask before a call",
           "Message box buttons",
+          "Chat plus menu",
+          "Glass in chats",
           "Full screen Reels and Home"
         ]
       },
@@ -276,6 +286,7 @@
           "Hide paid partnership Reels",
           "Hide AI-labeled reels",
           "Hide reels by caption words",
+          "Hide reels with few views",
           "Clean up Reels",
           "Keep the Reels top bar",
           "Don't send reel watch history",
@@ -326,12 +337,16 @@
           "Hide suggested stories",
           "Story ring size",
           "Smooth story opening",
+          "Keep stories playing while zooming",
+          "Stories priority",
           "Thicker story progress bar",
           "Seek bar on stories",
+          "Speed button on stories",
           "Stop Story auto-advance",
           "Loop a story",
           "Start stories with sound",
           "Stop swipe up to reply",
+          "Hide the reply box on stories",
           "Show a story's exact time",
           "See who a story mentions",
           "Hide Follow on stories",
@@ -378,7 +393,8 @@
           "Start reels with sound",
           "Default playback quality",
           "Data saver",
-          "Stop videos looping"
+          "Stop videos looping",
+          "Keep playing in the background"
         ]
       },
       "anchors": [
@@ -487,7 +503,8 @@
           "Hide Notes on profile pictures",
           "Hide profile tabs",
           "Saved on your profile",
-          "Profile posts as a list"
+          "Profile posts as a list",
+          "Jump a profile's posts to a date"
         ]
       },
       "anchors": [
@@ -520,9 +537,11 @@
         "op": "any",
         "patches": [
           "Remove the empty space at the bottom",
+          "Phone layout on big screens",
           "Emoji style",
           "Accent color",
           "HushGram launch screen",
+          "Home header text",
           "Font",
           "Pick the app icon",
           "Use the highest refresh rate",
@@ -545,6 +564,15 @@
             "op": "any",
             "patches": [
               "Accent color"
+            ]
+          }
+        },
+        {
+          "title": "Home header text",
+          "when": {
+            "op": "any",
+            "patches": [
+              "Home header text"
             ]
           }
         },

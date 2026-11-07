@@ -39,12 +39,14 @@ internal const val SAVE_ACTION = "SaveMedia"
  * comment's own media_comment_info, never its parent post, and the PHOTO kind's value. [gifModel]
  * reads the files of the comment's own GIF, when the build's GIF model could be told, and [gifReply]
  * sends a comment's GIF back as a reply, when the comment screen's Reply and GIF send could be.
+ * [gifName] reads a GIF's or sticker's title, when that getter could be told.
  */
 internal data class CommentPhotoPlan(
     val surface: CommentSurface, val gif: MethodReference, val info: MethodReference, val media: MethodReference,
     val kind: MethodReference, val mediaGif: MethodReference, val videoVersions: MethodReference,
     val videoDuration: MethodReference, val photo: Int, val icon: Int, val label: Int, val images: () -> Unit,
     val author: CommentAuthor? = null, val gifModel: CommentGifPlan? = null, val gifReply: GifReplyPlan? = null,
+    val gifName: MethodReference? = null,
 )
 
 /**
@@ -79,7 +81,7 @@ internal fun BytecodePatchContext.findCommentPhoto(): CommentPhotoPlan = discove
     if (kept.toString() != surface.rawField.toString()) refuse("selected comment keeps a different raw comment")
 
     // Its own media, read through the interface both of the raw comment's classes implement.
-    val treeInfo = hashGetter(pando, COMMENT_MEDIA_KEY, null)
+    val treeInfo = hashGetter(pando, COMMENT_MEDIA_KEY, null, classes)
     val info = raw.methods.filter { it.matches(treeInfo) && AccessFlags.ABSTRACT.isSet(it.accessFlags) }
         .one("raw comment's $COMMENT_MEDIA_KEY getter")
     val infoType = clazz(info.returnType)
@@ -126,14 +128,14 @@ internal fun BytecodePatchContext.findCommentPhoto(): CommentPhotoPlan = discove
     // A GIF is saved from its own model's files, and anything else that isn't a still photo gets no row.
     val gif = raw.methods.filter { it.parameterTypes.isEmpty() && it.returnType == GIPHY && AccessFlags.ABSTRACT.isSet(it.accessFlags) }
         .one("raw comment's GIF getter")
-    if (!gif.matches(hashGetter(pando, "giphy_media_info", GIPHY))) refuse("raw comment's GIF getter reads another field")
+    if (!gif.matches(hashGetter(pando, "giphy_media_info", GIPHY, classes))) refuse("raw comment's GIF getter reads another field")
     val mediaType = clazz(MEDIA)
     requirePublic(mediaType)
-    val kind = hashGetter(mediaType, "media_type", INTEGER)
-    val mediaGif = hashGetter(mediaType, "giphy_media_info", GIPHY)
+    val kind = hashGetter(mediaType, "media_type", INTEGER, classes)
+    val mediaGif = hashGetter(mediaType, "giphy_media_info", GIPHY, classes)
     // The server leaves media_type out of a comment's own media, so a video is told apart by these.
-    val videoVersions = hashGetter(mediaType, "video_versions", LIST)
-    val videoDuration = hashGetter(mediaType, "video_duration", DOUBLE)
+    val videoVersions = hashGetter(mediaType, "video_versions", LIST, classes)
+    val videoDuration = hashGetter(mediaType, "video_duration", DOUBLE, classes)
     for (getter in listOf(kind, mediaGif, videoVersions, videoDuration)) {
         if (!getter.publicInstance()) refuse("media getter ${getter.name} isn't public")
     }
@@ -151,7 +153,8 @@ internal fun BytecodePatchContext.findCommentPhoto(): CommentPhotoPlan = discove
     validateActionRow(PHOTO_ROW, PHOTO_NATIVE)
     val images = imageBridges(PHOTO_PATCH)
     CommentPhotoPlan(surface, gif, info, media, kind, mediaGif, videoVersions, videoDuration, photo, icon, label, images,
-        commentAuthor(raw, pando), commentGifOrNull(classes), gifReplyOrNull(surface, classes))
+        commentAuthor(raw, pando, classes), commentGifOrNull(classes), gifReplyOrNull(surface, classes),
+        commentGifNameOrNull(classes))
 }
 
 /**
@@ -161,8 +164,8 @@ internal fun BytecodePatchContext.findCommentPhoto(): CommentPhotoPlan = discove
  * The parsed class implements the same interface, so the same getters answer for it. Null, after
  * the patch log says why, when any of them or User's username can't be told.
  */
-private fun BytecodePatchContext.commentAuthor(raw: ClassDef, pando: ClassDef): CommentAuthor? = try {
-    val created = hashGetter(pando, "created_at", LONG)
+private fun BytecodePatchContext.commentAuthor(raw: ClassDef, pando: ClassDef, classes: Map<String, ClassDef>): CommentAuthor? = try {
+    val created = hashGetter(pando, "created_at", LONG, classes)
     CommentAuthor(commentUserGetter(raw, pando), onRaw(raw, created, "created_at"), usernameBridge(PHOTO_PATCH))
 } catch (unknown: PatchException) {
     patchLog.warning("${unknown.message}. Save comment photo goes in, and its saves keep their usual name.")
@@ -234,6 +237,7 @@ internal fun BytecodePatchContext.applyCommentPhoto(plan: CommentPhotoPlan) = di
     }
     // Each GIF read takes what the read before it answered, on the interface that answer is typed as.
     plan.gifModel?.reads?.forEach { (name, getter) -> read(name, "invoke-interface", getter) }
+    plan.gifName?.let { read(GIF_NAME_READ, "invoke-interface", it) }
     replace(reads.getValue("photoKind"), 1, """
         const v0, ${plan.photo}
         return v0
@@ -257,10 +261,13 @@ internal val PHOTO_READS: List<Pair<String, Pair<List<String>, String>>> = listO
     "author" to (listOf(OBJECT) to OBJECT),
     "createdAt" to (listOf(OBJECT) to OBJECT),
     "photoKind" to (emptyList<String>() to "I"),
+    GIF_NAME_READ to (listOf(OBJECT) to OBJECT),
 ) + GIF_READS.map { it to (listOf(OBJECT) to OBJECT) }
 
 private const val DOUBLE = "Ljava/lang/Double;"
 private const val LONG = "Ljava/lang/Long;"
+private const val MAP = "Ljava/util/Map;"
+private const val MAP_GET = "$MAP->get(Ljava/lang/Object;)Ljava/lang/Object;"
 
 private val literalLoads = setOf(Opcode.CONST, Opcode.CONST_16, Opcode.CONST_HIGH16, Opcode.CONST_4)
 
@@ -278,20 +285,51 @@ private fun Method.loads(literal: Int) = code().any {
         (it as NarrowLiteralInstruction).narrowLiteral == literal
 }
 
-/** The one getter on [type] for the tree field [field], held as the hash of its name. */
-internal fun hashGetter(type: ClassDef, field: String, returns: String?): Method =
+/**
+ * The one getter on [type] for the tree field [field], held as the hash of its name. Redex
+ * outlines some of these reads into a shared static helper (`LX/0R5P;->A0V` on 386014705), so
+ * a getter whose whole body hands itself to a one-parameter static method of [classes] and
+ * returns its answer counts when that method holds the hash.
+ */
+internal fun hashGetter(type: ClassDef, field: String, returns: String?, classes: Map<String, ClassDef>): Method =
     type.methods.filter { method -> method.parameterTypes.isEmpty() && !AccessFlags.STATIC.isSet(method.accessFlags) &&
-        (returns == null || method.returnType == returns) && method.loads(field.hashCode())
+        (returns == null || method.returnType == returns) &&
+        (method.loads(field.hashCode()) || method.outlinedRead(classes)?.loads(field.hashCode()) == true)
     }.one("$field getter on ${type.type}")
+
+/** The static method this getter's whole body hands itself to and answers from, when it's in [classes]. */
+private fun Method.outlinedRead(classes: Map<String, ClassDef>): Method? {
+    val code = code()
+    if (code.size != 3 || code[0].opcode != Opcode.INVOKE_STATIC) return null
+    val call = code[0].call() ?: return null
+    val self = implementation!!.registerCount - 1
+    if (code[0].arguments() != listOf(self) || call.returnType != returnType) return null
+    val answer = (code[1] as? OneRegisterInstruction)?.registerA ?: return null
+    if (code[1].opcode !in setOf(Opcode.MOVE_RESULT, Opcode.MOVE_RESULT_OBJECT) ||
+        code[2].opcode !in setOf(Opcode.RETURN, Opcode.RETURN_OBJECT) || (code[2] as OneRegisterInstruction).registerA != answer) {
+        return null
+    }
+    return classes[call.definingClass]?.methods?.singleOrNull { candidate ->
+        AccessFlags.STATIC.isSet(candidate.accessFlags) && candidate.matches(call)
+    }
+}
 
 /**
  * The media kind meaning a still photo: the enum the media's media_type reads are mapped through,
  * whose PHOTO constant is built, on a path with no branch, with a constant its constructor keeps.
+ * The mapping is a static (Integer) call answering the enum, or on 454 that call inlined, a get
+ * on a static Map the enum keeps (`LX/07jb;->A01` in `Media;->AM0` on 386014758).
  */
 private fun photoKind(media: ClassDef, classes: Map<String, ClassDef>): Int {
     val kinds = media.methods.filter { it.loads("media_type".hashCode()) }.flatMap { method ->
-        method.code().filter { it.opcode == Opcode.INVOKE_STATIC }.mapNotNull { it.call() }
-            .filter { it.parameters() == listOf(INTEGER) }.mapNotNull { classes[it.returnType] }
+        val code = method.code()
+        val calls = code.filter { it.opcode == Opcode.INVOKE_STATIC }.mapNotNull { it.call() }
+            .filter { it.parameters() == listOf(INTEGER) }.map { it.returnType }
+        val maps = code.indices.filter { at -> code[at].opcode == Opcode.SGET_OBJECT && code[at].field()?.type == MAP &&
+            code.getOrNull(at + 1)?.let { get -> get.opcode == Opcode.INVOKE_INTERFACE && get.call()?.toString() == MAP_GET &&
+                get.arguments().firstOrNull() == (code[at] as OneRegisterInstruction).registerA } == true
+        }.map { code[it].field()!!.definingClass }
+        (calls + maps).mapNotNull { classes[it] }
     }.distinctBy { it.type }.filter { type -> AccessFlags.ENUM.isSet(type.accessFlags) &&
         type.methods.any { it.name == "<clinit>" && "PHOTO" in it.strings() } }
     val kind = kinds.one("media kind enum")

@@ -35,6 +35,7 @@ import org.robolectric.annotation.Config;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -72,6 +73,7 @@ public class FeedSeekBarTest {
         final List<String> calls = new ArrayList<>();
         int reads;
         boolean viewThrows;
+        boolean pauses = true;
 
         @Override public View view(Object of) {
             reads++;
@@ -82,6 +84,16 @@ public class FeedSeekBarTest {
 
         @Override public boolean seekTo(Object of, int positionMs) {
             calls.add("seek " + positionMs);
+            return true;
+        }
+
+        @Override public boolean pause(Object of) {
+            calls.add("pause");
+            return pauses;
+        }
+
+        @Override public boolean play(Object of) {
+            calls.add("play");
             return true;
         }
 
@@ -136,6 +148,8 @@ public class FeedSeekBarTest {
         BaseSettings.PAUSED.save(false);
         PauseForTests.resume();
         Settings.FEED_SEEK_BAR.resetToDefault();
+        Settings.FEED_SEEK_BUTTON.resetToDefault();
+        Settings.FEED_SEEK_BAR_LOOK.resetToDefault();
         HookStatus.clear();
     }
 
@@ -144,6 +158,8 @@ public class FeedSeekBarTest {
         FeedSeekBar.resetForTests();
         TabSwipe.forgetForTests();
         Settings.FEED_SEEK_BAR.resetToDefault();
+        Settings.FEED_SEEK_BUTTON.resetToDefault();
+        Settings.FEED_SEEK_BAR_LOOK.resetToDefault();
         BaseSettings.PAUSED.save(false);
         PauseForTests.resume();
         HookStatus.clear();
@@ -172,6 +188,61 @@ public class FeedSeekBarTest {
         assertEquals("only the video and its icons", 2, first.getChildCount());
     }
 
+    /** The toggle button (#437) is a small view after the video, and its tap shows or hides the bar. */
+    @Test
+    public void theToggleButtonShowsAndHidesTheBar() {
+        assertEquals(Boolean.FALSE, Settings.FEED_SEEK_BUTTON.defaultValue);
+        Settings.FEED_SEEK_BUTTON.save(true);
+        FeedSeekBar.progress(player, 3000, 15000);
+        SeekBar bar = bar();
+        assertEquals("the bar stays hidden while its own switch is off", View.GONE, bar.getVisibility());
+        FeedSeekBar.Toggle button = null;
+        for (int at = 0; at < first.getChildCount(); at++) if (first.getChildAt(at) instanceof FeedSeekBar.Toggle) button = (FeedSeekBar.Toggle) first.getChildAt(at);
+        assertNotNull("the video has a button", button);
+        assertTrue("Instagram's icons stay drawn over it", first.indexOfChild(button) < first.indexOfChild(firstIcons));
+        assertFalse(button.barShown());
+
+        assertTrue(button.performClick());
+        assertTrue(Settings.FEED_SEEK_BAR.savedValue());
+        assertEquals(View.VISIBLE, bar.getVisibility());
+        assertTrue(button.barShown());
+
+        assertTrue(button.performClick());
+        assertFalse(Settings.FEED_SEEK_BAR.savedValue());
+        assertEquals(View.GONE, bar.getVisibility());
+
+        Settings.FEED_SEEK_BUTTON.save(false);
+        tick();
+        assertNull("the button goes with its switch", button.getParent());
+    }
+
+    /** #471: Seek bar look's choice reaches the bar as it follows the video. */
+    @Test
+    public void theBarTakesSeekBarLook() {
+        Settings.FEED_SEEK_BAR.save(true);
+        FeedSeekBar.progress(player, 3000, 15000);
+        GlassSeekBar bar = (GlassSeekBar) bar();
+        assertEquals("solid to start, as the bar always was", OverlayLook.SOLID, bar.look());
+
+        Settings.FEED_SEEK_BAR_LOOK.save(OverlayLook.SEE_THROUGH);
+        FeedSeekBar.progress(player, 4000, 15000);
+        tick();
+        assertEquals(OverlayLook.SEE_THROUGH, bar.look());
+        assertSame("the same bar, restyled", bar, FeedSeekBar.barForTests());
+
+        Settings.FEED_SEEK_BAR_LOOK.save(OverlayLook.SOLID);
+        FeedSeekBar.progress(player, 5000, 15000);
+        tick();
+        assertEquals(OverlayLook.SOLID, bar.look());
+    }
+
+    @Test
+    public void withTheButtonOffTheBarKeepsToItself() {
+        Settings.FEED_SEEK_BAR.save(true);
+        FeedSeekBar.progress(player, 3000, 15000);
+        for (int at = 0; at < first.getChildCount(); at++) assertFalse(first.getChildAt(at) instanceof FeedSeekBar.Toggle);
+    }
+
     @Test
     public void aFeedVideoGetsABarAlongItsBottomThatFollowsIt() {
         Settings.FEED_SEEK_BAR.save(true);
@@ -194,23 +265,38 @@ public class FeedSeekBarTest {
         assertTrue(stand.calls.isEmpty());
     }
 
+    /** #472: like Instagram's own scrubber, the video pauses under the finger and plays on from where it lands. */
     @Test
-    public void lettingGoOfADragSeeksTheVideo() {
+    public void aDragPausesTheVideoThenSeeksItAndPlaysItOn() {
         Settings.FEED_SEEK_BAR.save(true);
         FeedSeekBar.progress(player, 3000, 15000);
         SeekBar bar = bar();
         Listener drag = new Listener(bar);
 
         drag.start();
+        assertEquals(Collections.singletonList("pause"), stand.calls);
         bar.setProgress(12000);
         FeedSeekBar.progress(player, 4000, 15000);
         tick();
         assertEquals("a drag isn't overwritten by the video", 12000, bar.getProgress());
         drag.stop();
 
-        assertEquals(Collections.singletonList("seek 12000"), stand.calls);
+        assertEquals(Arrays.asList("pause", "seek 12000", "play"), stand.calls);
         tick();
         assertEquals(12000, bar.getProgress());
+    }
+
+    /** A player whose pause stub wasn't filled is seeked but never played, so a video nobody paused is left alone. */
+    @Test
+    public void aDragThatPausedNothingPlaysNothing() {
+        Settings.FEED_SEEK_BAR.save(true);
+        stand.pauses = false;
+        FeedSeekBar.progress(player, 3000, 15000);
+        Listener drag = new Listener(bar());
+        drag.start();
+        bar().setProgress(9000);
+        drag.stop();
+        assertEquals(Arrays.asList("pause", "seek 9000"), stand.calls);
     }
 
     @Test
@@ -403,7 +489,7 @@ public class FeedSeekBarTest {
     }
 
     @Test
-    public void theBarHidingMidDragSeeksNothing() {
+    public void theBarHidingMidDragSeeksNothingButPlaysTheVideoOn() {
         Settings.FEED_SEEK_BAR.save(true);
         FeedSeekBar.progress(player, 3000, 15000);
         SeekBar bar = bar();
@@ -414,7 +500,7 @@ public class FeedSeekBarTest {
         first.setVisibility(View.VISIBLE);
         tick();
         drag.stop();
-        assertTrue(stand.calls.isEmpty());
+        assertEquals(Arrays.asList("pause", "play"), stand.calls);
     }
 
     /** The bar's own drag callbacks, as a finger on it gives them. */

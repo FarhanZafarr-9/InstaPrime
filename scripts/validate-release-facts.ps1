@@ -137,14 +137,16 @@ function Get-DescriptionFacts {
         Every "N patches" in it has to name the same N, and every "Instagram <build>" the same build,
         or it says two things and this throws. The lag check used to read the first of each and the
         equality check any of them, so a description quoting the catalog's count in one sentence and
-        a stale one in another passed the equality check, whichever the lag check had read. Answers
-        @{ PatchCount; TargetVersion }, each $null when the description names none.
+        a stale one in another passed the equality check, whichever the lag check had read. A change's
+        bullet isn't read: "no group runs past 16 patches" speaks for one change, not the release.
+        Answers @{ PatchCount; TargetVersion }, each $null when the description names none.
     #>
     param([string]$Text, [string]$Source)
 
-    $counts = @([regex]::Matches($Text, '(?<![\d.])(\d+) patches\b') | ForEach-Object { $_.Groups[1].Value } |
+    $sentences = @($Text -split '\r?\n' | Where-Object { $_ -notmatch '^\s*\*\s' }) -join "`n"
+    $counts = @([regex]::Matches($sentences, '(?<![\d.])(\d+) patches\b') | ForEach-Object { $_.Groups[1].Value } |
         Select-Object -Unique)
-    $builds = @([regex]::Matches($Text, 'Instagram\s+(\d+(?:\.\d+)+)(?!\d)') | ForEach-Object { $_.Groups[1].Value } |
+    $builds = @([regex]::Matches($sentences, 'Instagram\s+(\d+(?:\.\d+)+)(?!\d)') | ForEach-Object { $_.Groups[1].Value } |
         Select-Object -Unique)
     if ($counts.Count -gt 1) {
         throw "$Source names $($counts -join ' and ') patches, and it has to name one count."
@@ -345,6 +347,25 @@ if ($indexLagsSource) {
 }
 $publishedVersion = if ($indexLagsSource) { $bundleVersion } else { $releaseVersion }
 Require-Match -Text ([string]$bundle.download_url) -Pattern "/v$([regex]::Escape($publishedVersion))/patches-$([regex]::Escape($publishedVersion))\.mpp$" -Description 'patches-bundle.json download URL'
+
+# Morphe Manager 2.3 pins the first key a source signs with, and reads it from the index's
+# public_key. Once morphe-signing.pub is committed, the index of the release it signs carries
+# exactly that key. An index still on an earlier, unsigned release may lack it, but no index
+# names a key while the bundles are unsigned.
+$signingPublicPath = Join-Path $rootPath 'morphe-signing.pub'
+$indexKey = [string]$bundle.public_key
+if (Test-Path -LiteralPath $signingPublicPath -PathType Leaf) {
+    $committedKey = ([IO.File]::ReadAllText($signingPublicPath)).Trim()
+    if (-not $indexLagsSource -and $indexKey -cne $committedKey) {
+        throw ("patches-bundle.json public_key must be the key in morphe-signing.pub, since Morphe Manager " +
+            "pins the key it first sees. Write it into the index with the release.")
+    }
+    if ($indexKey -and $indexKey -cne $committedKey) {
+        throw 'patches-bundle.json public_key is not the key in morphe-signing.pub.'
+    }
+} elseif ($indexKey) {
+    throw 'patches-bundle.json names a public_key, but no morphe-signing.pub is committed, so its bundles are unsigned.'
+}
 
 # Matching the pattern only proves the index spells the version right. Reaching the address is
 # what catches an index pointed at a tag nobody published, which is how the bundle went missing
@@ -1084,7 +1105,7 @@ function Test-ChangelogHere {
                     "give it a ""### HushGram v$releaseVersion"" section under ""## Unreleased"", or its dated heading.")
             }
             Write-Host ("[release] the CHANGELOG describes $releaseVersion under Unreleased. Its release gives it " +
-                """## $releaseVersion (YYYY-MM-DD)"" with every bullet scoped ""* **Instagram:** """)
+                """## $releaseVersion (YYYY-MM-DD)"" with each bullet on one line")
             continue
         }
         $arguments = @{ Current = $current; ExpectedVersion = $version }
@@ -1098,7 +1119,7 @@ function Test-ChangelogHere {
         $manager = Test-ChangelogManagerEntry -Current $current -ExpectedVersion $version
         if (-not $manager.Valid) { throw "Morphe Manager cannot show this release: $($manager.Reason)" }
         Write-Host ("[release] Morphe Manager can read the $version entry: dated " +
-            "$($manager.Date), $($manager.Bullets) bullets scoped Instagram")
+            "$($manager.Date), $($manager.Bullets) bullets for Instagram")
     }
     if ($null -ne $previous -and $described.Count -gt 0) {
         # What the last tag described still has to be here, whichever branch ran above.

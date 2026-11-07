@@ -9,6 +9,7 @@ package app.hushgram.extension.instagram.settings;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.CLEAR_UNFOLLOWERS;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.category;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.clearUnfollowers;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.followerHistoryRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.followLabelPlaceRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.mark;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.toggle;
@@ -31,11 +32,17 @@ final class ProfilesCategory {
     static void add(HushgramPreferenceFragment page, PreferenceScreen screen, Context context, Set<PatchFamily> build) {
         if (build.contains(PatchFamily.FRIENDSHIP_STATUS) || build.contains(PatchFamily.PROFILE_SUGGESTIONS)
                 || build.contains(PatchFamily.PROFILE_HIGHLIGHTS) || build.contains(PatchFamily.THREADS_BUTTON)
-                || build.contains(PatchFamily.PROFILE_NOTES)
+                || build.contains(PatchFamily.PROFILE_NOTES) || build.contains(PatchFamily.PROFILE_PICTURE)
                 || build.contains(PatchFamily.PROFILE_TABS)
-                || build.contains(PatchFamily.SAVED_ON_PROFILE) || build.contains(PatchFamily.PROFILE_POSTS_LIST)) {
+                || build.contains(PatchFamily.SAVED_ON_PROFILE) || build.contains(PatchFamily.PROFILE_POSTS_LIST)
+                || build.contains(PatchFamily.PROFILE_GRID_JUMP)) {
             PreferenceCategory profiles = category(screen, L10n.t("Profiles"), SettingsIcons.PERSON,
                     L10n.t("See who follows you back, and clear extras off profiles."));
+            if (build.contains(PatchFamily.PROFILE_PICTURE)) {
+                profiles.addPreference(toggle(context, Settings.ABOUT_ACCOUNT_BUTTON, L10n.t("About this account button"),
+                        L10n.t("Puts an (i) next to the three dots on a profile that opens Instagram's About this account "
+                                + "for that account. Instagram took its own away.")));
+            }
             if (build.contains(PatchFamily.FRIENDSHIP_STATUS)) {
                 profiles.addPreference(toggle(context, Settings.SHOW_FRIENDSHIP_STATUS, L10n.t("Show if a profile follows you"),
                         L10n.t("Adds Follows you or Doesn't follow you beside the name on someone's profile, after "
@@ -56,8 +63,12 @@ final class ProfilesCategory {
                     profiles.addPreference(toggle(context, Settings.TRACK_UNFOLLOWERS, L10n.t("Recent unfollowers"),
                             L10n.t("Each time you scroll your own Followers list to the end, compares it with the last time "
                                     + "and lists who's gone. Nothing extra is asked of Instagram, and the list stays on your phone.")));
+                    profiles.addPreference(toggle(context, Settings.NOTIFY_UNFOLLOWS, L10n.t("Notify me of unfollowers"),
+                            L10n.t("After you scroll your own Followers list to the end, posts a notification naming who has left since last time. Nothing extra is asked of Instagram.")));
                     Preference unfollowersList = unfollowersRow(context);
                     profiles.addPreference(unfollowersList);
+                    Preference followerHistory = followerHistoryRow(context);
+                    profiles.addPreference(followerHistory);
                     Row clearUnfollowers = new Row(context);
                     clearUnfollowers.setKey(CLEAR_UNFOLLOWERS);
                     clearUnfollowers.setPersistent(false);
@@ -66,7 +77,7 @@ final class ProfilesCategory {
                     clearUnfollowers.setSummary(L10n.t("Forgets the saved Followers lists and everyone listed above, "
                             + "for all your accounts."));
                     clearUnfollowers.setOnPreferenceClickListener(p -> {
-                        clearUnfollowers(p, unfollowersList);
+                        clearUnfollowers(p, unfollowersList, followerHistory);
                         return true;
                     });
                     profiles.addPreference(mark(clearUnfollowers, SettingsIcons.DELETE));
@@ -78,8 +89,9 @@ final class ProfilesCategory {
                                 + "Bios, counts, posts and follower lists stay.")));
                 profiles.addPreference(toggle(context, Settings.HIDE_FOLLOW_LIST_SUGGESTIONS,
                         L10n.t("Hide Suggested for you on follow lists"),
-                        L10n.t("Leaves the Suggested for you section off the followers, following and mutual lists, "
-                                + "and the Suggested tab off other people's follow lists. Every account in the lists stays.")));
+                        L10n.t("Leaves the Suggested for you section off the followers, following and mutual lists and the screen "
+                                + "where you approve follow requests, and the Suggested tab off other people's follow lists. "
+                                + "Every account in the lists and every real request stays.")));
                 profiles.addPreference(toggle(context, Settings.HIDE_PROFILE_COMPLETION,
                         L10n.t("Hide Complete your profile"),
                         L10n.t("Takes the Complete your profile cards, like Add bio and Find people to follow, off "
@@ -128,6 +140,11 @@ final class ProfilesCategory {
                 profiles.addPreference(toggle(context, Settings.PROFILE_POSTS_LIST, L10n.t("Show profile posts as a list"),
                         L10n.t("Opening someone's profile takes you on to their posts as a scrolling list of full "
                                 + "posts. Go Back for the grid. Your own profile keeps its grid.")));
+            }
+            if (build.contains(PatchFamily.PROFILE_GRID_JUMP)) {
+                profiles.addPreference(toggle(context, Settings.PROFILE_GRID_JUMP, L10n.t("Jump a profile's posts to a date"),
+                        L10n.t("Puts a calendar on a profile's top bar. Pick a day and the posts grid goes back to "
+                                + "that day. Pull down for the newest again.")));
             }
         }
     }

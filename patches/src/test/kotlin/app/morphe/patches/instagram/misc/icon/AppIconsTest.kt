@@ -135,7 +135,9 @@ class AppIconsTest {
     /**
      * HushGram's icon is its mark on the gradient, the next two are Instagram's glyph on a color, and the
      * light one a black copy of that glyph on white (#353), its themed layer still Instagram's glyph. The
-     * hand-drawn one (#406) is the picture the patch carries on white, which is its themed layer too.
+     * hand-drawn one (#406) is the picture the patch carries on white, which is its themed layer too. The
+     * retro camera fills its square, so its themed layer is Instagram's glyph (#437). The pink one (#470)
+     * is a deep pink copy of the glyph on pale pink.
      */
     @Test
     fun eachIconHasItsBackgroundAndItsFront() {
@@ -145,9 +147,11 @@ class AppIconsTest {
                 "drawable/$ICON_MARK.xml", "drawable/$ICON_MARK_MONO.xml",
                 "drawable/hushgram_icon_hushgram_background.xml", "drawable/hushgram_icon_dark_background.xml", "drawable/hushgram_icon_plum_background.xml",
                 "drawable/hushgram_icon_light_background.xml", "drawable/hushgram_icon_light_glyph.xml",
-                "drawable/hushgram_icon_sketch_background.xml",
+                "drawable/hushgram_icon_sketch_background.xml", "drawable/hushgram_icon_gradient_background.xml", "drawable/hushgram_icon_retro_background.xml",
                 "mipmap-anydpi/hushgram_icon_hushgram.xml", "mipmap-anydpi/hushgram_icon_dark.xml", "mipmap-anydpi/hushgram_icon_plum.xml",
                 "mipmap-anydpi/hushgram_icon_light.xml", "mipmap-anydpi/hushgram_icon_sketch.xml",
+                "mipmap-anydpi/hushgram_icon_gradient.xml", "mipmap-anydpi/hushgram_icon_retro.xml",
+                "drawable/hushgram_icon_pink_background.xml", "drawable/hushgram_icon_pink_glyph.xml", "mipmap-anydpi/hushgram_icon_pink.xml",
             ),
             files.keys,
         )
@@ -159,6 +163,17 @@ class AppIconsTest {
         assertEquals(listOf("@drawable/hushgram_icon_plum_background", "@drawable/ig_launcher_monochrome", "@drawable/ig_launcher_monochrome"), layers("plum"))
         assertEquals(listOf("@drawable/hushgram_icon_light_background", "@drawable/hushgram_icon_light_glyph", "@drawable/ig_launcher_monochrome"), layers("light"))
         assertEquals(listOf("@drawable/hushgram_icon_sketch_background", "@drawable/hushgram_icon_sketch_art", "@drawable/hushgram_icon_sketch_art"), layers("sketch"))
+        assertEquals(listOf("@drawable/hushgram_icon_gradient_background", "@drawable/hushgram_icon_gradient_art", "@drawable/hushgram_icon_gradient_art"), layers("gradient"))
+        assertEquals("the retro camera is solid, so themed icons take Instagram's glyph",
+            listOf("@drawable/hushgram_icon_retro_background", "@drawable/hushgram_icon_retro_art", "@drawable/ig_launcher_monochrome"), layers("retro"))
+        assertEquals("the pink one is Instagram's glyph tinted deep pink, its themed layer still Instagram's glyph",
+            listOf("@drawable/hushgram_icon_pink_background", "@drawable/hushgram_icon_pink_glyph", "@drawable/ig_launcher_monochrome"), layers("pink"))
+        assertEquals("#FFF4DDE5", parse(files.getValue("drawable/hushgram_icon_pink_background.xml")).elements("solid").single().getAttribute("android:color"))
+        val pink = parse(files.getValue("drawable/hushgram_icon_pink_glyph.xml"))
+        assertEquals("#FFCD4B6F", pink.documentElement.getAttribute("android:tint"))
+        assertEquals("the glyph's own shape", parse(GLYPH).elements("path").map { it.getAttribute("android:pathData") },
+            pink.elements("path").map { it.getAttribute("android:pathData") })
+        assertEquals("#FF2F2F2F", parse(files.getValue("drawable/hushgram_icon_gradient_background.xml")).elements("gradient").single().getAttribute("android:startColor"))
         assertEquals("#FFFFFFFF", parse(files.getValue("drawable/hushgram_icon_light_background.xml")).elements("solid").single().getAttribute("android:color"))
         assertEquals("#FFFFFFFF", parse(files.getValue("drawable/hushgram_icon_sketch_background.xml")).elements("solid").single().getAttribute("android:color"))
         val black = parse(files.getValue("drawable/hushgram_icon_light_glyph.xml"))
@@ -183,21 +198,28 @@ class AppIconsTest {
     @Test
     fun theHandDrawnPictureComesWithThePatch() {
         val art = artFiles()
-        assertEquals(listOf("drawable-nodpi/hushgram_icon_sketch_art.png"), art.keys.toList())
-        val image = javax.imageio.ImageIO.read(art.values.single().inputStream())
-        assertEquals(image.width, image.height)
-        assertTrue("it has alpha", image.colorModel.hasAlpha())
-        var farthest = 0.0
-        var inked = 0
-        for (y in 0 until image.height) for (x in 0 until image.width) {
-            val argb = image.getRGB(x, y)
-            if (argb ushr 24 < 32) continue
-            inked++
-            assertEquals("black strokes at $x,$y", 0, argb and 0xFFFFFF)
-            farthest = maxOf(farthest, Math.hypot(x - image.width / 2.0, y - image.height / 2.0) * 108 / image.width)
+        assertEquals(
+            listOf("sketch", "gradient", "retro").map { "drawable-nodpi/hushgram_icon_${it}_art.png" },
+            art.keys.toList(),
+        )
+        for ((path, bytes) in art) {
+            val image = javax.imageio.ImageIO.read(bytes.inputStream())
+            assertEquals(path, image.width, image.height)
+            assertTrue("$path has alpha", image.colorModel.hasAlpha())
+            var farthest = 0.0
+            var inked = 0
+            var clear = 0
+            for (y in 0 until image.height) for (x in 0 until image.width) {
+                val argb = image.getRGB(x, y)
+                if (argb ushr 24 < 32) { clear++; continue }
+                inked++
+                if (path.contains("_sketch_")) assertEquals("black strokes at $x,$y", 0, argb and 0xFFFFFF)
+                farthest = maxOf(farthest, Math.hypot(x - image.width / 2.0, y - image.height / 2.0) * 108 / image.width)
+            }
+            assertTrue("$path has ink, $inked", inked > 1000)
+            assertTrue("$path has real transparent pixels, $clear", clear > inked / 4)
+            assertTrue("$path inside the safe circle, $farthest dp", farthest < 33)
         }
-        assertTrue("it has ink, $inked", inked > 1000)
-        assertTrue("inside the safe circle, $farthest dp", farthest < 33)
     }
 
     @Test

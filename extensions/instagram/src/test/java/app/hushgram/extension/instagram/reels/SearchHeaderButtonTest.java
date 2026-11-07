@@ -266,7 +266,7 @@ public class SearchHeaderButtonTest {
         assertNull("nothing answers the link here", shadowOf(activity).getNextStartedActivity());
         assertTrue(report(), report().contains(SearchHeaderButton.SWIPING + " 1"));
         // Android 12 and newer show two lines of a toast, so the toast is what to do and nothing else.
-        assertEquals("To open Search here, turn off Hide the Search tab and restart.",
+        assertEquals("Turn off Hide the Search tab and restart.",
                 String.valueOf(ShadowToast.getTextOfLatestToast()));
         assertSame(Tab.FEED, ReelsTab.tab(Tab.SEARCH));
 
@@ -275,7 +275,7 @@ public class SearchHeaderButtonTest {
         button.performClick();
         ShadowLooper.idleMainLooper();
         assertTrue("no switch was asked for", switched.isEmpty());
-        assertEquals("Search isn't on your tab bar, so this button can't open it here.",
+        assertEquals("This button needs Search on your tab bar.",
                 String.valueOf(ShadowToast.getTextOfLatestToast()));
 
         // Turned off since Instagram started: Search is back after a restart, so that's what it says.
@@ -343,5 +343,33 @@ public class SearchHeaderButtonTest {
         ShadowLooper.idleMainLooper();
         assertNotNull(searchIn(end));
         assertEquals(0, end.indexOfChild(searchIn(end)));
+    }
+
+    /** The switch goes off in settings, a dialog, so no new header state follows it (#492). */
+    @Test public void closingSettingsTakesTheButtonOutWithNoNewDraw() {
+        Settings.SEARCH_BUTTON_ON_HOME.save(true);
+        HomeHeader.standInEndRowForTests(asked -> end);
+        activity.setContentView(header);
+        GhostHeaderButton.drew(header);
+        ShadowLooper.idleMainLooper();
+        assertNotNull(searchIn(end));
+
+        Settings.SEARCH_BUTTON_ON_HOME.save(false);
+        ShadowLooper.idleMainLooper();
+        assertNotNull("nothing drew the header yet", searchIn(end));
+        GhostHeaderButton.settingsClosed();
+        ShadowLooper.idleMainLooper();
+        assertNull(searchIn(end));
+        assertEquals(2, end.getChildCount());
+
+        Settings.SEARCH_BUTTON_ON_HOME.save(true);
+        GhostHeaderButton.settingsClosed();
+        ShadowLooper.idleMainLooper();
+        assertNotNull(searchIn(end));
+        BaseSettings.PAUSED.save(true);
+        PauseForTests.pause(HushgramPause.Reason.SWITCH);
+        GhostHeaderButton.settingsClosed();
+        ShadowLooper.idleMainLooper();
+        assertNull("a pause from settings goes the same way", searchIn(end));
     }
 }

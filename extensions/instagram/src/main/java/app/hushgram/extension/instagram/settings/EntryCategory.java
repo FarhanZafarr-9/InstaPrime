@@ -53,5 +53,13 @@ final class EntryCategory {
             return true;
         });
         entry.addPreference(descriptions);
+        SwitchPreference black = toggle(context, Settings.SETTINGS_BLACK_LOOK, L10n.t("Black settings page"),
+                L10n.t("Use black backgrounds for settings rows and dialogs."));
+        black.setOnPreferenceChangeListener((preference, value) -> {
+            // Posted, so the page redraws with the value this change saves.
+            Utils.runOnMainThread(page::applyLook);
+            return true;
+        });
+        entry.addPreference(black);
     }
 }

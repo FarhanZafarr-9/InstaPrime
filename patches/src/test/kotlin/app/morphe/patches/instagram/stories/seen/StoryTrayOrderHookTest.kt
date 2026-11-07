@@ -19,6 +19,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableClassDef
@@ -81,7 +82,9 @@ class StoryTrayOrderHookTest {
 
                 context.orderStoryTray(found)
 
-                fun shape(code: List<Instruction>) = code.filter { it.opcode != Opcode.NOP }.map { it.opcode to it.referenceText() }
+                fun shape(code: List<Instruction>) = code.filter { it.opcode != Opcode.NOP }.map {
+                    (if (it.opcode == Opcode.GOTO_16 || it.opcode == Opcode.GOTO_32) Opcode.GOTO else it.opcode) to it.referenceText()
+                }
                 for ((site, before) in found.sites.zip(befores.map { it.code() })) {
                     val at = "${bundle.name} ${site.lister}"
                     val after = context.mutableClassDefBy(found.store).methods.single {
@@ -97,6 +100,29 @@ class StoryTrayOrderHookTest {
                     assertEquals("$at: the rest of the method", shape(before), shape(after).filterIndexed { i, _ -> i !in hooked..hooked + 1 })
                 }
                 assertEquals("${bundle.name}: one call of the hook per list", 2, context.calls(TRAY_ORDER))
+
+                // A tray response is told once, right after the store's call taking the request,
+                // with the very register that call was handed the request in (#377).
+                val response = found.response!!
+                fun ofTheResponse(method: Method) = method.name == response.method && method.parameterTypes.map(Any::toString) == response.parameters
+                val responseBefore = classes.single { it.type == response.manager }.methods.single(::ofTheResponse).code()
+                val responseAfter = context.mutableClassDefBy(response.manager).methods.single(::ofTheResponse).code()
+                val told = responseAfter.indexOfFirst { it.referenceText() == TRAY_RESPONDED }
+                assertEquals("${bundle.name}: a response is told once", 1, context.calls(TRAY_RESPONDED))
+                assertEquals("${bundle.name}: told where it was found", response.after, told)
+                val tell = responseAfter[told] as RegisterRangeInstruction
+                assertEquals("${bundle.name}: told the request alone", listOf(response.request, 1), listOf(tell.startRegister, tell.registerCount))
+                val stored = responseAfter.subList(0, told).last { (it as? ReferenceInstruction)?.reference is MethodReference }
+                val storedCall = (stored as ReferenceInstruction).reference as MethodReference
+                assertEquals("${bundle.name}: it follows the store's call", found.store, storedCall.definingClass)
+                val requestAt = storedCall.parameterTypes.map(Any::toString).indexOf(response.parameters.first())
+                assertTrue("${bundle.name}: the store's call takes the request", requestAt >= 0)
+                (stored as? RegisterRangeInstruction)?.let {
+                    assertEquals("${bundle.name}: the request's register", it.startRegister + 1 + requestAt, response.request)
+                }
+                val responseShape = shape(responseAfter)
+                val tellAt = responseShape.indexOfFirst { it.second == TRAY_RESPONDED }
+                assertEquals("${bundle.name}: the rest of the method", shape(responseBefore), responseShape.filterIndexed { i, _ -> i != tellAt })
 
                 val bridge = context.mutableClassDefBy(STORY_TRAY_ORDER).methods.single { it.name == "seen" }
                 val stub = bridge.code()
@@ -159,6 +185,43 @@ class StoryTrayOrderHookTest {
         }
     }
 
+    /**
+     * A build whose tray response can't be found is refused for the tray's own hook: its places would
+     * never be forgotten, so a pull to refresh wouldn't sort the row (#377). A request that doesn't
+     * name its reason is refused too, for the same reason.
+     */
+    @Test
+    fun aTrayResponseThatCantBeReadFailsBeforeAnyListIsHooked() {
+        for (version in AppCompatibilities.instagram().single().targets.mapNotNull { it.version }.toSet()) {
+            for (bundle in Fixtures.files { it.extension == "apks" && it.name.contains("-$version-") }) {
+                val classes = trayClasses(bundle)
+                val original = PatchContexts.of(classes)
+                val found = original.findStoryTray(original.findStoryRings().reelClass).response!!
+                val cases = listOf(
+                    "found 0" to classes.map { classDef ->
+                        if (classDef.type != found.manager) classDef else ImmutableClassDef(
+                            classDef.type, classDef.accessFlags, classDef.superclass, classDef.interfaces, classDef.sourceFile,
+                            classDef.annotations, classDef.fields, classDef.methods.filterNot { it.name == found.method },
+                        )
+                    },
+                    "doesn't name its reason" to classes.map { classDef ->
+                        if (classDef.type != found.parameters.first()) classDef else ImmutableClassDef(
+                            classDef.type, classDef.accessFlags, classDef.superclass, classDef.interfaces, classDef.sourceFile,
+                            classDef.annotations, classDef.fields, classDef.methods.filterNot { it.name == "toString" },
+                        )
+                    },
+                )
+                for ((expected, trimmed) in cases) {
+                    val context = PatchContexts.of(trimmed)
+                    val reel = context.findStoryRings().reelClass
+                    val refusal = assertThrows(PatchException::class.java) { context.findStoryTray(reel) }
+                    assertTrue(refusal.message, expected in refusal.message!!)
+                    assertEquals("a refusal must not hook a list", 0, context.calls(TRAY_ORDER))
+                }
+            }
+        }
+    }
+
     @Test
     fun missingIdentityReadersRefuseBeforeAnyListIsHooked() {
         val bundle = Fixtures.files { it.extension == "apks" }.first()
@@ -191,7 +254,7 @@ class StoryTrayOrderHookTest {
      * The classes the finders read on [bundle]: those the ring finder reads, the reel store (the
      * class holding the list method the tray finder looks for) and the extension's classes.
      */
-    private fun trayClasses(bundle: File): List<ClassDef> {
+    internal fun trayClasses(bundle: File): List<ClassDef> {
         val stores = FixtureDex.classesHolding(bundle, LOCAL_SEEN_STORE)
         val state = stores.flatMap { it.methods }.single {
             it.name == "<init>" && it.parameterTypes.size == 2 && it.parameterTypes[0].toString() == USER_SESSION
@@ -207,7 +270,8 @@ class StoryTrayOrderHookTest {
         val trayStores = FixtureDex.methodsWhere(bundle, { true }) { method -> isListMethod(method, reel) }.map { it.definingClass }.toSet()
         val identityTypes = FixtureDex.classes(bundle, setOf(reel)).getValue(reel).fields
             .map { it.type }.filter { it.startsWith("L") } + listOf("Lcom/instagram/user/model/User;", USER_SESSION)
-        val types = (stores.map { it.type } + state + stateWriters.map { it.definingClass } + reelWriters.map { it.definingClass } + trayStores + identityTypes + STORY_VIEWER).toSet()
+        val responses = (FixtureDex.classesLoading(bundle, TRAY_RESPONSE_LOG) + FixtureDex.classesLoading(bundle, TRAY_REQUEST_TEXT)).map { it.type }
+        val types = (stores.map { it.type } + state + stateWriters.map { it.definingClass } + reelWriters.map { it.definingClass } + trayStores + identityTypes + responses + STORY_VIEWER).toSet()
         return (
             FixtureDex.withStringPools(bundle, FixtureDex.classes(bundle, types).values) +
                 ExtensionDex.classDef(STORY_SEEN_RINGS) + ExtensionDex.classDef(STORY_TRAY_ORDER)
@@ -233,7 +297,7 @@ class StoryTrayOrderHookTest {
 
 
     /** Calls in Instagram's own classes (the extension's are left out). */
-    private fun app.morphe.patcher.patch.BytecodePatchContext.calls(reference: String): Int {
+    internal fun app.morphe.patcher.patch.BytecodePatchContext.calls(reference: String): Int {
         var count = 0
         classDefForEach { classDef ->
             if (!classDef.type.startsWith("Lapp/hushgram/")) classDef.methods.forEach { method -> count += method.code().count { it.referenceText() == reference } }
@@ -246,9 +310,9 @@ class StoryTrayOrderHookTest {
 
     private fun Method.key() = "$definingClass->$name(${parameterTypes.joinToString("")})$returnType"
 
-    private fun Method.code(): List<Instruction> = implementation?.instructions?.toList().orEmpty()
+    internal fun Method.code(): List<Instruction> = implementation?.instructions?.toList().orEmpty()
 
-    private fun Instruction.referenceText(): String? = when (val reference = (this as? ReferenceInstruction)?.reference) {
+    internal fun Instruction.referenceText(): String? = when (val reference = (this as? ReferenceInstruction)?.reference) {
         is StringReference -> reference.string
         else -> reference?.toString()
     }

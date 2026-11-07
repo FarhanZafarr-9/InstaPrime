@@ -4,16 +4,20 @@
  */
 package app.hushgram.extension.instagram.feed;
 
-import android.content.res.ColorStateList;
+import android.content.Context;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.FrameLayout;
 import android.widget.SeekBar;
+import android.widget.Switch;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
@@ -22,6 +26,7 @@ import java.lang.ref.WeakReference;
 
 import app.hushgram.extension.instagram.settings.FamilyNames;
 import app.hushgram.extension.instagram.settings.Settings;
+import app.hushgram.extension.shared.L10n;
 import app.hushgram.extension.shared.Logger;
 import app.hushgram.extension.shared.Utils;
 import app.hushgram.extension.shared.diagnostics.HookStatus;
@@ -34,9 +39,10 @@ import app.hushgram.extension.shared.diagnostics.HookStatus;
  * the video and its cover, just over the cover, and follows it. Every {@link #TICK_MS} the bar asks the
  * player for its video's cover again: when the feed hands the player another video the bar moves there,
  * and while the player has none or the cover's frame is off screen the bar hides. The cover itself is
- * hidden while the video plays, so only its frame counts. A paused video keeps its bar. Letting go of
- * a drag moves the video to that point the way Instagram's own feed scrubber does, and a video that
- * was paused stays paused there.
+ * hidden while the video plays, so only its frame counts. A paused video keeps its bar. A drag goes
+ * the way Instagram's own feed scrubber goes: the video pauses while a finger is on the bar, and
+ * letting go moves it to that point and plays it on from there (#472). Seeking alone, as the bar
+ * once did, could leave the video stuck on the frame it was moved to.
  *
  * <p>With the switch off, HushGram paused or the settings not read, the bar hides and a drag does
  * nothing. A bar hidden for {@link #GONE_MS} goes away and stops ticking until the player plays
@@ -54,16 +60,24 @@ public final class FeedSeekBar {
 
     static final String HOOK = "feed seek bar";
     static final String COUNT_SEEKS = "feed seeks";
+    static final String COUNT_TOGGLES = "feed seek bar toggles";
+
+    /** The toggle button's size, a small circle at the bottom start of the video (#437). */
+    static final int BUTTON_DP = 28;
 
     /** The feed's video player, through the patch's stubs; tests stand in. */
     interface Player {
         @Nullable View view(Object player);
         boolean seekTo(Object player, int positionMs);
+        boolean pause(Object player);
+        boolean play(Object player);
     }
 
     static final Player PATCHED = new Player() {
         @Override public View view(Object player) { return FeedSeekReader.view(player); }
         @Override public boolean seekTo(Object player, int positionMs) { return FeedSeekReader.seekTo(player, positionMs, true); }
+        @Override public boolean pause(Object player) { return FeedSeekReader.pause(player, null) != null; }
+        @Override public boolean play(Object player) { return FeedSeekReader.play(player, null, null, null) != null; }
     };
 
     private static Player feed = PATCHED;
@@ -78,6 +92,16 @@ public final class FeedSeekBar {
         return Utils.settingsReady() && Settings.FEED_SEEK_BAR.get();
     }
 
+    /** Whether the toggle button shows: its switch on, HushGram not paused, the settings read (#437). */
+    static boolean buttonWanted() {
+        return Utils.settingsReady() && Settings.FEED_SEEK_BUTTON.get();
+    }
+
+    /** Whether a video gets an overlay at all: the bar or its toggle button is wanted. */
+    static boolean active() {
+        return wanted() || buttonWanted();
+    }
+
     /**
      * Called first thing in the feed video player's progress callback, with the player and where its
      * video is and how long it is, in milliseconds. Never throws.
@@ -90,7 +114,7 @@ public final class FeedSeekBar {
             }
             Overlay overlay = current;
             if (overlay == null || overlay.removed || overlay.player.get() != player) {
-                if (player == null || !wanted()) return;
+                if (player == null || !active()) return;
                 if (overlay != null) overlay.remove();
                 overlay = new Overlay(player);
                 current = overlay;
@@ -103,6 +127,14 @@ public final class FeedSeekBar {
         } catch (Throwable failure) {
             HookStatus.threw(FamilyNames.FEED_SEEK_BAR, HOOK, failure);
         }
+    }
+
+    /** The bar showing on a feed video now, or null. A carousel's dots pill goes above it (#471). */
+    @Nullable
+    static View shownBar() {
+        Overlay overlay = current;
+        GlassSeekBar seek = overlay == null || overlay.removed ? null : overlay.bar;
+        return seek != null && seek.getVisibility() == View.VISIBLE && seek.getParent() != null ? seek : null;
     }
 
     @VisibleForTesting
@@ -129,11 +161,14 @@ public final class FeedSeekBar {
     /** One player's bar and its ticking. */
     private static final class Overlay implements SeekBar.OnSeekBarChangeListener, View.OnTouchListener, Runnable {
         final WeakReference<Object> player;
-        @Nullable SeekBar bar;
+        @Nullable GlassSeekBar bar;
+        @Nullable Toggle button;
         int position;
         int duration;
         long hiddenSince = -1;
         boolean dragging;
+        /** Whether the drag under way paused the video, which letting go then plays on. */
+        boolean held;
         boolean removed;
 
         Overlay(Object player) {
@@ -167,7 +202,7 @@ public final class FeedSeekBar {
 
         void update(Object owner) {
             if (removed) return;
-            View view = wanted() && duration > 0 ? feed.view(owner) : null;
+            View view = active() && duration > 0 ? feed.view(owner) : null;
             // The view is the video's cover, which Instagram hides while the video plays, so it's the
             // frame holding the cover and the video that has to be on screen.
             FrameLayout frame = view != null && view.getParent() instanceof FrameLayout ? (FrameLayout) view.getParent() : null;
@@ -175,17 +210,70 @@ public final class FeedSeekBar {
                 hide();
                 return;
             }
-            SeekBar seek = bar != null && bar.getParent() == frame ? bar : attach(frame, view);
+            GlassSeekBar seek = bar != null && bar.getParent() == frame ? bar : attach(frame, view);
+            seek.look(Settings.FEED_SEEK_BAR_LOOK.get());
             hiddenSince = -1;
             if (!dragging) {
                 if (seek.getMax() != duration) seek.setMax(duration);
                 seek.setProgress(Math.max(0, Math.min(duration, position)));
             }
-            if (seek.getVisibility() != View.VISIBLE) seek.setVisibility(View.VISIBLE);
+            int barState = wanted() ? View.VISIBLE : View.GONE;
+            if (seek.getVisibility() != barState) seek.setVisibility(barState);
+            if (barState == View.GONE) dragging = false;
+            showButton(frame, view);
+        }
+
+        /** Puts the toggle button in [frame] just after [view], or takes it out when its switch is off. */
+        private void showButton(FrameLayout frame, View view) {
+            if (!buttonWanted()) {
+                removeButton();
+                return;
+            }
+            Toggle shown = button;
+            if (shown != null && shown.getParent() == frame) {
+                shown.invalidate();
+                return;
+            }
+            if (shown == null) {
+                shown = new Toggle(view.getContext());
+                shown.setOnClickListener(tapped -> toggle());
+                button = shown;
+            } else if (shown.getParent() != null) {
+                ((ViewGroup) shown.getParent()).removeView(shown);
+            }
+            int size = dp(view, BUTTON_DP);
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(size, size, Gravity.BOTTOM | Gravity.START);
+            params.setMarginStart(dp(view, 8));
+            params.bottomMargin = dp(view, HEIGHT_DP + 4);
+            frame.addView(shown, frame.indexOfChild(view) + 1, params);
+        }
+
+        private void removeButton() {
+            Toggle shown = button;
+            button = null;
+            if (shown == null) return;
+            shown.setOnClickListener(null);
+            ViewGroup parent = (ViewGroup) shown.getParent();
+            if (parent != null) parent.removeView(shown);
+        }
+
+        /** The button's tap: the bar's own switch flips, so the settings and the button always agree. */
+        private void toggle() {
+            try {
+                if (removed || !buttonWanted()) return;
+                Settings.FEED_SEEK_BAR.save(!Settings.FEED_SEEK_BAR.get());
+                HookStatus.counted(FamilyNames.FEED_SEEK_BAR, COUNT_TOGGLES);
+                Object owner = player.get();
+                if (owner != null) update(owner);
+                if (button != null) button.invalidate();
+            } catch (Throwable failure) {
+                HookStatus.threw(FamilyNames.FEED_SEEK_BAR, HOOK, failure);
+            }
         }
 
         /** Hides the bar, ending a drag under it, and takes it away once it's been hidden for {@link #GONE_MS}. */
         private void hide() {
+            if (!buttonWanted()) removeButton();
             if (bar != null && bar.getVisibility() != View.GONE) bar.setVisibility(View.GONE);
             dragging = false;
             long now = SystemClock.uptimeMillis();
@@ -201,14 +289,11 @@ public final class FeedSeekBar {
          * The bar, moved to [frame] just after [view]: over the video and taking touches before it,
          * under the rest of what Instagram draws there.
          */
-        private SeekBar attach(FrameLayout frame, View view) {
-            SeekBar seek = bar;
+        private GlassSeekBar attach(FrameLayout frame, View view) {
+            GlassSeekBar seek = bar;
             if (seek == null) {
                 HookStatus.invoked(FamilyNames.FEED_SEEK_BAR);
-                seek = new SeekBar(view.getContext());
-                seek.setProgressTintList(ColorStateList.valueOf(Color.WHITE));
-                seek.setThumbTintList(ColorStateList.valueOf(Color.WHITE));
-                seek.setProgressBackgroundTintList(ColorStateList.valueOf(0x80FFFFFF));
+                seek = new GlassSeekBar(view.getContext(), FamilyNames.FEED_SEEK_BAR, HOOK);
                 seek.setOnSeekBarChangeListener(this);
                 seek.setOnTouchListener(this);
                 bar = seek;
@@ -244,9 +329,12 @@ public final class FeedSeekBar {
             return false;
         }
 
+        /** A bar taken away mid-drag leaves its video to the feed, which plays the video it shows. */
         void remove() {
             removed = true;
             dragging = false;
+            held = false;
+            removeButton();
             SeekBar seek = bar;
             bar = null;
             if (seek != null) {
@@ -258,30 +346,102 @@ public final class FeedSeekBar {
             }
         }
 
+        /** A finger on the bar pauses the video, as Instagram's own scrubber does with its "seek" reason. */
         @Override
         public void onStartTrackingTouch(SeekBar seek) {
             dragging = !removed && wanted();
+            held = false;
+            Object owner = player.get();
+            if (!dragging || owner == null) return;
+            try {
+                held = feed.pause(owner);
+            } catch (Throwable failure) {
+                HookStatus.threw(FamilyNames.FEED_SEEK_BAR, HOOK, failure);
+            }
         }
 
         @Override
         public void onProgressChanged(SeekBar seek, int progress, boolean fromUser) {
         }
 
+        /**
+         * Letting go moves the video to the bar's point and plays it on from there. A drag the bar's
+         * hiding ended seeks nothing, but a video it paused still plays on.
+         */
         @Override
         public void onStopTrackingTouch(SeekBar seek) {
-            if (!dragging) return;
+            boolean seeks = dragging;
+            boolean plays = held;
             dragging = false;
+            held = false;
             Object owner = player.get();
-            if (owner == null || !wanted()) return;
+            if (owner == null || !(seeks || plays)) return;
             try {
-                int to = seek.getProgress();
-                if (feed.seekTo(owner, to)) {
-                    position = to;
-                    HookStatus.counted(FamilyNames.FEED_SEEK_BAR, COUNT_SEEKS);
+                if (seeks && wanted()) {
+                    int to = seek.getProgress();
+                    if (feed.seekTo(owner, to)) {
+                        position = to;
+                        HookStatus.counted(FamilyNames.FEED_SEEK_BAR, COUNT_SEEKS);
+                    }
                 }
+                if (plays) feed.play(owner);
             } catch (Throwable failure) {
                 HookStatus.threw(FamilyNames.FEED_SEEK_BAR, HOOK, failure);
             }
+        }
+    }
+
+    /**
+     * The small button that shows or hides the seek bar: a dark circle holding a line with a dot on it,
+     * bright while the bar shows and dimmed with a slash while it's hidden.
+     */
+    static final class Toggle extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        Toggle(Context context) {
+            super(context);
+            setClickable(true);
+            setFocusable(true);
+            setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
+            setContentDescription(L10n.t(context, "Seek bar"));
+        }
+
+        boolean barShown() {
+            return Settings.FEED_SEEK_BAR.get();
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            float width = getWidth();
+            float height = getHeight();
+            boolean on = barShown();
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0x99000000);
+            canvas.drawCircle(width / 2, height / 2, Math.min(width, height) / 2, paint);
+            int ink = on ? Color.WHITE : 0x99FFFFFF;
+            float unit = getResources().getDisplayMetrics().density;
+            paint.setColor(ink);
+            paint.setStrokeWidth(2 * unit);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setStyle(Paint.Style.STROKE);
+            float left = width * 0.24f;
+            float right = width * 0.76f;
+            float y = height / 2;
+            canvas.drawLine(left, y, right, y, paint);
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawCircle(left + (right - left) * 0.4f, y, 3 * unit, paint);
+            if (!on) {
+                paint.setStyle(Paint.Style.STROKE);
+                canvas.drawLine(width * 0.28f, height * 0.72f, width * 0.72f, height * 0.28f, paint);
+            }
+        }
+
+        @Override
+        public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
+            super.onInitializeAccessibilityNodeInfo(info);
+            info.setClassName(Switch.class.getName());
+            info.setCheckable(true);
+            info.setChecked(barShown());
         }
     }
 

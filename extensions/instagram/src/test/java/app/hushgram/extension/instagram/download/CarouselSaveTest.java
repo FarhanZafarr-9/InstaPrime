@@ -581,6 +581,75 @@ public class CarouselSaveTest {
     }
 
     /**
+     * #500: the size the app states decides a photo. A 3072x4096 whose address names its size, one
+     * with no picture suffix and a photo over its own crop of one width all beat the smaller file an
+     * address alone would have picked, and the report names every size of what the server listed.
+     */
+    @Test public void aPhotoSavesItsLargestStatedSizeWhateverItsAddressLooksLike() throws Exception {
+        server.serve("/1080.jpg", "image/jpeg", body(false));
+        server.serve("/3072.jpg", "image/jpeg", body(false));
+        MediaSave.Rendition usual = new MediaSave.Rendition(server.origin() + "/1080.jpg?stp=dst-jpg_e35_tt6", 1080, 1440, 0);
+        MediaSave.Rendition named = new MediaSave.Rendition(server.origin() + "/3072.jpg?stp=dst-jpg_s3072x4096", 3072, 4096, 0);
+        assertSame("the address alone picks the smaller one", usual, RenditionPicker.pickImage(Arrays.asList(usual, named)));
+        assertTrue(MediaSave.savePhoto(context, Arrays.asList(usual, named), PostDetails.of("7")));
+        waitForSaves();
+        assertEquals(1, server.hits("/3072.jpg")); assertEquals(0, server.hits("/1080.jpg"));
+        String report = LogBufferManager.buildExportText();
+        assertTrue(report, report.contains("saving image jpg (3072x4096) from 2 candidate(s): jpg (1080x1440), jpg (3072x4096)"));
+
+        String meta = "https://scontent-lga3-1.cdninstagram.com/v/t51.2885-15/";
+        MediaSave.Rendition bare = new MediaSave.Rendition(meta + "up_n?oh=1&oe=2", 1440, 1800, 0);
+        MediaSave.Rendition jpeg = new MediaSave.Rendition(meta + "up_n.jpg?oh=1&oe=2", 1080, 1350, 0);
+        assertSame(bare, MediaSave.pictureOf(Arrays.asList(jpeg, bare)));
+
+        // A's address sorts first, so a tie on the short side would have saved the crop.
+        MediaSave.Rendition crop = new MediaSave.Rendition(meta + "a.jpg?oh=1&oe=2", 1080, 1080, 0);
+        MediaSave.Rendition whole = new MediaSave.Rendition(meta + "b.jpg?oh=1&oe=2", 1080, 1440, 0);
+        assertSame(whole, MediaSave.pictureOf(Arrays.asList(crop, whole)));
+
+        // An address that asks for less than it states stays a thumbnail.
+        MediaSave.Rendition lying = new MediaSave.Rendition(meta + "c.jpg?stp=dst-jpg_s150x150", 3000, 3000, 0);
+        assertSame(whole, MediaSave.pictureOf(Arrays.asList(lying, whole)));
+        assertClean();
+    }
+
+    /**
+     * #214: Download as photo on a video story saved Instagram's 640x1136 still while the video was
+     * 1080x1920. The video's first frame saves now, and the report lists the sizes.
+     */
+    @Test public void aStoryPictureSmallerThanItsVideoIsTakenFromTheVideo() throws Exception {
+        server.serve("/s/up_1_n.jpg", "image/jpeg", body(false));
+        server.serve("/1080.mp4", "video/mp4", body(true));
+        CoverFrame.firstFrameForTests = file -> android.graphics.Bitmap.createBitmap(1080, 1920, android.graphics.Bitmap.Config.ARGB_8888);
+        assertTrue(MediaSave.saveStoryPicture(context,
+                Collections.singletonList(new MediaSave.Rendition(server.origin() + "/s/up_1_n.jpg", 640, 1136, 0)),
+                Collections.singletonList(new MediaSave.Rendition(server.origin() + "/1080.mp4", 1080, 1920, 0)),
+                null, PostDetails.of("7")));
+        waitForSaves();
+        assertEquals(1, server.hits("/1080.mp4")); assertEquals(0, server.hits("/s/up_1_n.jpg"));
+        assertEquals(1, gallery.rows.size());
+        assertEquals("image/jpeg", gallery.rows.values().iterator().next().getAsString(MediaStore.MediaColumns.MIME_TYPE));
+        String report = LogBufferManager.buildExportText();
+        assertTrue(report, report.contains("the story picture is the first frame, taking it from the video at 1080x1920 "
+                + "over the still at 640x1136, from 1 candidate(s): jpg (640x1136)"));
+        assertEquals(0, coverWorkFiles());
+        assertClean();
+    }
+
+    /** A photo with music on a background is another shape than its video, so the still saves and the video isn't fetched. */
+    @Test public void aStoryPictureOfAnotherShapeThanItsVideoStaysTheStill() throws Exception {
+        server.serve("/s/up_1_n.jpg", "image/jpeg", body(false));
+        server.serve("/1080.mp4", "video/mp4", body(true));
+        assertTrue(MediaSave.saveStoryPicture(context,
+                Collections.singletonList(new MediaSave.Rendition(server.origin() + "/s/up_1_n.jpg", 640, 800, 0)),
+                Collections.singletonList(new MediaSave.Rendition(server.origin() + "/1080.mp4", 1080, 1920, 0)),
+                null, PostDetails.of("7")));
+        waitForSaves();
+        assertEquals(0, server.hits("/1080.mp4")); assertEquals(1, server.hits("/s/up_1_n.jpg"));
+        assertClean();
+    }
+
+    /**
      * #155: when the app states no size for any of a cover's addresses, the size each address
      * names decides, so a thumbnail listed first doesn't save in place of the full picture.
      */
@@ -1456,13 +1525,15 @@ public class CarouselSaveTest {
     }
     @Test
     @Config(shadows = {LocalCandidates.class, MediaBridge.class, MetadataExif.class})
-    public void aMixedBatchTagsOnlyItsCompletedJpegPhotos() throws Exception {
+    public void aMixedBatchTagsItsCompletedJpegPhotosAndMp4Videos() throws Exception {
         Settings.SAVE_PHOTO_METADATA.save(true);
         assertTrue("the metadata switch did not become active", PostMetadata.on());
         MetadataGallery output = metadataGallery();
         byte[] jpeg = metadataJpeg();
         server.serve("/source-one.jpg", "image/jpeg", jpeg);
         server.serve("/source-two.jpg", "image/jpeg", jpeg);
+        byte[] mp4 = VideoMetadataTest.sample(VideoMetadataTest.MOOV_LAST);
+        server.serve("/source-video.mp4", "video/mp4", mp4);
         byte[] png;
         Bitmap picture = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888);
         try {
@@ -1473,34 +1544,40 @@ public class CarouselSaveTest {
         server.serve("/source.png", "image/png", png);
         PostDetails first = metadataDetails("409960495", "source_one");
         PostDetails last = metadataDetails("3549837394260045367", "source_two");
+        PostDetails clip = metadataDetails("908540701891980503", "source_video");
         List<MediaSave.Item> pages = Arrays.asList(
                 new MediaSave.Item(false, SavesForTests.renditions(server.origin() + "/source-one.jpg"), null, first),
-                page(true, "/source-video.mp4", "102"),
+                new MediaSave.Item(true, SavesForTests.renditions(server.origin() + "/source-video.mp4"), null, clip),
                 new MediaSave.Item(false, SavesForTests.renditions(server.origin() + "/source.png"), null, first),
                 new MediaSave.Item(false, SavesForTests.renditions(server.origin() + "/source-two.jpg"), null, last),
                 new MediaSave.Item(false, SavesForTests.renditions(server.origin() + "/missing.jpg"), null, first));
         MediaSave.BatchResult result = metadataBatch(pages);
         assertEquals(4, result.saved); assertEquals(1, result.failed); assertEquals(0, result.skipped);
-        assertEquals(metadataDiagnostics(), Arrays.asList(1L, 4L), output.metadataOpens);
+        assertEquals(metadataDiagnostics(), Arrays.asList(1L, 2L, 4L), output.metadataOpens);
         assertMetadata(output.files.get(1L), first, "https://www.instagram.com/p/Yb4Av/");
         assertMetadata(output.files.get(4L), last, "https://www.instagram.com/p/DFDjk1fRK43/");
-        assertArrayEquals("a video was rewritten for photo metadata", body(true), Files.readAllBytes(output.files.get(2L).toPath()));
+        assertVideoMetadata(mp4, output.files.get(2L), clip, "https://www.instagram.com/p/ybyPRoQWzX/");
         assertArrayEquals("a PNG was rewritten for JPEG metadata", png, Files.readAllBytes(output.files.get(3L).toPath()));
         assertClean();
     }
 
     @Test
     @Config(shadows = {LocalCandidates.class, MediaBridge.class, MetadataExif.class})
-    public void photoMetadataOffLeavesBatchJpegsUnchanged() throws Exception {
+    public void metadataOffLeavesBatchJpegsAndMp4sUnchanged() throws Exception {
         Settings.SAVE_PHOTO_METADATA.save(false);
         MetadataGallery output = metadataGallery();
         byte[] jpeg = metadataJpeg();
         server.serve("/no-source.jpg", "image/jpeg", jpeg);
-        MediaSave.BatchResult result = metadataBatch(Collections.singletonList(new MediaSave.Item(false,
-                SavesForTests.renditions(server.origin() + "/no-source.jpg"), null,
-                metadataDetails("409960495", "source_one"))));
-        assertEquals(1, result.saved);
+        byte[] mp4 = VideoMetadataTest.sample(VideoMetadataTest.MOOV_FIRST);
+        server.serve("/no-source.mp4", "video/mp4", mp4);
+        MediaSave.BatchResult result = metadataBatch(Arrays.asList(
+                new MediaSave.Item(false, SavesForTests.renditions(server.origin() + "/no-source.jpg"), null,
+                        metadataDetails("409960495", "source_one")),
+                new MediaSave.Item(true, SavesForTests.renditions(server.origin() + "/no-source.mp4"), null,
+                        metadataDetails("908540701891980503", "source_video"))));
+        assertEquals(2, result.saved);
         assertArrayEquals(jpeg, Files.readAllBytes(output.files.get(1L).toPath()));
+        assertArrayEquals(mp4, Files.readAllBytes(output.files.get(2L).toPath()));
         assertTrue(output.metadataOpens.isEmpty());
         assertClean();
     }
@@ -1545,6 +1622,22 @@ public class CarouselSaveTest {
         assertClean();
     }
 
+    @Test
+    @Config(shadows = {LocalCandidates.class, MediaBridge.class, MetadataExif.class})
+    public void aSingleVideoTagsThroughTheSameMetadataProvider() throws Exception {
+        Settings.SAVE_PHOTO_METADATA.save(true);
+        assertTrue("the metadata switch did not become active", PostMetadata.on());
+        MetadataGallery output = metadataGallery();
+        byte[] mp4 = VideoMetadataTest.sample(VideoMetadataTest.MOOV_FIRST);
+        server.serve("/single-source.mp4", "video/mp4", mp4);
+        PostDetails details = metadataDetails("908540701891980503", "source_video");
+        assertTrue(MediaSave.saveVideo(context, SavesForTests.renditions(server.origin() + "/single-source.mp4"), null, details));
+        waitForSaves();
+        assertEquals(metadataDiagnostics(), Collections.singletonList(1L), output.metadataOpens);
+        assertVideoMetadata(mp4, output.files.get(1L), details, "https://www.instagram.com/p/ybyPRoQWzX/");
+        assertClean();
+    }
+
     private MediaSave.BatchResult metadataBatch(List<MediaSave.Item> pages) throws Exception {
         CompletableFuture<MediaSave.BatchResult> ended = new CompletableFuture<>();
         assertTrue(MediaSave.saveBatch(context, pages, ended::complete));
@@ -1553,8 +1646,9 @@ public class CarouselSaveTest {
         return result;
     }
 
+    /** A feed post's details, as VideoDownload builds them: the post is its own media. */
     private static PostDetails metadataDetails(String id, String owner) {
-        return PostDetails.of(id, owner, new java.util.Date(1_783_670_400_000L));
+        return PostDetails.of(id, owner, new java.util.Date(1_783_670_400_000L)).withPostId(id);
     }
 
     private static byte[] metadataJpeg() throws Exception {
@@ -1574,6 +1668,18 @@ public class CarouselSaveTest {
         stamp.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
         assertEquals(stamp.format(details.posted), exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL));
         assertEquals(link, exif.getAttribute(ExifInterface.TAG_IMAGE_DESCRIPTION));
+    }
+
+    /** The saved MP4 carries what the save knew, and its media and other boxes are where they were. */
+    private static void assertVideoMetadata(byte[] served, File file, PostDetails details, String link) throws Exception {
+        byte[] saved = Files.readAllBytes(file.toPath());
+        VideoMetadataTest.assertMediaStays(served, saved);
+        java.text.SimpleDateFormat stamp = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US);
+        stamp.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        java.util.Map<String, String> items = VideoMetadataTest.items(saved);
+        assertEquals(metadataDiagnostics(), details.owner, items.get(VideoMetadataTest.ART));
+        assertEquals(stamp.format(details.posted), items.get(VideoMetadataTest.DAY));
+        assertEquals(link, items.get("desc"));
     }
 
     private static String metadataDiagnostics() {

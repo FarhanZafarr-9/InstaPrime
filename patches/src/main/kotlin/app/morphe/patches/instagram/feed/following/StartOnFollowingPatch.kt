@@ -63,15 +63,15 @@ private const val FREEZE_REACH = 6
 /** The preference Instagram keeps the feed you last picked from Home's feed picker in. */
 internal const val SAVED_FEED_KEY = "last_selected_feed_type"
 
-/** The server flag that has Instagram remember the feed you pick. 451 had it as 810e5f00064f24. */
-internal const val REMEMBERED_FEED_FLAG = 0x810e3300064e36L
+/** The server flag that has Instagram remember the feed you pick. 451 had it as 810e5f00064f24, 453 as 810e3300064e36. */
+internal const val REMEMBERED_FEED_FLAG = 0x810dfb00064e49L
 
 /**
  * The server flag that puts For you first in Home's feed picker and the picked feed's name at the
- * top of Home. 451 had it as 810e5f00004f1e. Without it the picker has no For you, since Home
- * stands for it, and Home's top shows only the picker's arrow.
+ * top of Home. 451 had it as 810e5f00004f1e, 453 as 810e3300004e30. Without it the picker has no
+ * For you, since Home stands for it, and Home's top shows only the picker's arrow.
  */
-internal const val FOR_YOU_PICKER_FLAG = 0x810e3300004e30L
+internal const val FOR_YOU_PICKER_FLAG = 0x810dfb00004e43L
 
 /** The flags the patch answers on: together they're Instagram's own For you and Following picker. */
 internal val FEED_PICKER_FLAGS = listOf(REMEMBERED_FEED_FLAG, FOR_YOU_PICKER_FLAG)
@@ -86,8 +86,9 @@ val startOnFollowingPatch = bytecodePatch(
     description = "Opens Home on posts from accounts you follow instead of For you. A second switch removes For " +
         "you from Home, and a third keeps Instagram's logo at the top of Home in place of the feed's name. A " +
         "fourth, Fall back to Following, opens Home on Following for an account whose For you brings only " +
-        "suggested posts, unless you picked a feed. Restart Instagram to see the change. Starts off. Turn it on " +
-        "in HushGram settings > Feed.",
+        "suggested posts, unless you picked a feed. A fifth, Mix in Following, shows a page of posts from " +
+        "accounts you follow after each page of For you. Restart Instagram to see the change. Starts off. Turn " +
+        "it on in HushGram settings > Feed.",
 ) {
     category("Feed")
     dependsOn(settingsPatch, instagramExtensionPatch)
@@ -95,6 +96,7 @@ val startOnFollowingPatch = bytecodePatch(
 
     execute {
         requireStatusMethod("followingFeed")
+        requireStatusMethod("followingMix")
         val reads = findFlagReads(PATCH, FEED_PICKER_FLAGS)
         val saved = findSavedFeedReturn()
         val title = findTitleLabel()
@@ -109,6 +111,9 @@ val startOnFollowingPatch = bytecodePatch(
         // Hooked at their starts once the reads in them are answered, so the reads' indexes held.
         keepFeedLinksInPlace(switches)
         enableStatus("followingFeed")
+        // Last, so nothing above moves the indexes it finds; a build without Home's paging as it
+        // knows it keeps every other switch.
+        if (mixInFollowingOrWarn()) enableStatus("followingMix")
     }
 }
 

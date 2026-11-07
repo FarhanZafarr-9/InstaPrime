@@ -36,6 +36,7 @@ import org.robolectric.android.controller.ActivityController;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
+import org.robolectric.annotation.GraphicsMode;
 import org.robolectric.shadows.ShadowLooper;
 import org.robolectric.shadows.ShadowPopupMenu;
 import org.robolectric.shadows.ShadowToast;
@@ -65,6 +66,7 @@ public class ProfileExtrasTest {
     private ImageView dots;
     private final Object user = new Object();
     private final Object screen = new Object();
+    private final Object session = new Object();
     private final List<String> ran = new ArrayList<>();
 
     @Before public void prepare() {
@@ -110,7 +112,7 @@ public class ProfileExtrasTest {
     private void bind() {
         right.removeAllViews();
         right.addView(dots);
-        ProfileExtras.bound(bar, right);
+        ProfileExtras.bound(bar, right, session);
         ProfileExtras.screen(bar, screen);
         ShadowLooper.idleMainLooper();
     }
@@ -124,7 +126,7 @@ public class ProfileExtrasTest {
         assertNull(ProfileExtras.accountOf(new Object()));
         right.removeAllViews();
         right.addView(dots);
-        ProfileExtras.bound(bar, right);
+        ProfileExtras.bound(bar, right, session);
         ProfileExtras.screen(bar, new Object());
         ShadowLooper.idleMainLooper();
         assertNull(button());
@@ -161,7 +163,7 @@ public class ProfileExtrasTest {
 
     @Test public void aBindThatLeavesTheButtonAloneAddsNoSecond() {
         bind();
-        ProfileExtras.bound(bar, right);
+        ProfileExtras.bound(bar, right, session);
         ShadowLooper.idleMainLooper();
         assertEquals(1, count());
     }
@@ -198,10 +200,25 @@ public class ProfileExtrasTest {
         assertNull(button());
     }
 
+    @Test public void theRowIsGreyedUntilOneOfItsActionsIsOn() {
+        Settings.SAVE_PROFILE_PICTURES.save(false);
+        Settings.VIEW_PROFILE_PICTURES.save(false);
+        Settings.COPY_PROFILE_TEXT.save(false);
+        assertFalse(Settings.PROFILE_EXTRAS_BUTTON.isAvailable());
+        Settings.SAVE_PROFILE_PICTURES.save(true);
+        assertTrue("Save profile picture alone is enough", Settings.PROFILE_EXTRAS_BUTTON.isAvailable());
+        Settings.SAVE_PROFILE_PICTURES.save(false);
+        Settings.VIEW_PROFILE_PICTURES.save(true);
+        assertTrue("View profile picture alone is enough", Settings.PROFILE_EXTRAS_BUTTON.isAvailable());
+        Settings.VIEW_PROFILE_PICTURES.save(false);
+        Settings.COPY_PROFILE_TEXT.save(true);
+        assertTrue("Copy username and bio alone is enough", Settings.PROFILE_EXTRAS_BUTTON.isAvailable());
+    }
+
     @Test public void withoutAnAccountThereIsNoButton() {
         right.removeAllViews();
         right.addView(dots);
-        ProfileExtras.bound(bar, right);
+        ProfileExtras.bound(bar, right, session);
         ShadowLooper.idleMainLooper();
         assertNull(button());
         ProfileExtras.screen(bar, null);
@@ -210,9 +227,9 @@ public class ProfileExtrasTest {
     }
 
     @Test public void nothingToWorkWithThrowsNothing() {
-        ProfileExtras.bound(null, right);
-        ProfileExtras.bound(bar, null);
-        ProfileExtras.bound(bar, new View(context));
+        ProfileExtras.bound(null, right, session);
+        ProfileExtras.bound(bar, null, session);
+        ProfileExtras.bound(bar, new View(context), session);
         ProfileExtras.screen(null, screen);
         ProfileExtras.place(new FrameLayout(context));
         ShadowLooper.idleMainLooper();
@@ -298,6 +315,147 @@ public class ProfileExtrasTest {
         for (int i = 0; i < right.getChildCount(); i++) {
             if (right.getChildAt(i) instanceof ImageView && ((ImageView) right.getChildAt(i)).getDrawable() instanceof ProfileExtras.Info) found++;
         }
+        return found;
+    }
+
+    private ProfileExtras.AboutButton about() {
+        return ProfileExtras.findAbout(right);
+    }
+
+    private void aboutOn() {
+        Settings.ABOUT_ACCOUNT_BUTTON.save(true);
+        ProfileExtras.available = () -> true;
+        ProfileExtras.ids = held -> held == user ? "1234" : null;
+        ProfileExtras.opener = (at, held, id, referer) -> ran.add("about " + id + (held == session ? " session" : "") + " from " + referer);
+    }
+
+    private void aboutOff() {
+        Settings.ABOUT_ACCOUNT_BUTTON.resetToDefault();
+        ProfileExtras.available = ProfileExtras::aboutAvailable;
+        ProfileExtras.ids = ProfileExtras::userId;
+        ProfileExtras.opener = (at, held, id, referer) -> { };
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE) public void theTwoButtonsBesideEachOtherDontLookTheSame() {
+        aboutOn();
+        try {
+            bind();
+            android.graphics.Bitmap extras = pictureOf(button());
+            android.graphics.Bitmap about = pictureOf(about());
+            assertFalse("it draws at all", extras.sameAs(android.graphics.Bitmap.createBitmap(72, 72, android.graphics.Bitmap.Config.ARGB_8888)));
+            assertFalse(extras.sameAs(about));
+        } finally {
+            aboutOff();
+        }
+    }
+
+    private static android.graphics.Bitmap pictureOf(ImageView button) {
+        android.graphics.Bitmap picture = android.graphics.Bitmap.createBitmap(72, 72, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.drawable.Drawable drawable = button.getDrawable();
+        drawable.setBounds(0, 0, 72, 72);
+        drawable.draw(new android.graphics.Canvas(picture));
+        return picture;
+    }
+
+    @Test public void theAboutButtonStartsOff() {
+        Settings.ABOUT_ACCOUNT_BUTTON.resetToDefault();
+        assertFalse(Settings.ABOUT_ACCOUNT_BUTTON.defaultValue);
+        ProfileExtras.available = () -> true;
+        try {
+            bind();
+            assertNull(about());
+        } finally {
+            aboutOff();
+        }
+    }
+
+    @Test public void theAboutButtonSitsAfterTheExtrasOneAndOpensTheScreenForTheAccount() {
+        aboutOn();
+        try {
+            bind();
+            bind();
+            assertNotNull(about());
+            assertSame(button(), right.getChildAt(0));
+            assertSame(about(), right.getChildAt(1));
+            assertSame(dots, right.getChildAt(2));
+            assertEquals(1, countOf(ProfileExtras.AboutButton.class));
+            about().performClick();
+            assertEquals("the profile menu's own referer, since the call's default is its feed ads one and that fails on a Page",
+                Collections.singletonList("about 1234 session from ProfileMore"), ran);
+        } finally {
+            aboutOff();
+        }
+    }
+
+    @Test public void theAboutButtonNeedsNoOtherSwitchAndLeadsAloneWhenTheExtrasOneIsOff() {
+        aboutOn();
+        Settings.PROFILE_EXTRAS_BUTTON.save(false);
+        try {
+            bind();
+            assertNull(button());
+            assertSame(about(), right.getChildAt(0));
+        } finally {
+            aboutOff();
+        }
+    }
+
+    @Test public void theAboutButtonGoesWhenPausedOrWhenThisBuildHasNoCall() {
+        aboutOn();
+        try {
+            bind();
+            assertNotNull(about());
+            BaseSettings.PAUSED.save(true);
+            PauseForTests.pause(HushgramPause.Reason.SWITCH);
+            bind();
+            assertNull(about());
+            PauseForTests.resume();
+            BaseSettings.PAUSED.save(false);
+            bind();
+            assertNotNull(about());
+            ProfileExtras.available = () -> false;
+            bind();
+            assertNull(about());
+        } finally {
+            aboutOff();
+        }
+    }
+
+    @Test public void aTapWhilePausedOrWithoutASessionOrIdOpensNothing() {
+        aboutOn();
+        try {
+            bind();
+            ProfileExtras.AboutButton button = about();
+            ProfileExtras.ids = held -> null;
+            button.performClick();
+            ProfileExtras.ids = held -> "1234";
+            BaseSettings.PAUSED.save(true);
+            PauseForTests.pause(HushgramPause.Reason.SWITCH);
+            button.performClick();
+            assertTrue(ran.isEmpty());
+        } finally {
+            PauseForTests.resume();
+            BaseSettings.PAUSED.save(false);
+            aboutOff();
+        }
+    }
+
+    @Test public void noSessionNoAboutButton() {
+        aboutOn();
+        try {
+            right.removeAllViews();
+            right.addView(dots);
+            ProfileExtras.bound(bar, right, null);
+            ProfileExtras.screen(bar, screen);
+            ShadowLooper.idleMainLooper();
+            assertNull(about());
+        } finally {
+            aboutOff();
+        }
+    }
+
+    private int countOf(Class<?> type) {
+        int found = 0;
+        for (int i = 0; i < right.getChildCount(); i++) if (type.isInstance(right.getChildAt(i))) found++;
         return found;
     }
 

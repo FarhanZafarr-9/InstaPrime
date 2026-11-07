@@ -80,11 +80,23 @@ public final class SettingsStatus {
         return false;
     }
 
+    public static boolean storyZoomPlay() {
+        return false;
+    }
+
+    public static boolean storyPriority() {
+        return false;
+    }
+
     public static boolean storySound() {
         return false;
     }
 
     public static boolean storySwipeReply() {
+        return false;
+    }
+
+    public static boolean storyReplyBox() {
         return false;
     }
 
@@ -114,6 +126,11 @@ public final class SettingsStatus {
 
     /** Rewritten by the Skip the contacts and location popups patch. */
     public static boolean setupPopups() {
+        return false;
+    }
+
+    /** Rewritten by the Skip the ad data reminder patch. */
+    public static boolean adDataReminder() {
         return false;
     }
 
@@ -205,6 +222,11 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Speed button on stories patch. */
+    public static boolean storySpeed() {
+        return false;
+    }
+
     public static boolean repostButton() {
         return false;
     }
@@ -217,6 +239,11 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Phone layout on big screens patch. */
+    public static boolean phoneLayout() {
+        return false;
+    }
+
     public static boolean emojiStyle() {
         return false;
     }
@@ -226,6 +253,10 @@ public final class SettingsStatus {
     }
 
     public static boolean launchScreen() {
+        return false;
+    }
+
+    public static boolean headerText() {
         return false;
     }
 
@@ -251,6 +282,11 @@ public final class SettingsStatus {
 
     /** Rewritten by the Stop videos looping patch. */
     public static boolean stopLooping() {
+        return false;
+    }
+
+    /** Rewritten by the Keep playing in the background patch. */
+    public static boolean backgroundPlay() {
         return false;
     }
 
@@ -300,6 +336,10 @@ public final class SettingsStatus {
         return false;
     }
 
+    public static boolean profileGridJump() {
+        return false;
+    }
+
     public static boolean homeFeed() {
         return false;
     }
@@ -337,6 +377,10 @@ public final class SettingsStatus {
         return false;
     }
 
+    public static boolean lowViewReels() {
+        return false;
+    }
+
     public static boolean commentCopy() {
         return false;
     }
@@ -352,6 +396,11 @@ public final class SettingsStatus {
 
     /** Reply with a comment's GIF, Save comment photo's second switch, which a build can lack. */
     public static boolean commentGifReply() {
+        return false;
+    }
+
+    /** Show a comment GIF's name, Save comment photo's third switch, which a build can lack. */
+    public static boolean commentGifName() {
         return false;
     }
 
@@ -381,7 +430,16 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Hide activity bubbles patch. */
+    public static boolean activityBubbles() {
+        return false;
+    }
+
     public static boolean hideCaptions() {
+        return false;
+    }
+
+    public static boolean feedAudioIcon() {
         return false;
     }
 
@@ -394,6 +452,10 @@ public final class SettingsStatus {
     }
 
     public static boolean followingFeed() {
+        return false;
+    }
+
+    public static boolean followingMix() {
         return false;
     }
 
@@ -532,6 +594,11 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Don't report Blend visits patch. */
+    public static boolean blendVisits() {
+        return false;
+    }
+
     /** Rewritten by the Allow screenshots patch. */
     public static boolean screenshotBlock() {
         return false;
@@ -539,6 +606,16 @@ public final class SettingsStatus {
 
     /** Rewritten by the Ask before a call patch. */
     public static boolean askBeforeCall() {
+        return false;
+    }
+
+    /** Rewritten by the Chat plus menu patch. */
+    public static boolean plusMenu() {
+        return false;
+    }
+
+    /** Rewritten by the Glass in chats patch. */
+    public static boolean glassChat() {
         return false;
     }
 
@@ -625,8 +702,18 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Swipe through a chat's photos and posts patch. */
+    public static boolean chatMediaWalk() {
+        return false;
+    }
+
     /** Rewritten by the Chat history tools patch. */
     public static boolean chatHistory() {
+        return false;
+    }
+
+    /** Rewritten by the Preview chats patch. */
+    public static boolean previewChats() {
         return false;
     }
 

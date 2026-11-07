@@ -139,7 +139,7 @@ class NativeMarkReadTest {
 
     companion object {
         private val cached = FixtureCache<Map<String, ClassDef>>()
-        private val REPLY_BRIDGES = setOf("composerThread", "receiptSender")
+        private val REPLY_BRIDGES = setOf("composerThread", "receiptSender") + NativeLocalCursorTest.CURSOR_BRIDGES
 
         /**
          * The chat receipt's classes, plus the chat menu's enum, the classes whose methods take it or
@@ -150,7 +150,7 @@ class NativeMarkReadTest {
          * inbox draws its rows from with the classes its unread answer reads, and the extension's hooks
          * and bridges.
          */
-        private fun markReadClasses(bundle: File): Map<String, ClassDef> = cached.get(bundle) {
+        internal fun markReadClasses(bundle: File): Map<String, ClassDef> = cached.get(bundle) {
             val classes = threadClasses(bundle).toMutableMap()
             val menu = FixtureDex.classesHolding(bundle, MARK_AS_UNREAD).single { candidate ->
                 candidate.superclass == "Ljava/lang/Enum;" && candidate.methods.any { method ->
@@ -193,6 +193,11 @@ class NativeMarkReadTest {
                 }
             }
             classes += FixtureDex.classes(bundle, named.filter { it.startsWith("L") && it !in classes }.toSet())
+            // 454 inlines the capability check into the chat menu builder (03KI.A03 on 386014758), so the
+            // check's kind (01FI there) is named only by the check on Capabilities.
+            if (CAPABILITIES !in classes) classes += FixtureDex.classes(bundle, setOf(CAPABILITIES))
+            val capabilityKinds = classes[CAPABILITIES]?.methods?.toList().orEmpty().flatMap { it.parameterTypes.map(Any::toString) }
+            classes += FixtureDex.classes(bundle, capabilityKinds.filter { it.startsWith("L") && it !in classes }.toSet())
             // The receipt's details and every class they extend, where the message's item id is declared.
             var wanted = classes.getValue(seen.mutation).fields.map { it.type }.toSet() + USER_SESSION
             while (true) {

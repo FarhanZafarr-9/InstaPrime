@@ -19,6 +19,10 @@ import android.net.Uri;
 import android.preference.Preference;
 import android.preference.PreferenceCategory;
 import android.preference.PreferenceScreen;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.TypefaceSpan;
 
 import java.util.Set;
 
@@ -35,9 +39,10 @@ final class AboutCategory {
         PreferenceCategory about = category(screen, L10n.t("Fork info"), SettingsIcons.ABOUT,
                 L10n.t("InstaPrime, its developer, the original project and support."));
         page.about = about;
-        Preference version = info(context, L10n.t("Version"), L10n.f("InstaPrime %1$s on Instagram %2$s",
-                L10n.isolate(Utils.getPatchesReleaseVersion()), L10n.isolate(Utils.getAppVersionName()))
-                + "\n" + L10n.isolate(Utils.getSourceBuildIdentity()));
+        Preference version = info(context, L10n.t("Version"), "");
+        version.setSummary(versionSummary(L10n.f("InstaPrime %1$s on Instagram %2$s",
+                L10n.isolate(Utils.getPatchesReleaseVersion()), L10n.isolate(Utils.getAppVersionName())),
+                L10n.isolate(Utils.getSourceBuildIdentity())));
         version.setKey("primegram_version");
         about.addPreference(mark(version, SettingsIcons.ABOUT));
         about.addPreference(link(page, context, "primegram_developer", "FarhanZafarr-9",
@@ -58,8 +63,9 @@ final class AboutCategory {
             } catch (ActivityNotFoundException | SecurityException missing) {
                 // No browser, or none switched on. Uncaught, Android's exception closed Instagram.
                 Logger.printInfo(() -> "No app opened the source code link");
-                Utils.showToastLong(L10n.f("No app on this phone can open the link. The address is %1$s.",
-                        L10n.isolate(SOURCE_ADDRESS)));
+                // The address in a toast of its own: after the sentence it ran to a third line.
+                Utils.showToastLong(L10n.t("No app can open this link."));
+                Utils.showToastLong(SOURCE_ADDRESS);
             }
             return true;
         });
@@ -95,4 +101,17 @@ final class AboutCategory {
         return mark(row, SettingsIcons.OPENING);
     }
 
+
+    /**
+     * The versions, then the build identity in a smaller fixed-width face, so the long hash reads as
+     * one code to copy into a report rather than a sentence broken over three lines.
+     */
+    static CharSequence versionSummary(String versions, String identity) {
+        SpannableStringBuilder summary = new SpannableStringBuilder(versions).append('\n');
+        int start = summary.length();
+        summary.append(identity);
+        summary.setSpan(new TypefaceSpan("monospace"), start, summary.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        summary.setSpan(new RelativeSizeSpan(0.9f), start, summary.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return summary;
+    }
 }

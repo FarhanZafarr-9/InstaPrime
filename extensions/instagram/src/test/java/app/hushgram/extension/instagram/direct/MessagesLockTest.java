@@ -653,9 +653,11 @@ public class MessagesLockTest {
 
         // A finger's worth of height, words that read against the cover, and a button to a keyboard.
         assertTrue("the Unlock link is " + unlock.getMeasuredHeight() + "px tall, under 48dp", unlock.getMeasuredHeight() >= icon);
-        int behind = ((ColorDrawable) cover.getBackground()).getColor();
+        android.graphics.drawable.RippleDrawable button =
+                (android.graphics.drawable.RippleDrawable) unlock.getBackground();
+        int behind = ((android.graphics.drawable.GradientDrawable) button.getDrawable(0)).getColor().getDefaultColor();
         double contrast = contrast(unlock.getCurrentTextColor(), behind);
-        assertTrue("the Unlock link reads at " + contrast + ":1 on the cover, under 4.5:1", contrast >= 4.5);
+        assertTrue("the Unlock link reads at " + contrast + ":1 on its button, under 4.5:1", contrast >= 4.5);
         assertTrue(unlock.isFocusable());
     }
 

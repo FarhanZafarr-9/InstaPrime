@@ -85,7 +85,7 @@ public class SettingsVisualCaptureTest {
     /** Deterministic development preview metadata. These fixtures never represent an installed build. */
     @Implements(value = Utils.class, isInAndroidSdk = false)
     public static class CaptureMetadata {
-        @Implementation public static String getPatchesReleaseVersion() { return "0.0.18"; }
+        @Implementation public static String getPatchesReleaseVersion() { return "0.0.19"; }
         @Implementation public static String getAppVersionName() { return "453.0.0.57.79"; }
         @Implementation public static long getAppVersionCode() { return 385914557L; }
         @Implementation public static String getSourceBuildIdentity() { return "Development preview"; }
@@ -123,8 +123,9 @@ public class SettingsVisualCaptureTest {
         scale = "compact-normal";
         open();
         PreferenceGroup screen = page.getPreferenceScreen();
-        assertEquals("hushgram_settings_search", screen.getPreference(0).getKey());
-        assertEquals("hushgram_view_toggle", screen.getPreference(1).getKey());
+        assertEquals(SettingsHeader.KEY, screen.getPreference(0).getKey());
+        assertEquals("hushgram_settings_search", screen.getPreference(1).getKey());
+        assertEquals("hushgram_view_toggle", screen.getPreference(2).getKey());
         assertNull("the active banner must not occupy a row", screen.findPreference("hushgram_status"));
         capturePage("00-overview", false);
         ListView list = page.getView().findViewById(android.R.id.list);
@@ -166,7 +167,8 @@ public class SettingsVisualCaptureTest {
         settle();
         clickInList(page.getPreferenceScreen().findPreference("hushgram_view_toggle"));
         assertFalse(Settings.CATEGORY_PAGES.savedValue());
-        assertEquals("Show settings by category", page.getPreferenceScreen().getPreference(1).getTitle());
+        assertEquals("Show settings by category",
+                page.getPreferenceScreen().findPreference("hushgram_view_toggle").getTitle());
         clickInList(page.getPreferenceScreen().findPreference("hushgram_view_toggle"));
         assertTrue(Settings.CATEGORY_PAGES.savedValue());
         capturePage("03-restored-overview", false);

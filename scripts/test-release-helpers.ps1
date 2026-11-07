@@ -94,11 +94,13 @@ try {
 
     $notesDir = Join-Path $scratch 'notes'
     $changelog = Join-Path $notesDir 'CHANGELOG.md'
-    $goodChangelog = "# Changelog`n`n## Unreleased`n`n### Improvements`n`n* **Tooling:** A script change.`n`n### Features`n`n* **Instagram:** A patch change.`n`n" +
-        "## 0.0.2 (2026-10-01)`n`n* **Instagram:** A short summary.`n`n### Improvements`n`n* **Tooling:** The tooling line.`n`n### Features`n`n* **Instagram:** First patch line.`n`n" +
-        "* **Instagram - Hide Meta AI:** Second patch line,`n  carried on.`n`n## 0.0.1 (2026-09-01)`n`n### Features`n`n* **Instagram:** The first release.`n"
+    # Bullets carry no app label since 2026-11-04. The 0.0.2 topic bullet keeps the "Instagram - "
+    # written before then, which every output drops.
+    $goodChangelog = "# Changelog`n`n## Unreleased`n`n### Improvements`n`n* **Tooling:** A script change.`n`n### Features`n`n* A patch change.`n`n" +
+        "## 0.0.2 (2026-10-01)`n`n* A short summary.`n`n### Improvements`n`n* **Tooling:** The tooling line.`n`n### Features`n`n* First patch line.`n`n" +
+        "* **Instagram - Hide Meta AI:** Second patch line,`n  carried on.`n`n## 0.0.1 (2026-09-01)`n`n### Features`n`n* The first release.`n"
     Write-Text $changelog $goodChangelog
-    # The builder checks each scoped bullet's patch against the catalog beside the CHANGELOG.
+    # The GitHub notes name the newest Instagram build in the catalog beside the CHANGELOG.
     Write-Text (Join-Path $notesDir 'patches-list.json') ([IO.File]::ReadAllText((Join-Path $Root 'patches-list.json')))
     Write-Text (Join-Path $notesDir 'libs.versions.toml') "[versions]`nmanager-floor = `"9.9.9`"`n"
     Write-Text (Join-Path $notesDir 'validation.md') 'Validation: 5 runtime tests passed locally. All 6 patch tests passed too.'
@@ -124,15 +126,22 @@ try {
             '5 runtime tests passed locally. All 6 patch tests passed too.') -join "`n`n") + "`n"
     Assert-True ($notes -ceq $expected) "The GitHub notes aren't Hushfacebook's layout with every bullet once: $notes"
     $description = if (Test-Path -LiteralPath $descriptionOut) { [IO.File]::ReadAllText($descriptionOut) | ConvertFrom-Json } else { '' }
-    Assert-True ($description -ceq ("$heading`n`n### Features`n`n* **Instagram:** First patch line.`n* **Instagram - Hide Meta AI:** Second patch line, carried on.`n`n" +
+    Assert-True ($description -ceq ("$heading`n`n### Features`n`n* First patch line.`n* **Hide Meta AI:** Second patch line, carried on.`n`n" +
             "### Improvements`n`n* **Tooling:** The tooling line.`n`n### Validation`n`nValidation: 5 runtime tests passed locally. All 6 patch tests passed too.")) `
         "The bundle description isn't the version heading, the typed sections and the validation line: $description"
     $run = Invoke-Notes @('--check')
     Assert-True ($run.Exit -eq 0 -and $run.Output -like '*Unreleased: 2 bullets (1 Features, 1 Improvements)*') "The Unreleased check didn't pass: $($run.Output)"
+    # A topic and a leftover Instagram label both pass, and --drop-labels takes the label off that
+    # section alone.
+    Write-Text $changelog $goodChangelog.Replace('* A patch change.', "* **Instagram:** A patch change.`n* **Glass tab bar:** A topic change.")
+    $run = Invoke-Notes @('--check')
+    Assert-True ($run.Exit -eq 0 -and $run.Output -like '*Unreleased: 3 bullets*1 still open with the Instagram label*') `
+        "The check refused a topic or a leftover label, or didn't count the label: $($run.Output)"
+    $run = Invoke-Notes @('--drop-labels')
+    $dropped = [IO.File]::ReadAllText($changelog)
+    Assert-True ($run.Exit -eq 0 -and $dropped.Contains("* A patch change.`n* **Glass tab bar:** A topic change.") -and
+        $dropped.Contains('* **Instagram - Hide Meta AI:**')) "--drop-labels missed Unreleased's label or reached into 0.0.2: $($run.Output)"
     foreach ($case in @(
-            @{ Name = 'an unscoped bullet'; Text = $goodChangelog.Replace('* **Tooling:** The tooling line.', '* The tooling line.'); Said = '*has no scope*' },
-            @{ Name = 'an unknown scope'; Text = $goodChangelog.Replace('**Tooling:** The tooling', '**Docs:** The tooling'); Said = '*unknown scope Docs*' },
-            @{ Name = 'a bare patch name as scope'; Text = $goodChangelog.Replace('**Instagram - Hide Meta AI:**', '**Hide Meta AI:**'); Said = '*unknown scope Hide Meta AI*' },
             @{ Name = 'a bullet outside any type heading'; Text = $goodChangelog.Replace("### Improvements`n`n", ''); Said = '*outside a type sub-heading*' },
             @{ Name = 'an unknown sub-heading'; Text = $goodChangelog.Replace('### Improvements', '### Changes'); Said = '*unknown sub-heading*' },
             @{ Name = 'an em dash'; Text = $goodChangelog.Replace('First patch line.', "First patch line $([char]0x2014) with a dash."); Said = '*dash*' },
@@ -176,6 +185,10 @@ try {
     $run = Invoke-Python $countTool '--root' $countRoot '--description'
     Assert-True ($run.Exit -eq 0 -and $run.Output -like '*Validation: 5 runtime tests passed locally. All 7 patch tests passed too.*') `
         "The counter didn't count test cases the way the release check does: $($run.Output)"
+    # What the notes builder's --validation file holds is stdout, and it wants the one sentence.
+    $sentenceLines = @(& py -3.13 -I $countTool --root $countRoot --description 2>$null | ForEach-Object { "$_" })
+    Assert-True ($sentenceLines.Count -eq 1 -and $sentenceLines[0] -ceq 'Validation: 5 runtime tests passed locally. All 7 patch tests passed too.') `
+        "--description's stdout isn't the one sentence: $($sentenceLines -join ' / ')"
     Write-Results (Join-Path $countRoot 'patches/build/test-results/test/direct') 7 -Skipped 1
     $run = Invoke-Python $countTool '--root' $countRoot
     Assert-True ($run.Exit -eq 1 -and $run.Output -like '*skipped=1*' -and $run.Output -like '*no release can quote it*') `
@@ -345,6 +358,7 @@ try {
     $javaStub = Join-Path $tools 'java-stub.ps1'
     Write-Text $javaStub (@'
 if ($args[0] -eq '-version') { 'openjdk version "21.0.5" 2024-10-15'; exit 0 }
+if ($args -contains '-cp') { Copy-Item -LiteralPath $args[$args.Count - 2] -Destination $args[$args.Count - 1]; exit 0 }
 $values = @{}
 for ($i = 0; $i -lt $args.Count - 1; $i++) { if ($args[$i] -in '-o', '-r') { $values[$args[$i]] = $args[$i + 1] } }
 $apkIn = $args[$args.Count - 1]
@@ -425,9 +439,9 @@ function Get-BuildQueueMask { param([int]$Slot) [System.Diagnostics.Process]::Ge
     foreach ($entry in @($summary.builds)) { $byBuild[$entry.build] = $entry }
     $patchRuns = @(Read-Log | Where-Object { $_ -like 'patch *' })
     Assert-True ($run.Exit -eq 1 -and $patchRuns.Count -eq 3 -and
-        $patchRuns -contains "patch fixtures/instagram-$declared-${declaredCode}.apks forced=0" -and
+        $patchRuns -contains "patch work/$declared-$declaredCode-merged.apk forced=0" -and
         $patchRuns -contains "patch instagram-$declared-${otherCode}/base.apk forced=1" -and
-        $patchRuns -contains 'patch fixtures/instagram-439.0.0.37.89-384510833-apkpure.xapk forced=1') `
+        $patchRuns -contains 'patch work/439.0.0.37.89-384510833-merged.apk forced=1') `
         "The builds weren't patched from the right inputs, forced where undeclared: $($patchRuns -join '; ') $($run.Output)"
     $queueLines = @(Read-Log | Where-Object { $_ -like 'queue *' })
     Assert-True ($queueLines.Count -eq 6 -and @($queueLines | Where-Object { $_ -like 'queue enter hushgram all-builds * release' }).Count -eq 3) `
@@ -484,7 +498,7 @@ function Get-BuildQueueMask { param([int]$Slot) [System.Diagnostics.Process]::Ge
     $run = Invoke-Script $allBuilds (@('-FixtureDir', $fixtures, '-Root', $repo, '-Bundle', $bundle, '-DesktopJar', $otherDesktop, '-Java', $java,
         '-Aapt2', $aapt2, '-OutDir', $out, '-Only', $declaredCode, '-FromGate'))
     Assert-True ($run.Exit -eq 0 -and $run.Output -like '*made with another CLI, so it is patched here*' -and
-        (Read-Log) -contains "patch fixtures/instagram-$declared-${declaredCode}.apks forced=0") "A kept run made with another CLI was read: $($run.Output)"
+        (Read-Log) -contains "patch work/$declared-$declaredCode-merged.apk forced=0") "A kept run made with another CLI was read: $($run.Output)"
     Remove-Item Env:\BUILD_QUEUE_SCRIPT, Env:\HUSHGRAM_ALLOW_RELEASE, Env:\HUSHGRAM_GATE_CACHE
     Write-Host '[release-helpers] all-builds run passed'
 
@@ -494,13 +508,15 @@ function Get-BuildQueueMask { param([int]$Slot) [System.Diagnostics.Process]::Ge
     # release check and a patch run that log what they were asked, and a Gradle wrapper that logs
     # its tasks and leaves a bundle where buildAndroid would. A case can have the wrapper fail,
     # leave no bundle, or rewrite the catalog the way a stale one comes out, or the patch run fail.
-    foreach ($name in @('common.ps1', 'patch-target.ps1', 'build-jobs.ps1', 'gate-evidence.ps1')) {
+    foreach ($name in @('common.ps1', 'patch-target.ps1', 'build-jobs.ps1', 'gate-evidence.ps1', 'instagram-sources.ps1')) {
         Write-Text (Join-Path $repo "scripts/$name") ([IO.File]::ReadAllText((Join-Path $Root "scripts/$name")))
     }
     foreach ($name in @('preflight.ps1', 'release_notes.py', 'stale_tests.py')) {
         Write-Text (Join-Path $repo "scripts/release/$name") ([IO.File]::ReadAllText((Join-Path $releaseDir $name)))
     }
     Write-StaleFixture $repo
+    $censusLedger = Join-Path $repo 'sources/instagram-sources.json'
+    Write-Text $censusLedger "{`"census`":{`"checkedAt`":`"$([datetime]::UtcNow.ToString('yyyy-MM-dd'))`"}}"
     Write-Text (Join-Path $repo 'scripts/validate-release-facts.ps1') @'
 Add-Content -LiteralPath $env:HUSHGRAM_HELPERS_LOG -Value "facts $($args -join ' ')"
 exit 0
@@ -564,8 +580,23 @@ exit [int]$env:HUSHGRAM_HELPERS_GRADLE_EXIT
         $run.Output -like '*every patch on the declared build*') `
         "The preflight didn't run every patch on the declared build with the new bundle and clean up after: $($verify -join '; ') $($run.Output)"
     $run = Invoke-Preflight @('-Version', '0.0.2', '-SkipGradle')
-    Assert-True ($run.Exit -eq 0 -and $run.Output -like '*0.0.2: 3 bullets*' -and @(Read-Log | Where-Object { $_ -like 'gradle *' -or $_ -like 'verify *' }).Count -eq 0) `
+    Assert-True ($run.Exit -eq 0 -and $run.Output -like '*0.0.2: 3 bullets*' -and $run.Output -like '*the source census passed*' -and
+        @(Read-Log | Where-Object { $_ -like 'gradle *' -or $_ -like 'verify *' }).Count -eq 0) `
         "-Version or -SkipGradle didn't do what it says: $($run.Output)"
+    # A release hears about a stale census here, before the gate and the walk. Other runs aren't held to it.
+    Write-Text $censusLedger '{"census":{"checkedAt":"2026-01-01"}}'
+    Invoke-RepoGit -c user.name=SysAdminDoc -c user.email=matt_parker@outlook.com commit -q -am 'old census' | Out-Null
+    $run = Invoke-Preflight @('-Version', '0.0.2')
+    Assert-True ($run.Exit -eq 1 -and $run.Output -like '*refused after*the source census*days old*audit-instagram-sources.ps1*' -and
+        @(Read-Log | Where-Object { $_ -like 'gradle *' -or $_ -like 'verify *' }).Count -eq 0) `
+        "A release's preflight went on with a stale source census: $($run.Output)"
+    $run = Invoke-Preflight @('-SkipGradle')
+    Assert-True ($run.Exit -eq 0 -and $run.Output -notlike '*the source census*') "A preflight that isn't a release's read the census: $($run.Output)"
+    Write-Text $censusLedger 'not a ledger'
+    Invoke-RepoGit -c user.name=SysAdminDoc -c user.email=matt_parker@outlook.com commit -q -am 'broken ledger' | Out-Null
+    $run = Invoke-Preflight @('-Version', '0.0.2', '-SkipGradle')
+    Assert-True ($run.Exit -eq 1 -and $run.Output -like '*refused after*the source census*not JSON*') "A release's preflight read a broken ledger: $($run.Output)"
+    Invoke-RepoGit reset -q --hard $preflightHead | Out-Null
 
     # Each refusal stops the run there, so nothing after it runs.
     $emptyFixtures = Join-Path $scratch 'empty-fixtures'
@@ -588,14 +619,14 @@ exit [int]$env:HUSHGRAM_HELPERS_GRADLE_EXIT
     Assert-True ($run.Exit -eq 1 -and $run.Output -like "*verify-all-patches.ps1 exited 1 on $declared*" -and
         $verifyDir -and -not (Test-Path -LiteralPath $verifyDir)) `
         "A failed patch run passed the preflight or left its work folder: $($run.Output)"
-    Write-Text (Join-Path $repo 'CHANGELOG.md') $goodChangelog.Replace('* **Tooling:** A script change.', '* A script change.')
+    Write-Text (Join-Path $repo 'CHANGELOG.md') $goodChangelog.Replace('* **Tooling:** A script change.', '* **Tooling:** A script change - with a dash.')
     $run = Invoke-Preflight @('-SkipGradle')
     Assert-True ($run.Exit -eq 1 -and $run.Output -like '*uncommitted changes to tracked files*' -and (Read-Log).Count -eq 0) `
         "The preflight ran on a checkout with uncommitted changes: $($run.Output)"
-    Invoke-RepoGit -c user.name=SysAdminDoc -c user.email=matt_parker@outlook.com commit -q -am 'unscoped bullet' | Out-Null
+    Invoke-RepoGit -c user.name=SysAdminDoc -c user.email=matt_parker@outlook.com commit -q -am 'dashed bullet' | Out-Null
     $run = Invoke-Preflight @('-SkipGradle')
-    Assert-True ($run.Exit -eq 1 -and $run.Output -like '*has no scope*' -and $run.Output -like '*refused after*the CHANGELOG section for the notes*') `
-        "An unscoped CHANGELOG bullet passed the preflight: $($run.Output)"
+    Assert-True ($run.Exit -eq 1 -and $run.Output -like '*dash*' -and $run.Output -like '*refused after*the CHANGELOG section for the notes*') `
+        "A CHANGELOG bullet with a dash passed the preflight: $($run.Output)"
     Invoke-RepoGit reset -q --hard $preflightHead | Out-Null
     $repoTest = Join-Path $repo "extensions/instagram/src/test/java/$settingsPackage/FixtureTest.java"
     Write-Text $repoTest ([IO.File]::ReadAllText($repoTest).Replace('void keepsItsName()', 'void keptItsName()'))

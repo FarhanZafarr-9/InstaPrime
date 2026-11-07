@@ -87,6 +87,7 @@ public class TabBarAndBatterySettingsTest {
         Settings.GLASS_TAB_BAR_REFRACT.resetToDefault();
         Settings.GLASS_TAB_BAR_HAPTIC_STYLE.resetToDefault();
         Settings.GLASS_TAB_BAR_OPACITY.resetToDefault();
+        Settings.GLASS_TAB_BAR_REFRACT_STRENGTH.resetToDefault();
         Settings.GLASS_TAB_BAR_HEIGHT.resetToDefault();
         Settings.GLASS_TAB_BAR_CORNERS.resetToDefault();
         Settings.GLASS_TAB_BAR_LIFT.resetToDefault();
@@ -155,13 +156,16 @@ public class TabBarAndBatterySettingsTest {
         assertTrue(ConfigurationBackup.eligible().containsKey(Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key));
     }
 
-    /** Tab bar opacity (#391) is a slider in steps of 5%, from see-through to past solid, starting on today's tint. */
+    /** Tint intensity (#391) is a slider in steps of 5%, from see-through to past solid, starting on today's tint. */
     @Test public void opacityIsASliderAndHeightAListBothStartingOnTodaysLookAndBackedUp() throws Exception {
         open(PatchFamily.GLASS_TAB_BAR);
         Preference opacityFound = row(Settings.GLASS_TAB_BAR_OPACITY.key);
         assertTrue(opacityFound instanceof HushgramPreferenceFragment.SliderRow);
         HushgramPreferenceFragment.SliderRow opacity = (HushgramPreferenceFragment.SliderRow) opacityFound;
-        assertEquals("Tab bar opacity", String.valueOf(opacity.getTitle()));
+        assertEquals("Tint intensity", String.valueOf(opacity.getTitle()));
+        assertEquals("Turn on Glass tab bar to use this slider.", String.valueOf(opacity.getSummary()));
+        ((SwitchPreference) row(Settings.GLASS_TAB_BAR.key)).setChecked(true);
+        ShadowLooper.idleMainLooper();
         assertEquals("100% (standard)", String.valueOf(opacity.getSummary()));
         assertEquals("Tab bar", String.valueOf(sectionOf(page.getPreferenceScreen(), opacity).getTitle()));
         assertFalse("a change shows on the bar at once", Settings.GLASS_TAB_BAR_OPACITY.rebootApp);
@@ -255,13 +259,16 @@ public class TabBarAndBatterySettingsTest {
             if (Settings.GLASS_TAB_BAR_BLUR_RADIUS.key.equals(key)) strengthAt = i;
         }
         assertEquals("right after Blur behind the tab bar", blurAt + 1, strengthAt);
-        assertEquals("18 dp (standard)", String.valueOf(strength.getSummary()));
+        assertEquals("Turn on Glass tab bar to use this slider.", String.valueOf(strength.getSummary()));
+        ((SwitchPreference) row(Settings.GLASS_TAB_BAR.key)).setChecked(true);
+        ShadowLooper.idleMainLooper();
+        assertEquals("8 dp (standard)", String.valueOf(strength.getSummary()));
         assertFalse("the row opens no dialog, the slider is the control", strength.isSelectable());
         assertFalse(Settings.GLASS_TAB_BAR_BLUR_RADIUS.rebootApp);
 
         SeekBar slider = sliderOf(strength);
         assertEquals("2 dp to 48 dp a notch at a time", 46, slider.getMax());
-        assertEquals(16, slider.getProgress());
+        assertEquals(6, slider.getProgress());
         assertEquals("Blur strength", String.valueOf(slider.getContentDescription()));
         SeekBar.OnSeekBarChangeListener listener = ((ShadowSeekBar) org.robolectric.Shadows.shadowOf(slider)).getOnSeekBarChangeListener();
         assertNotNull(listener);
@@ -271,7 +278,7 @@ public class TabBarAndBatterySettingsTest {
         listener.onProgressChanged(slider, 28, true);
         TextView summary = (TextView) ((View) slider.getParent()).findViewById(android.R.id.summary);
         assertEquals("30 dp", String.valueOf(summary.getText()));
-        assertEquals("not saved mid-drag", 18, (int) Settings.GLASS_TAB_BAR_BLUR_RADIUS.savedValue());
+        assertEquals("not saved mid-drag", 8, (int) Settings.GLASS_TAB_BAR_BLUR_RADIUS.savedValue());
         listener.onStopTrackingTouch(slider);
         ShadowLooper.idleMainLooper();
         assertEquals(30, (int) Settings.GLASS_TAB_BAR_BLUR_RADIUS.savedValue());
@@ -373,7 +380,7 @@ public class TabBarAndBatterySettingsTest {
         for (CharSequence value : reels.getEntryValues()) values.add(String.valueOf(value));
         assertEquals(Arrays.asList("NEVER", "TWO_SECONDS", "THREE_SECONDS", "FIVE_SECONDS", "EIGHT_SECONDS"), values);
         assertEquals("NEVER", reels.getValue());
-        assertEquals("Never. Pick a time and the pill slides away once a reel has played that long without a touch. "
+        assertEquals("Never. Pick a time and the tab bar slides away once a reel has played that long without a touch. "
                 + "Restart Instagram after changing it.", String.valueOf(reels.getSummary()));
         assertFalse("nothing owed before a pick",
                 AbstractPreferenceFragment.restartPending.contains(Settings.GLASS_TAB_BAR_REELS_HIDE.key));
@@ -382,7 +389,7 @@ public class TabBarAndBatterySettingsTest {
         ShadowLooper.idleMainLooper();
         assertEquals(GlassReelsHide.THREE_SECONDS, Settings.GLASS_TAB_BAR_REELS_HIDE.savedValue());
         assertEquals(3_000L, Settings.GLASS_TAB_BAR_REELS_HIDE.savedValue().millis);
-        assertEquals("On Reels, the pill slides away after 3 seconds without a touch. Tap the bottom edge of the screen, "
+        assertEquals("On Reels, the tab bar slides away after 3 seconds without a touch. Tap the bottom edge of the screen, "
                 + "change tab or press Back to bring it back. Restart Instagram after changing it.",
                 String.valueOf(reels.getSummary()));
         assertTrue(AbstractPreferenceFragment.restartPending.contains(Settings.GLASS_TAB_BAR_REELS_HIDE.key));
@@ -396,14 +403,15 @@ public class TabBarAndBatterySettingsTest {
                 AbstractPreferenceFragment.restartPending.contains(Settings.GLASS_TAB_BAR_REELS_HIDE.key));
     }
 
-    /** It goes by Glass tab bar alone. The scroll switch above it has no say either way. */
-    @Test public void hideTheTabBarOnReelsGoesByTheGlassBarNotTheScrollSwitch() {
+    /** It stands on its own: Instagram's own bar slides away too (#343), and the scroll switch above it has no say. */
+    @Test public void hideTheTabBarOnReelsNeedsNeitherTheGlassBarNorTheScrollSwitch() {
         Settings.GLASS_TAB_BAR.save(true);
         Settings.GLASS_TAB_BAR_HIDE_ON_SCROLL.save(false);
-        assertTrue("it needs the glass bar, not the scroll switch", Settings.GLASS_TAB_BAR_REELS_HIDE.isAvailable());
+        assertTrue(Settings.GLASS_TAB_BAR_REELS_HIDE.isAvailable());
         Settings.GLASS_TAB_BAR.save(false);
+        assertTrue("Instagram's own bar slides away too", Settings.GLASS_TAB_BAR_REELS_HIDE.isAvailable());
         Settings.GLASS_TAB_BAR_HIDE_ON_SCROLL.save(true);
-        assertFalse("no glass bar, nothing to slide away", Settings.GLASS_TAB_BAR_REELS_HIDE.isAvailable());
+        assertTrue(Settings.GLASS_TAB_BAR_REELS_HIDE.isAvailable());
     }
 
     /**
@@ -459,21 +467,23 @@ public class TabBarAndBatterySettingsTest {
         assertEquals("Liquid glass look", String.valueOf(liquid.getTitle()));
         assertEquals("Rounds the pill and its highlight and puts Search in a glass circle of its own. Scrolling a list "
                 + "down shrinks the bar to the tab you're on and Search, unless Hide the tab bar as you scroll is on. "
-                + "Restart Instagram after changing it.", String.valueOf(liquid.getSummary()));
+                + "Restart Instagram after changing it. Can slow down older phones.", String.valueOf(liquid.getSummary()));
         assertFalse(liquid.isChecked());
         assertFalse(Settings.GLASS_TAB_BAR_LIQUID.defaultValue);
         assertTrue(Settings.GLASS_TAB_BAR_LIQUID.rebootApp);
         PreferenceGroup section = sectionOf(page.getPreferenceScreen(), liquid);
         assertEquals("Tab bar", String.valueOf(section.getTitle()));
         int blurAt = -1;
+        int tintAt = -1;
         int liquidAt = -1;
         for (int i = 0; i < section.getPreferenceCount(); i++) {
             String key = section.getPreference(i).getKey();
             if (Settings.GLASS_TAB_BAR_BLUR_RADIUS.key.equals(key)) blurAt = i;
+            if (Settings.GLASS_TAB_BAR_OPACITY.key.equals(key)) tintAt = i;
             if (Settings.GLASS_TAB_BAR_LIQUID.key.equals(key)) liquidAt = i;
         }
-        assertTrue(blurAt >= 0);
-        assertEquals("right after Blur strength, which follows Blur behind the tab bar", blurAt + 1, liquidAt);
+        assertEquals("Tint right after Blur strength, so both share a screen with the preview", blurAt + 1, tintAt);
+        assertEquals("right after Tint", tintAt + 1, liquidAt);
         assertTrue(ConfigurationBackup.eligible().containsKey(Settings.GLASS_TAB_BAR_LIQUID.key));
 
         Settings.GLASS_TAB_BAR.save(false);
@@ -490,8 +500,8 @@ public class TabBarAndBatterySettingsTest {
     }
 
     /**
-     * Keep the pill full size (#256) is a switch right after the liquid look, off to start, offered while the
-     * liquid look is on, backed up, and read as the bar is built, so it asks for a restart.
+     * Keep the pill full size (#256) is a switch right after the liquid look's rim and its slider, off to start,
+     * offered while the liquid look is on, backed up, and read as the bar is built, so it asks for a restart.
      */
     @Test public void keepThePillFullSizeSitsUnderTheLiquidLookAndStartsOff() throws Exception {
         open(PatchFamily.GLASS_TAB_BAR);
@@ -504,15 +514,15 @@ public class TabBarAndBatterySettingsTest {
         assertFalse(Settings.GLASS_TAB_BAR_KEEP_SIZE.defaultValue);
         assertTrue(Settings.GLASS_TAB_BAR_KEEP_SIZE.rebootApp);
         PreferenceGroup section = sectionOf(page.getPreferenceScreen(), keep);
-        int liquidAt = -1;
+        int strengthAt = -1;
         int keepAt = -1;
         for (int i = 0; i < section.getPreferenceCount(); i++) {
             String key = section.getPreference(i).getKey();
-            if (Settings.GLASS_TAB_BAR_LIQUID.key.equals(key)) liquidAt = i;
+            if (Settings.GLASS_TAB_BAR_REFRACT_STRENGTH.key.equals(key)) strengthAt = i;
             if (Settings.GLASS_TAB_BAR_KEEP_SIZE.key.equals(key)) keepAt = i;
         }
-        assertTrue(liquidAt >= 0);
-        assertEquals("right after Liquid glass look", liquidAt + 1, keepAt);
+        assertTrue(strengthAt >= 0);
+        assertEquals("right after the refraction slider", strengthAt + 1, keepAt);
         assertTrue(ConfigurationBackup.eligible().containsKey(Settings.GLASS_TAB_BAR_KEEP_SIZE.key));
 
         assertFalse("no liquid look, nothing to keep", Settings.GLASS_TAB_BAR_KEEP_SIZE.isAvailable());
@@ -524,7 +534,7 @@ public class TabBarAndBatterySettingsTest {
     }
 
     /**
-     * Bend light at the edges (#369) is a switch right after Keep the pill full size, off to start, offered
+     * Bend light at the edges (#369) is a switch right after the liquid look, off to start, offered
      * while the liquid look is on, backed up, and read as the bar is built, so it asks for a restart.
      */
     @Test public void bendLightAtTheEdgesSitsUnderTheLiquidLookAndStartsOff() throws Exception {
@@ -533,21 +543,21 @@ public class TabBarAndBatterySettingsTest {
         assertNotNull(refract);
         assertEquals("Bend light at the edges", String.valueOf(refract.getTitle()));
         assertEquals("The liquid pill's rim bends what's behind it like real glass, so what passes under the edge "
-                + "shows upside down. Android 13 and newer. Restart Instagram after changing it.",
+                + "shows upside down. Android 13 and newer. Restart Instagram after changing it. Can slow down older phones.",
                 String.valueOf(refract.getSummary()));
         assertFalse(refract.isChecked());
         assertFalse(Settings.GLASS_TAB_BAR_REFRACT.defaultValue);
         assertTrue(Settings.GLASS_TAB_BAR_REFRACT.rebootApp);
         PreferenceGroup section = sectionOf(page.getPreferenceScreen(), refract);
-        int keepAt = -1;
+        int liquidAt = -1;
         int refractAt = -1;
         for (int i = 0; i < section.getPreferenceCount(); i++) {
             String key = section.getPreference(i).getKey();
-            if (Settings.GLASS_TAB_BAR_KEEP_SIZE.key.equals(key)) keepAt = i;
+            if (Settings.GLASS_TAB_BAR_LIQUID.key.equals(key)) liquidAt = i;
             if (Settings.GLASS_TAB_BAR_REFRACT.key.equals(key)) refractAt = i;
         }
-        assertTrue(keepAt >= 0);
-        assertEquals("right after Keep the pill full size", keepAt + 1, refractAt);
+        assertTrue(liquidAt >= 0);
+        assertEquals("right after Liquid glass look", liquidAt + 1, refractAt);
         assertTrue(ConfigurationBackup.eligible().containsKey(Settings.GLASS_TAB_BAR_REFRACT.key));
 
         assertFalse("no liquid look, no rim", Settings.GLASS_TAB_BAR_REFRACT.isAvailable());

@@ -1,6 +1,6 @@
 /*
  * Copyright 2026 InstaPrime contributors
- * Based on HushGram: https://github.com/SysAdminDoc/HushGram
+ * HushGram foundation: https://github.com/SysAdminDoc/HushGram
  */
 package app.morphe.patches.instagram.misc.icon
 

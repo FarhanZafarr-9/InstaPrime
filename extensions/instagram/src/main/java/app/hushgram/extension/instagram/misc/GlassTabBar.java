@@ -52,9 +52,11 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayDeque;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+import app.hushgram.extension.instagram.feed.AmbientLight;
 import app.hushgram.extension.instagram.reels.FullScreenBars;
 import app.hushgram.extension.instagram.reels.ReelBlurBars;
 import app.hushgram.extension.instagram.settings.FamilyNames;
@@ -223,14 +225,14 @@ public final class GlassTabBar {
     }
 
     /**
-     * The slot kept under a Reels viewer for a pill [pill] tall, its lift included ({@link #reelsMargin}). A
-     * pill the Reels auto-hide ({@link GlassReelsHide}) has slid all the way off, [slidOff], gives its own
-     * height to the reel, since the slot kept under it was a black band where the pill had been (#335). The
-     * navigation bar's room under it stays, so the seek bar is still clear of the gesture handle (#221). The
-     * pill's height comes back as it starts to return.
+     * Whether the Reels viewers run behind the pill: Run Reels behind the tab bar ([behind], #372), or a
+     * Reels auto-hide ([hide], {@link GlassReelsHide}) that slides the pill away. A slot kept under the
+     * reel while the pill was away was a black band (#335), and a reel given the slot back each time the
+     * pill slid off grew and shrank with it, the video jumping on every slide (#466, #467). Behind the
+     * pill the reel keeps one size and only its caption, buttons and seek bar keep clear of the slot.
      */
-    static int reelsSlot(int pill, boolean slidOff) {
-        return reelsMargin(slidOff ? 0 : pill);
+    static boolean reelsRunBehind(boolean behind, @Nullable GlassReelsHide hide) {
+        return behind || (hide != null && hide != GlassReelsHide.NEVER);
     }
 
     /**
@@ -606,6 +608,29 @@ public final class GlassTabBar {
     }
 
     /**
+     * The story viewer under [root] that {@link #storyOnTop shows on top}, or null. Every viewer in the
+     * tree is looked at, not just the first one with the id, since Instagram can keep an old viewer there,
+     * hidden, ahead of the one that shows (#450).
+     */
+    @Nullable
+    static View storyShownOnTop(View root) {
+        int id = id(root.getContext(), STORY_ROOT);
+        if (id == 0) return null;
+        ArrayDeque<View> todo = new ArrayDeque<>();
+        todo.add(root);
+        while (!todo.isEmpty()) {
+            View view = todo.poll();
+            if (view.getVisibility() != View.VISIBLE) continue;
+            if (view.getId() == id && storyOnTop(view)) return view;
+            if (view instanceof ViewGroup) {
+                ViewGroup group = (ViewGroup) view;
+                for (int i = 0, n = group.getChildCount(); i < n; i++) todo.add(group.getChildAt(i));
+            }
+        }
+        return null;
+    }
+
+    /**
      * Proportions of the floating tab bar on the iPhone: the pill is about 90% of the screen's width
      * (5% left clear each side, so it floats without touching the edges), with its tabs 7dp in from its
      * ends. It's as tall as the bar Instagram laid out, less a gap above and under. A wide screen keeps
@@ -621,8 +646,11 @@ public final class GlassTabBar {
      * and the bottom of that height.
      */
     static final int FIT_GAP_DP = 1;
-    /** The blur radius the glass has always drawn, and where its slider starts (#391). */
-    public static final int BLUR_DP = 18;
+    /**
+     * Where the glass's blur slider starts (#391). Light enough that a post's thin white icons under the
+     * pill still read as soft shapes. The 18 dp it started on before smeared them into a flat tint (#289).
+     */
+    public static final int BLUR_DP = 8;
     /** The selected tab's capsule sits 4dp in from the pill's top and bottom and stands 4dp past its slot. */
     static final int HIGHLIGHT_INSET_DP = 4;
     static final int HIGHLIGHT_GROW_DP = 4;
@@ -656,6 +684,12 @@ public final class GlassTabBar {
     static final long BLUR_REST_MS = 2000;
     /** How long the capsule takes to slide to a new tab. */
     static final long SLIDE_MS = 280;
+    /** How long the liquid look's bubble springs to a new tab before it rests there (#289). Never under {@link #SLIDE_MS}. */
+    static final long SPRING_MS = 600;
+    /** How fast the bubble's spring swings, in radians a second: one swing in 0.4 s, about what iOS springs use. */
+    static final double SPRING_SPEED = 2 * Math.PI / 0.4;
+    /** How much of each swing the spring loses. This much carries the bubble about 7 percent past its tab. */
+    static final double SPRING_DAMPING = 0.65;
     /** How long a missing shadow or content view stays unsearched before the parent is walked for it again. */
     static final long RESEARCH_MS = 500;
     /**
@@ -949,6 +983,17 @@ public final class GlassTabBar {
      * around a reel has one ({@link ReelBlurBars#drawStrip}, #258). Swapped in tests.
      */
     static volatile StripPainter strip = ReelBlurBars::drawStrip;
+
+    /** Paints over the bar's own colour round a docked pill. */
+    interface BarPainter {
+        void paint(Canvas canvas, View bar);
+    }
+
+    /**
+     * What a docked pill shows over its bar's colour on Reels with no strip: the reel's ambient light
+     * running on from its bottom edge ({@link AmbientLight#drawUnderPill}, #487). Swapped in tests.
+     */
+    static volatile BarPainter glow = AmbientLight::drawUnderPill;
 
     /** The room a floating pill makes under itself for the navigation bar: the height Instagram was answered 0 for. */
     static int navRoom(boolean floating) {
@@ -1684,14 +1729,17 @@ public final class GlassTabBar {
         boolean overAStory() {
             View root = bar.getRootView();
             View story = storyRoot.get();
-            if (story == null || story.getRootView() != root) {
-                long now = SystemClock.uptimeMillis();
-                if (story == null && now - storyLookedAt < SHEET_LOOK_MS) return false;
-                storyLookedAt = now;
-                story = find(root, STORY_ROOT);
-                storyRoot = new WeakReference<>(story);
-            }
-            return storyOnTop(story);
+            boolean here = story != null && story.getRootView() == root;
+            if (here && storyOnTop(story)) return true;
+            // A viewer that left the window is looked for again at once. One still here but not on top
+            // may be an old one Instagram kept, hidden, while a new one shows (#450), so that's looked
+            // past as often as a missing one is.
+            long now = SystemClock.uptimeMillis();
+            if ((story == null || here) && now - storyLookedAt < SHEET_LOOK_MS) return false;
+            storyLookedAt = now;
+            View shown = storyShownOnTop(root);
+            if (shown != null || !here) storyRoot = new WeakReference<>(shown);
+            return shown != null;
         }
 
         /**
@@ -1894,15 +1942,15 @@ public final class GlassTabBar {
          * {@link #REELS_LOOK_MS}, and at once when the margin they want changes, so a viewer is never left
          * a frame at a size Instagram's own layout just gave it. Where Instagram hides the bar outside the
          * Reels tab, as over a reel opened from a feed post, the viewers get Instagram's 0 back
-         * ({@link #reelsKeepTheSlot}, #347). Where an auto-hide has the pill all the way off, the reel runs
-         * down to the gesture handle while the pill is away ({@link #reelsSlot}, #335).
+         * ({@link #reelsKeepTheSlot}, #347). With a Reels auto-hide the reel runs behind the pill, so it
+         * neither leaves a band while the pill is away nor moves as it slides ({@link #reelsRunBehind}).
          */
         private void keepReelsAboveTheSlot(View holder, long now) {
             if (originalBarHeight <= 0) return;
             boolean keep = reelsKeepTheSlot(bar, id(holder.getContext(), REELS_TAB));
-            int slot = reelsSlot(barHeightPx(height, originalBarHeight, density) + lift,
-                    scrollHide != null && scrollHide.isOffScreen());
-            boolean behind = Settings.GLASS_TAB_BAR_REELS_BEHIND.get();
+            int slot = reelsMargin(barHeightPx(height, originalBarHeight, density) + lift);
+            boolean behind = reelsRunBehind(Settings.GLASS_TAB_BAR_REELS_BEHIND.get(),
+                    Settings.GLASS_TAB_BAR_REELS_HIDE.get());
             int wanted = reelsViewerMargin(keep, behind, slot);
             int bandLift = reelsBandLift(keep, behind, slot);
             if (wanted == reelsWanted && bandLift == reelsBandLift && now - reelsLookedAt < REELS_LOOK_MS) return;
@@ -2402,8 +2450,8 @@ public final class GlassTabBar {
 
             /**
              * What shows round the pill: over Instagram's bar, the reel blurred while Blur the bars around
-             * a reel has one ({@link #strip}, #258) or else the bar's own colour, and nothing round a
-             * floating pill.
+             * a reel has one ({@link #strip}, #258) or else the bar's own colour with a reel's ambient light
+             * over it ({@link #glow}, #487), and nothing round a floating pill.
              */
             private void underlay(@NonNull Canvas canvas) {
                 // The content stops above the bar, so something has to fill round the pill. A floating
@@ -2411,6 +2459,7 @@ public final class GlassTabBar {
                 if (!floating && !strip.paint(canvas, 0, 0, bar.getWidth(), bar.getHeight())) {
                     fill.setColor(base);
                     canvas.drawRect(0, 0, bar.getWidth(), bar.getHeight(), fill);
+                    glow.paint(canvas, bar);
                 }
             }
 
@@ -2440,8 +2489,9 @@ public final class GlassTabBar {
              * The lighter capsule behind the selected tab, kept inside [within] with corners of [corner] and drawn
              * at [share] of its strength. When the tab changes it slides to the new one over {@link #SLIDE_MS},
              * eased out, timed by the frame clock rather than by counting frames, so a dropped frame doesn't make
-             * it jump and it takes as long at 120 Hz as at 60. Below full strength, on the way to the liquid look's
-             * compact row, it stays on the tab as the tab moves.
+             * it jump and it takes as long at 120 Hz as at 60. The liquid look's bubble springs there instead, over
+             * {@link #SPRING_MS}, a little past the tab and back, and never out of the pill. Below full strength,
+             * on the way to the liquid look's compact row, it stays on the tab as the tab moves.
              */
             private void drawCapsule(Canvas canvas, RectF within, float corner, float share) {
                 View selected = selectedTab();
@@ -2457,13 +2507,13 @@ public final class GlassTabBar {
                     float width = targetRight - targetLeft;
                     fromLeft = nowLeft = toLeft = followLeft(dragX, width, rect.left + inset, rect.right - inset);
                     fromRight = nowRight = toRight = toLeft + width;
-                    slideStart = now - SLIDE_MS;
+                    slideStart = now - SPRING_MS;
                     tickedThisSlide = false;
                     bubbleNow = bubbleFrom = 1f + BUBBLE_SWELL;
                 } else if (Float.isNaN(fromLeft) || share < 1f) {
                     fromLeft = nowLeft = toLeft = targetLeft;
                     fromRight = nowRight = toRight = targetRight;
-                    slideStart = now - SLIDE_MS;
+                    slideStart = now - SPRING_MS;
                     bubbleNow = bubbleFrom = 1f;
                 } else if (Math.abs(targetLeft - toLeft) > 0.5f || Math.abs(targetRight - toRight) > 0.5f) {
                     tickedThisSlide = false;
@@ -2474,13 +2524,20 @@ public final class GlassTabBar {
                     slideStart = slideStartAt(now);
                     bubbleFrom = bubbleNow;
                 }
-                float progress = slideProgress(now - slideStart);
                 boolean bubble = liquidNow() && share > 0f;
-                if (Float.isNaN(dragX)) bubbleNow = bubble ? bubbleScale(now - slideStart, bubbleFrom) : 1f;
+                long elapsed = now - slideStart;
+                float progress = bubble ? springProgress(elapsed) : slideProgress(elapsed);
+                if (Float.isNaN(dragX)) bubbleNow = bubble ? bubbleScale(elapsed, bubbleFrom) : 1f;
                 else if (!bubble) bubbleNow = bubbleFrom = 1f;
                 nowLeft = fromLeft + (toLeft - fromLeft) * progress;
                 nowRight = fromRight + (toRight - fromRight) * progress;
-                capsule.set(nowLeft, within.top + inset, nowRight, within.bottom - inset);
+                if (progress > 1f) {
+                    // Past the tab, on the spring's way back: the bubble squashes against the pill's end rather than leave it.
+                    capsule.set(Math.max(nowLeft, within.left + inset), within.top + inset,
+                            Math.min(nowRight, within.right - inset), within.bottom - inset);
+                } else {
+                    capsule.set(nowLeft, within.top + inset, nowRight, within.bottom - inset);
+                }
                 tick((nowLeft + nowRight) / 2f);
                 int color = highlight(base);
                 if (share < 1f) color = (color & 0x00ffffff) | (scaledAlpha(Color.alpha(color), Math.max(0f, share)) << 24);
@@ -2494,7 +2551,7 @@ public final class GlassTabBar {
                 fill.setColor(color);
                 if (share > 0f) canvas.drawRoundRect(capsule, corner, corner, fill);
                 if (bubble) paintBubble(canvas, corner, share);
-                if (progress < 1f) invalidateSelf();
+                if (elapsed < (bubble ? SPRING_MS : SLIDE_MS)) invalidateSelf();
             }
 
             /**
@@ -2923,6 +2980,20 @@ public final class GlassTabBar {
         return 1f - rest * rest * rest;
     }
 
+    /**
+     * How far the liquid look's bubble has got through a spring that started [elapsed] ms ago (#289): a damped
+     * spring's way from 0 to 1, going a little over 1 and coming back, and exactly 1 once {@link #SPRING_MS}
+     * has passed, by when it's close enough that the last step doesn't show.
+     */
+    static float springProgress(long elapsed) {
+        if (elapsed >= SPRING_MS) return 1f;
+        if (elapsed <= 0) return 0f;
+        double t = elapsed / 1000d;
+        double fade = SPRING_DAMPING * SPRING_SPEED;
+        double swing = SPRING_SPEED * Math.sqrt(1d - SPRING_DAMPING * SPRING_DAMPING);
+        return (float) (1d - Math.exp(-fade * t) * (Math.cos(swing * t) + fade / swing * Math.sin(swing * t)));
+    }
+
     /** How much larger the liquid look's bubble is while it moves between tabs, and under a finger (#289). */
     static final float BUBBLE_SWELL = 0.08f;
 
@@ -2949,12 +3020,12 @@ public final class GlassTabBar {
     }
 
     /**
-     * When a slide that begins now counts as having started: now, or {@link #SLIDE_MS} ago when the
+     * When a slide that begins now counts as having started: now, or {@link #SPRING_MS} ago when the
      * phone's animations are off (Remove animations under accessibility, or an animator scale of 0),
      * so the capsule lands on the new tab in one frame instead of sliding there.
      */
     static long slideStartAt(long now) {
-        return animationsOn() ? now : now - SLIDE_MS;
+        return animationsOn() ? now : now - SPRING_MS;
     }
 
     @Nullable static Boolean animationsOnForTests;

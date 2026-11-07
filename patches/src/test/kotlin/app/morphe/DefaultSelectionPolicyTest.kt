@@ -73,7 +73,7 @@ class DefaultSelectionPolicyTest {
     fun `every description says where its switch is or that there isn't one`() {
         val unexplained = shippedPatches().filter { patch ->
             val description = patch.get("description").asString
-            "HushGram settings" !in description && "no switch" !in description
+            "HushGram settings" !in description && "InstaPrime settings" !in description && "no switch" !in description
         }.map { it.get("name").asString }
         assertEquals("a description that doesn't say where its switch is", emptyList<String>(), unexplained.sorted())
     }

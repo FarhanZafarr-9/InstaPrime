@@ -8,7 +8,7 @@ package app.hushgram.extension.instagram.direct;
  * Instagram's chats, read and written for a chat marked read by hand. Instagram's names change
  * with every release, so none is named here: each method below answers null or does nothing as
  * built, and the "Read messages without the seen receipt" patch writes its body at patch time
- * ({@link #accountId} is written by "Lock your messages" too), as
+ * ({@link #accountId} is written by "Lock your messages" and "Preview chats" too), as
  * the call or field read it finds in Instagram's own handler for marking a chat read, in its
  * handler that sends a chat's seen receipt, in its chat store, or in the summary its inbox rows
  * are drawn from. A method whose body wasn't written answers null, and
@@ -24,8 +24,8 @@ public final class InstagramChats {
 
     /**
      * The id of the account a session is signed in to, as the session's own getUserId() answers it.
-     * Both "Lock your messages" and "Read messages without the seen receipt" need it, so whichever
-     * of them is in the build writes this body, once, and the other leaves it as written.
+     * "Lock your messages", "Read messages without the seen receipt" and "Preview chats" need it, so
+     * whichever of them gets there first writes this body, once, and the others leave it as written.
      */
     public static String accountId(Object session) {
         return null;
@@ -105,5 +105,29 @@ public final class InstagramChats {
      */
     public static String newestMessage(Object thread) {
         return null;
+    }
+
+    /** The account's own cursor in a chat, as Instagram's reader of it keeps it while it works out the New Messages divider. */
+    public static Object cursorOf(Object reader) {
+        return null;
+    }
+
+    /** The session of the account that reader is for. */
+    public static Object cursorSession(Object reader) {
+        return null;
+    }
+
+    /** The items of the chat [key] names that the reader walks, a List, or null when the chat isn't loaded. */
+    public static Object cursorItems(Object reader, Object key) {
+        return null;
+    }
+
+    /** The id of the item a cursor points at. */
+    public static String cursorItem(Object cursor) {
+        return null;
+    }
+
+    /** Moves a cursor to an item, by its id. */
+    public static void moveCursor(Object cursor, String item) {
     }
 }

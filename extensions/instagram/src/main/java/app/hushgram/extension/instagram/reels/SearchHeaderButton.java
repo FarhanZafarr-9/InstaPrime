@@ -57,7 +57,7 @@ import app.hushgram.extension.shared.settings.preference.AbstractPreferenceFragm
  * toast and count it. The patch writes {@link #paging} to tell.
  *
  * <p>With the switch off or HushGram paused, no button is added and one left from before is taken
- * out at the next draw. A tap while paused does nothing. Nothing in here throws.
+ * out at the next draw or when settings close. A tap while paused does nothing. Nothing in here throws.
  */
 public final class SearchHeaderButton {
     private SearchHeaderButton() { }
@@ -130,10 +130,10 @@ public final class SearchHeaderButton {
                 // A toast shows two lines at most on Android 12 and newer, so it says what to do and stops.
                 // Hide the Search tab turned off since Instagram started still has Search off the bar.
                 Utils.showToastLong(Settings.HIDE_SEARCH_TAB.get()
-                        ? L10n.t("To open Search here, turn off Hide the Search tab and restart.")
+                        ? L10n.t("Turn off Hide the Search tab and restart.")
                         : AbstractPreferenceFragment.restartPending.contains(Settings.HIDE_SEARCH_TAB.key)
                         ? L10n.t("Restart Instagram to bring Search back to your tab bar.")
-                        : L10n.t("Search isn't on your tab bar, so this button can't open it here."));
+                        : L10n.t("This button needs Search on your tab bar."));
                 return;
             }
             int opened;

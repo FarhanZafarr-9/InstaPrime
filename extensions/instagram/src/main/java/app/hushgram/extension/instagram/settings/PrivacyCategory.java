@@ -58,7 +58,7 @@ final class PrivacyCategory {
         if (build.contains(PatchFamily.EXTERNAL_BROWSER)) {
             privacy.add(toggle(context, Settings.OPEN_LINKS_EXTERNALLY, L10n.t("Open links in external browser"),
                     L10n.t("Web links you tap open in your usual browser, without Instagram's click tracker. "
-                            + "Instagram pages and ads still open in the app.")));
+                            + "Ads and Meta's own sites (Instagram, Facebook, Messenger, Threads) still open in the app.")));
         }
         if (build.contains(PatchFamily.SPOOF_LOCATION)) {
             privacy.add(toggle(context, Settings.SPOOF_LOCATION, L10n.t("Spoof location"),
@@ -77,11 +77,16 @@ final class PrivacyCategory {
                     L10n.t("The screens asking you to sync your contacts and turn on location services stop "
                             + "opening each time Instagram starts. Nothing else is skipped.")));
         }
+        if (build.contains(PatchFamily.AD_DATA_REMINDER)) {
+            privacy.add(toggle(context, Settings.SKIP_AD_DATA_REMINDER, L10n.t("Skip the ad data reminder"),
+                    L10n.t("Instagram's reminder to review whether it can process your data for ads stops opening "
+                            + "by itself. Your ad choice doesn't change, and nothing is answered for you.")));
+        }
         if (build.contains(PatchFamily.VIDEO_DOWNLOAD)) {
             privacy.add(toggle(context, Settings.VIEWING_HISTORY, L10n.t("Keep a viewing history"),
-                    L10n.t("Remembers the posts, reels, stories and profiles that come up on screen, newest first, "
-                            + "on this phone only. Nothing is sent anywhere, and nothing is read about other accounts. "
-                            + "Turn it off and it stops at once. Clear it below.")));
+                    L10n.t("Remembers the posts, reels, stories and profiles that come up on screen, and who posted "
+                            + "them, newest first, on this phone only. Nothing is sent anywhere, and nothing more is "
+                            + "asked of Instagram. Turn it off and it stops at once. Clear it below.")));
             Preference history = viewingHistoryRow(context);
             privacy.add(history);
             HushgramPreferenceFragment.Row clear = new HushgramPreferenceFragment.Row(context);

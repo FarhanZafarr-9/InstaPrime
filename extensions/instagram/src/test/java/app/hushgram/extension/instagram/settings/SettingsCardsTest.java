@@ -62,6 +62,8 @@ public class SettingsCardsTest {
         PauseForTests.resume();
         BaseSettings.SAFE_MODE.save(false);
         Settings.SIGN_IN_NOTICE_HIDDEN.save(true);
+        // The classic charcoal cards and category lines; BlackSettingsPageTest covers the black ones.
+        Settings.SETTINGS_BLACK_LOOK.save(false);
     }
 
     @After public void close() throws Exception {
@@ -69,6 +71,7 @@ public class SettingsCardsTest {
         Utils.awaitBackgroundTasksForTests();
         PatchFamily.inBuildForTests = null;
         ScreenColors.shown = null;
+        Settings.SETTINGS_BLACK_LOOK.resetToDefault();
         Settings.CATEGORY_PAGES.resetToDefault();
         Settings.DESCRIPTIONS_BEHIND_INFO.resetToDefault();
         DescriptionInfo.searching = false;
@@ -345,6 +348,14 @@ public class SettingsCardsTest {
         Switch restored = render(child).findViewById(android.R.id.switch_widget);
         assertTrue(restored.isEnabled());
         assertTrue(restored.isChecked());
+    }
+
+    @Test public void aHistoryRowWearsTheClockAndClearingOneKeepsTheBin() {
+        String fallback = SettingsIcons.FEED;
+        assertSame(SettingsIcons.UPDATES, SettingsIcons.forKey(Settings.VIEWING_HISTORY.key, fallback));
+        assertSame(SettingsIcons.DELETE, SettingsIcons.forKey(HushgramPreferenceFragment.CLEAR_VIEWING_HISTORY, fallback));
+        assertSame("an earlier word still wins", SettingsIcons.DOWNLOADS,
+                SettingsIcons.forKey(HushgramPreferenceFragment.CLEAR_DOWNLOAD_HISTORY, fallback));
     }
 
     @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
