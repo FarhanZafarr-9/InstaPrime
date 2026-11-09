@@ -50,3 +50,10 @@ The initial theme changes passed 121 targeted settings-surface, popup, preview, 
 - No additional app-background changes were made in this pass.
 - Validation: popup and header behavior tests passed; settings navigation tests passed after correcting their old home-screen assumption. 26 focused cases passed across the initial run and settings-only recheck. No new bundle built in this pass.
 - Final packaging: buildAndroid passed; verified 156 patches and three non-empty DEX payloads. Packaged InstaPrime-0.0.19-popup-blend-test.mpp with matching SHA-256; removed the three previous test packages and their checksums.
+
+## Device findings deferred until the next HushGram update
+
+- Main DM thread rows take the accent background on the tested device. The Connect contacts and Search for friends prompts still render black. The APK fixture matches an empty-state renderer, but the affected prompts may use another path.
+- In Activity, separators and the You're all caught up row take the accent. Regular notifications, including likes, login alerts, and updates, still show black row backgrounds. The Activity viewport and optional card hooks match in the 454 APK fixture. Device behavior shows that coverage misses the regular rows' visible fill.
+- In Stories, the About this story sheet still has blue-tinted rows that need the same connected row styling as the other custom choices.
+- Revisit these surfaces against the next upstream APK. Use the row fixture report to compare bytecode matches and use device checks to confirm which render path is visible.
