@@ -46,6 +46,7 @@ import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
@@ -808,7 +809,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         filterSettings();
         ListView list = listView();
         int[] position = pagePositions.get(currentPage());
-        if (list != null) list.post(() -> {
+        if (remember && list != null) list.post(() -> {
             if (list == listView()) list.setSelectionFromTop(position == null ? 0 : position[0],
                     position == null ? 0 : position[1]);
         });
@@ -878,13 +879,16 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     /** Keeps the dialog title in step with the current category or search. */
     private void showTitle() {
         SettingsNavigation.Node page = navigation.find(lastCategory);
-        showTitle(!searchText(searchQuery).trim().isEmpty() ? L10n.t("Search settings")
-                : page == null ? null : page.title);
+        if (!searchText(searchQuery).trim().isEmpty()) {
+            showTitle(L10n.t("Search settings"), SettingsIcons.SEARCH);
+        } else {
+            showTitle(page == null ? null : page.title, page == null ? null : page.icon);
+        }
     }
 
-    private void showTitle(@Nullable CharSequence title) {
+    private void showTitle(@Nullable CharSequence title, @Nullable String icon) {
         if (getParentFragment() instanceof SettingsDialog) {
-            ((SettingsDialog) getParentFragment()).showTitle(title, false);
+            ((SettingsDialog) getParentFragment()).showTitle(title, icon);
         }
     }
     /** Keeps the screen's Restart now bar in step with what waits on a restart. */
@@ -1304,7 +1308,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             visible.add(search);
             if (HushgramPause.isPaused() && statusCard != null) visible.add(statusCard);
             if (searching) {
-                showTitle(L10n.t("Search settings"));
+                showTitle(L10n.t("Search settings"), SettingsIcons.SEARCH);
                 List<Preference> matches = new ArrayList<>();
                 for (Map.Entry<PreferenceCategory, List<Preference>> section : searchableRows.entrySet()) {
                     for (Preference row : section.getValue()) {
@@ -1321,11 +1325,11 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                 for (Preference match : matches) visible.add(searchResult(match));
                 if (visible.size() == (HushgramPause.isPaused() && statusCard != null ? 2 : 1)) visible.add(noSearchResults);
             } else if (page == null) {
-                showTitle(null);
+                showTitle(null, null);
                 if (beforeSignIn != null && !Settings.SIGN_IN_NOTICE_HIDDEN.savedValue()) visible.add(beforeSignIn);
                 for (SettingsNavigation.Node category : navigation.categories) visible.add(category.opener);
             } else {
-                showTitle(page.title);
+                showTitle(page.title, page.icon);
                 Toggle all = enableAllRow(page);
                 if (all != null) visible.add(all);
                 for (SettingsNavigation.Node child : page.children) visible.add(child.opener);
@@ -1364,15 +1368,22 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     private Toggle enableAllRow(SettingsNavigation.Node page) {
         if (!page.children.isEmpty()) return null;
         List<TwoStatePreference> toggles = page.toggles();
-        if (toggles.isEmpty()) return null;
+        int available = 0;
+        boolean checked = true;
+        for (TwoStatePreference toggle : toggles) {
+            if (!toggle.isEnabled()) continue;
+            available++;
+            checked &= toggle.isChecked();
+        }
+        if (available < 5) return null;
         Toggle all = bulkRows.get(page.id);
         if (all == null) {
             all = new Toggle(search.getContext());
             all.setPersistent(false);
             all.setKey(ENABLE_ALL_KEY);
             all.setTitle(L10n.t("Enable all"));
-            all.setSummary(L10n.t("Turn the available switches in this section on or off together. "
-                    + "Unavailable options are skipped, and choices such as colors and sizes keep their current values."));
+            all.setSummary(L10n.t("Turn this section’s switches on or off together. "
+                    + "Unavailable switches are skipped, and choices like colors and sizes keep their values."));
             mark(all, SettingsIcons.SETTINGS);
             all.setOnPreferenceChangeListener((row, value) -> {
                 if (!allowMutation()) return false;
@@ -1381,8 +1392,6 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             });
             bulkRows.put(page.id, all);
         }
-        boolean checked = true;
-        for (TwoStatePreference toggle : toggles) checked &= toggle.isChecked();
         all.setChecked(checked);
         all.setEnabled(!SettingsLock.locked());
         return all;
@@ -1433,20 +1442,38 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             if (field != null) field.setText("");
             openPage(destination, false);
             ListView list = listView();
-            if (list != null) list.post(() -> {
-                for (int i = 0; i < list.getCount(); i++) {
-                    if (list.getItemAtPosition(i) != setting) continue;
-                    list.setSelectionFromTop(i, 0);
-                    list.post(() -> {
-                        View focused = list.getChildAt(0);
-                        if (focused != null) { focused.setPressed(true); focused.postDelayed(() -> focused.setPressed(false), 900); }
-                    });
-                    break;
-                }
-            });
+            if (list != null) list.post(() -> revealSearchResult(list, destination, setting));
             return true;
         });
         return result;
+    }
+
+    private void revealSearchResult(ListView list, SettingsNavigation.Node destination, Preference setting) {
+        if (list != listView() || navigation.find(lastCategory) != destination || !searchQuery.isEmpty()) return;
+        for (int position = 0; position < list.getCount(); position++) {
+            if (list.getItemAtPosition(position) != setting) continue;
+            int target = position;
+            list.setSelectionFromTop(target, 0);
+            list.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+                @Override public boolean onPreDraw() {
+                    list.getViewTreeObserver().removeOnPreDrawListener(this);
+                    if (list != listView() || navigation.find(lastCategory) != destination || !searchQuery.isEmpty()) return true;
+                    int childIndex = target - list.getFirstVisiblePosition();
+                    if (childIndex < 0 || childIndex >= list.getChildCount()
+                            || list.getItemAtPosition(target) != setting) return true;
+                    View row = list.getChildAt(childIndex);
+                    // A pulsing view must not be recycled into another setting while scrolling.
+                    row.setHasTransientState(true);
+                    row.setPressed(true);
+                    list.postDelayed(() -> {
+                        row.setPressed(false);
+                        row.setHasTransientState(false);
+                    }, 900);
+                    return true;
+                }
+            });
+            return;
+        }
     }
 
     /**
