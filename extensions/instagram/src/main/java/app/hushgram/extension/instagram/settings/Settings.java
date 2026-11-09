@@ -892,6 +892,8 @@ public class Settings extends BaseSettings {
      * ({@link app.hushgram.extension.instagram.direct.CallButtons}, #217). Off to start.
      */
     public static final BooleanSetting HIDE_CALL_BUTTONS = new BooleanSetting("hushgram_hide_call_buttons", FALSE);
+    public static final BooleanSetting HIDE_VIDEO_CALL_BUTTON = new BooleanSetting("instaprime_hide_video_call_button", FALSE);
+    public static final BooleanSetting HIDE_AUDIO_CALL_BUTTON = new BooleanSetting("instaprime_hide_audio_call_button", FALSE);
     public static final BooleanSetting HIDE_BLEND_BUTTON = new BooleanSetting("instaprime_hide_blend_button", FALSE);
 
     /**
@@ -3326,6 +3328,10 @@ public class Settings extends BaseSettings {
      * the grant that goes with it, which is this phone's alone, so a settings export leaves it out.
      */
     public static final StringSetting SAVE_TREE = new StringSetting("hushgram_save_tree", "");
+
+    /** Include native chat photo and video saves in the folder picked for downloads. */
+    public static final BooleanSetting SAVE_CHAT_MEDIA_TO_TREE =
+            new BooleanSetting("instaprime_save_chat_media_to_tree", FALSE);
 
     /**
      * Every save, photo or video, is named for the account that posted it and when it was posted,
