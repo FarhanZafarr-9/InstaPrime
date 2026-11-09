@@ -421,6 +421,10 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             // Our saved position belongs to the restored page, not the previous search results.
             list.setSaveEnabled(false);
             list.setItemsCanFocus(true);
+            list.setOnItemLongClickListener((parent, row, position, id) -> {
+                Object item = parent.getItemAtPosition(position);
+                return item instanceof Row && ((Row) item).showOverview();
+            });
             list.setDivider(null);
             list.setDividerHeight(0);
             int bottomSpace = Math.round(32 * list.getResources().getDisplayMetrics().density);
@@ -768,7 +772,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         }
         // After every row is known: a first open counts them all as seen, so a fresh install has no dots.
         NewRowDots.start(context, searchableRows);
-        navigation.build(context, searchableRows, this::openPage);
+        navigation.build(context, searchableRows, this::openPage,
+                node -> show(SettingsOverview.dialog(context, node), false));
         navigationReady = true;
         if (restoredCategory != null && navigation.find(restoredCategory) != null) {
             lastCategory = restoredCategory;
@@ -1327,13 +1332,15 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             } else if (page == null) {
                 showTitle(null, null);
                 if (beforeSignIn != null && !Settings.SIGN_IN_NOTICE_HIDDEN.savedValue()) visible.add(beforeSignIn);
-                for (SettingsNavigation.Node category : navigation.categories) visible.add(category.opener);
+                visible.addAll(navigation.overviewRows);
             } else {
                 showTitle(page.title, page.icon);
                 Toggle all = enableAllRow(page);
                 if (all != null) visible.add(all);
                 for (SettingsNavigation.Node child : page.children) visible.add(child.opener);
                 for (Preference row : page.rows) {
+                    Preference heading = page.sectionHeadings.get(row);
+                    if (heading != null) visible.add(heading);
                     if (row instanceof TwoStatePreference && row.isPersistent()) {
                         Setting<?> setting = Setting.getSettingFromPath(row.getKey());
                         if (setting instanceof BooleanSetting) ((TwoStatePreference) row).setChecked(((BooleanSetting) setting).savedValue());
@@ -6511,6 +6518,13 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     static final class Row extends Preference implements ImmediateAction {
         /** Set on a row whose tap does what it says at once, which then goes without a chevron. */
         boolean actsAtOnce;
+        Runnable overview;
+
+        boolean showOverview() {
+            if (overview == null || !isEnabled() || !isSelectable()) return false;
+            overview.run();
+            return true;
+        }
 
         Row(Context context) {
             super(context);
@@ -8965,6 +8979,13 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             info.setClickable(clickable);
             // AbsListView may have added a click for a disabled or no longer bound item.
             info.removeAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK);
+            info.removeAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_LONG_CLICK);
+            boolean hasOverview = clickable && preference instanceof Row && ((Row) preference).overview != null;
+            info.setLongClickable(hasOverview);
+            if (hasOverview) {
+                info.addAction(new AccessibilityNodeInfo.AccessibilityAction(
+                        AccessibilityNodeInfo.ACTION_LONG_CLICK, L10n.t("Show overview")));
+            }
             if (clickable) {
                 info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK);
                 if (preference instanceof Heading && ((Heading) preference).collapsible) {
@@ -8992,11 +9013,15 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             boolean categoryAction = preference instanceof Heading && ((Heading) preference).collapsible
                     && (action == AccessibilityNodeInfo.ACTION_EXPAND && !((Heading) preference).expanded
                     || action == AccessibilityNodeInfo.ACTION_COLLAPSE && ((Heading) preference).expanded);
-            if (action == AccessibilityNodeInfo.ACTION_CLICK || categoryAction) {
+            if (action == AccessibilityNodeInfo.ACTION_CLICK || action == AccessibilityNodeInfo.ACTION_LONG_CLICK
+                    || categoryAction) {
                 AbsListView list = listOf(host);
                 int position = positionOf(preference, host, list);
                 if (position == AdapterView.INVALID_POSITION || !enabledViewTree(host)
                         || !preference.isEnabled() || !preference.isSelectable()) return false;
+                if (action == AccessibilityNodeInfo.ACTION_LONG_CLICK) {
+                    return preference instanceof Row && ((Row) preference).showOverview();
+                }
                 return list.performItemClick(host, position, list.getItemIdAtPosition(position));
             }
             return super.performAccessibilityAction(host, action, arguments);
