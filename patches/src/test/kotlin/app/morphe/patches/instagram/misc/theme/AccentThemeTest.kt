@@ -23,6 +23,7 @@ import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.ClassDef
 import com.android.tools.smali.dexlib2.iface.Method
 import app.morphe.patches.instagram.misc.settings.MERGED_LOGO_BAR
+import app.morphe.patches.instagram.misc.extension.classesLoadingString
 import app.morphe.patches.instagram.reels.tab.MAIN_FEED_ACTION_BAR
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
@@ -38,6 +39,7 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -52,6 +54,44 @@ import javax.xml.parsers.DocumentBuilderFactory
  * theme util has styled a context.
  */
 class AccentThemeTest {
+    /** Run against any candidate base APK to see which screen or modifier changed. */
+    @Test
+    fun suppliedApkKeepsInboxAndActivityRowHooks() {
+        val path = System.getenv("HUSHGRAM_ROW_FIXTURE_APK")
+        assumeTrue("Set HUSHGRAM_ROW_FIXTURE_APK to the original Instagram APK to check row hooks.", !path.isNullOrBlank())
+        val apk = File(path!!)
+        assertTrue("Row fixture must be a readable base APK or APKS: $apk",
+            apk.isFile && apk.canRead() && apk.extension in setOf("apk", "apks"))
+        val classes = mutableListOf<ClassDef>()
+        FixtureDex.forEach(apk) { dex -> classes.addAll(dex.classes) }
+        assertTrue("${apk.name}: no DEX classes found", classes.isNotEmpty())
+        val context = PatchContexts.of(classes)
+        val labels = threadRows + inboxPromptRow + activityRowContent
+        val owners = labels.associateWith { label -> context.classesLoadingString(label).map { it.type } }
+        val activityFeedOwners = context.classesLoadingString(activityFeedContent).map { it.type }
+
+        context.tintInboxRowPresses()
+        context.tintInboxRowBackgrounds()
+        val report = labels.mapIndexed { index, label ->
+            val types = owners.getValue(label)
+            val code = types.flatMap { type -> context.mutableClassDefBy(type).methods.flatMap { it.code() } }
+            val fills = code.count { it.callsNamed(ACCENT_THEME, "inboxRowBackground") }
+            val presses = code.count {
+                ((it as? ReferenceInstruction)?.reference as? MethodReference)?.name == "instaprimeInboxClickable"
+            }
+            val needsPress = index < threadRows.size
+            (fills > 0 && (!needsPress || presses == 1)) to
+                "$label: owners=${types.ifEmpty { listOf("none") }}, fills=$fills, presses=$presses"
+        }
+        val feed = activityFeedOwners.flatMap { type -> context.mutableClassDefBy(type).methods.flatMap { it.code() } }
+        val viewport = feed.count { it.callsNamed(ACCENT_THEME, "activityFeedBackground") }
+        val summary = report.joinToString("\n") { it.second } +
+            "\n$activityFeedContent: owners=${activityFeedOwners.ifEmpty { listOf("none") }}, viewport=$viewport"
+        println("${apk.name} row hooks:\n$summary")
+        assertTrue("${apk.name}: row coverage changed. Thread rows need one press hook and every row needs a fill hook.\n$summary",
+            report.all { it.first } && viewport == 1)
+    }
+
     /** The patch's copies of AccentColor's blues and AccentHue's colors are the extension's own. */
     @Test
     fun theTablesAreTheExtensionsOwn() {
