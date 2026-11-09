@@ -187,9 +187,12 @@ final class MessagesCategory {
                 messages.addPreference(toggle(context, Settings.ASK_BEFORE_CALL, L10n.t("Ask before a call"),
                         L10n.t("Tapping a call button in a chat asks first, so a stray tap doesn't ring anyone. "
                                 + "Call starts it, Cancel doesn't.")));
-                messages.addPreference(toggle(context, Settings.HIDE_CALL_BUTTONS, L10n.t("Hide the call buttons in chats"),
-                        L10n.t("Takes the voice and video call buttons off the top of a chat. The name keeps its room. "
-                                + "Turn it off and they're back the next time a chat opens.")));
+                messages.addPreference(toggle(context, Settings.HIDE_CALL_BUTTONS, L10n.t("Hide all call buttons in chats"),
+                        L10n.t("Hides audio, video, and combined call buttons. Turn this off to choose audio and video separately.")));
+                messages.addPreference(toggle(context, Settings.HIDE_VIDEO_CALL_BUTTON, L10n.t("Hide video call button"),
+                        L10n.t("Hides dedicated video call buttons in chat headers. Reopen a chat after changing this option.")));
+                messages.addPreference(toggle(context, Settings.HIDE_AUDIO_CALL_BUTTON, L10n.t("Hide audio call button"),
+                        L10n.t("Hides dedicated audio call buttons in chat headers. Combined call buttons stay until both types are hidden.")));
                 messages.addPreference(toggle(context, Settings.HIDE_BLEND_BUTTON, L10n.t("Hide Blend in chats"),
                         L10n.t("Hides the Blend and create Blend buttons from the chat header. "
                                 + "Reopen the chat after changing this option.")));
