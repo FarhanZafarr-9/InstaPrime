@@ -120,12 +120,29 @@ public class SettingsCardsTest {
         return row;
     }
 
-    @Test public void homeUsesStandardNavigationRowsAndNoExpandableHeadings() throws Exception {
+    @Test public void homeGroupsStandardNavigationRowsUnderPlainHeadings() throws Exception {
         Settings.CATEGORY_PAGES.save(false);
         open(EnumSet.allOf(PatchFamily.class));
         assertEquals(23, model().categories.size());
         PreferenceScreen screen = page.getPreferenceScreen();
-        for (int i = 0; i < screen.getPreferenceCount(); i++) assertFalse(screen.getPreference(i) instanceof PreferenceCategory);
+        String[] headings = {"Privacy and alerts", "Content", "People and chats", "App experience",
+                "App tools", "Support and diagnostics"};
+        int[] sizes = {3, 4, 3, 4, 5, 4};
+        int index = 0;
+        while (!(screen.getPreference(index) instanceof PreferenceCategory)) index++;
+        for (int group = 0; group < headings.length; group++) {
+            HushgramPreferenceFragment.Heading heading =
+                    (HushgramPreferenceFragment.Heading) screen.getPreference(index++);
+            assertEquals(headings[group], heading.getTitle().toString());
+            assertFalse(heading.collapsible);
+            for (int row = 0; row < sizes[group]; row++) {
+                Preference opener = screen.getPreference(index++);
+                assertTrue(opener instanceof HushgramPreferenceFragment.Row);
+                assertEquals(row == 0, ScreenColors.opensCard(opener));
+                assertEquals(row == sizes[group] - 1, ScreenColors.closesCard(opener));
+            }
+        }
+        assertEquals(screen.getPreferenceCount(), index);
         for (SettingsNavigation.Node node : model().categories) {
             assertSame(node.opener, screen.findPreference(node.opener.getKey()));
             assertTrue(node.opener instanceof HushgramPreferenceFragment.Row);
@@ -149,6 +166,27 @@ public class SettingsCardsTest {
         assertTrue(page.closeCategory());
         assertEquals("", page.currentPage());
         assertFalse(page.closeCategory());
+    }
+
+    @Test public void longPressShowsAnOverviewWithoutOpeningTheCategory() throws Exception {
+        open(EnumSet.allOf(PatchFamily.class));
+        SettingsNavigation.Node reels = category("Reels");
+        ListView list = page.getView().findViewById(android.R.id.list);
+        int position = -1;
+        for (int i = 0; i < list.getCount(); i++) {
+            if (list.getItemAtPosition(i) == reels.opener) {
+                position = i;
+                break;
+            }
+        }
+        assertTrue(position >= 0);
+        assertTrue(list.getOnItemLongClickListener().onItemLongClick(list, null, position, 0));
+        AlertDialog dialog = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();
+        assertTrue(dialog.isShowing());
+        assertEquals("", page.currentPage());
+        dialog.dismiss();
+        tap(reels.opener);
+        assertEquals(reels.id, page.currentPage());
     }
 
     @Test public void largeCategoriesOpenSubpagesAndBackReturnsOneLevel() throws Exception {
@@ -437,7 +475,7 @@ public class SettingsCardsTest {
         float density = row.getResources().getDisplayMetrics().density;
         assertEquals(Math.round(18 * density), content.getDrawable().getBounds().left);
         assertEquals(row.getWidth() - Math.round(18 * density), content.getDrawable().getBounds().right);
-        assertEquals(Math.round(8 * density), content.getDrawable().getBounds().top);
+        assertEquals(0, content.getDrawable().getBounds().top);
         ListView list = page.getView().findViewById(android.R.id.list);
         assertEquals(Math.round(32 * density), list.getPaddingBottom());
         assertFalse(list.getClipToPadding());
