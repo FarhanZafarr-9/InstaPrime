@@ -19,8 +19,10 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.webkit.MimeTypeMap;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -173,7 +175,7 @@ final class MediaStoreWriter implements Downloader.Sink {
             SaveTree.tellIfLost(context);
         } else {
             try {
-                return openTree(picked, mime);
+                return openTree(picked, mime, null);
             } catch (IOException | RuntimeException failure) {
                 // The folder went, or won't take the file: the save goes where it would without one.
                 abandon();
@@ -270,12 +272,12 @@ final class MediaStoreWriter implements Downloader.Sink {
      * A picked folder: the hidden work file in [picked], or in the poster's folder there with Folder
      * per account, on the list of leftovers before a byte goes in.
      */
-    private OutputStream openTree(Uri picked, String mime) throws IOException {
+    private OutputStream openTree(Uri picked, String mime, String originalName) throws IOException {
         String account = SaveFolder.account(details);
         tree = picked;
         location = SaveTree.label(context, picked) + (account.isEmpty() ? "" : "/" + account);
         treeParent = SaveTree.folder(context, picked, account);
-        treeName = name(mime, null);
+        treeName = originalName == null ? name(mime, null) : originalName;
         treeWork = SaveTree.createWork(context, treeParent);
         if (!SaveLeftovers.pending(context, treeWork)) {
             throw new IOException("the list of pending gallery rows could not hold the new file");
@@ -283,6 +285,38 @@ final class MediaStoreWriter implements Downloader.Sink {
         stream = context.getContentResolver().openOutputStream(treeWork, "w");
         if (stream == null) throw new IOException("the folder that was picked gave no way to write");
         return stream;
+    }
+
+    /** Transfers an already downloaded chat file. The original remains available on any write failure. */
+    static boolean moveChatFileToTree(Context context, Uri picked, File file) {
+        String name = file.getName();
+        int dot = name.lastIndexOf('.');
+        if (dot < 0 || !file.isFile()) return false;
+        String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.substring(dot + 1).toLowerCase(Locale.ROOT));
+        if (mime == null || (!mime.startsWith("image/") && !mime.startsWith("video/"))) return false;
+        MediaStoreWriter writer = new MediaStoreWriter(context, mime.startsWith("video/"));
+        try {
+            long expected = file.length();
+            if (expected <= 0) return false;
+            OutputStream output = writer.openTree(picked, mime, name);
+            byte[] buffer = new byte[32 * 1024];
+            long copied = 0;
+            try (FileInputStream input = new FileInputStream(file)) {
+                for (int read; (read = input.read(buffer)) != -1; ) {
+                    output.write(buffer, 0, read);
+                    copied += read;
+                }
+            }
+            if (copied != expected) throw new IOException("the chat file changed during the copy");
+            writer.commit();
+        } catch (IOException | RuntimeException failure) {
+            writer.abandon();
+            MediaSave.failure(() -> "could not transfer a chat save into the picked folder", failure);
+            SaveTree.tellRefused(context, picked);
+            return false;
+        }
+        // The document is complete before the native gallery file is removed.
+        return file.delete();
     }
 
     @Override
