@@ -10,7 +10,7 @@ I made InstaPrime as a personal settings UI and branding rework of HushGram, the
   <a href="https://morphe.software/add-source?github=FarhanZafarr-9%2FInstaPrime"><img src="https://img.shields.io/badge/Add_InstaPrime_to_Morphe-FFFFFF?style=for-the-badge" alt="Add InstaPrime to Morphe"></a>
 </p>
 
-<p align="center"><a href="https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.20">Download InstaPrime v0.0.20</a></p>
+<p align="center"><a href="https://github.com/FarhanZafarr-9/InstaPrime/releases/latest">Download the latest InstaPrime v0.0.19 build</a></p>
 
 **The Instagram patches, their underlying functionality, research, compatibility work, and ongoing upstream maintenance are the work of SysAdminDoc and the upstream contributors. I do not claim credit for that work.**
 
@@ -18,7 +18,7 @@ My contributions include the settings interface rework, chat popup styling and s
 
 I started this out of personal interest in interface design. It is not a critique of HushGram's original UI: everyone has their own preferences and likes different interfaces. I wanted to try a layout that suits mine, and I am sharing it for anyone who likes the same approach.
 
-InstaPrime v0.0.20 integrates HushGram 0.0.19 and subsequent main-branch changes, with 156 patches. Add the InstaPrime source in Morphe to patch and install a supported Instagram build.
+InstaPrime v0.0.19 integrates HushGram 0.0.19 and subsequent main-branch changes, with 156 patches. Add the InstaPrime source in Morphe to patch and install a supported Instagram build.
 
 ## Updates and maintenance
 
@@ -269,7 +269,7 @@ I inherited these compatibility targets from upstream; I have not independently 
 4. Select a stock Instagram APK matching the version and build above, choose the patches you want, then patch and install.
 5. Open **InstaPrime** at the top of Instagram's **Settings and activity**, or long-press the Instagram logo on Home. Choose a category to open its settings.
 
-For a local source, download the `.mpp` from [my release](https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.20) and add it through **Sources → + → Local**.
+For a local source, download the `.mpp` from [my latest release](https://github.com/FarhanZafarr-9/InstaPrime/releases/latest) and add it through **Sources → + → Local**.
 
 For a separate installation, select **Install next to Instagram**. I set the clone defaults to the label **InstaPrime** and package **`com.instagram.android.prime`**. Keep the same package name and signing key for subsequent updates.
 
