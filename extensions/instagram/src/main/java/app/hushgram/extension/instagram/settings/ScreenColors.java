@@ -128,10 +128,11 @@ public final class ScreenColors {
         hint = tone(context, "system_neutral2_300", 0xFFB0A9B7);
         heading = tone(context, "system_accent1_200", 0xFFD0BCFF);
         accent = heading;
-        background = pureBlack ? Color.BLACK : mix(mix(Color.BLACK, dialog, 60), AccentTheme.settingsAccent(heading), 13);
+        int pageTone = pureBlack ? Color.BLACK : mix(mix(Color.BLACK, dialog, 60), AccentTheme.settingsAccent(heading), 13);
+        background = mix(pageTone, Color.BLACK, 12);
         int neutralTrack = tone(context, "system_neutral2_500", 0xFF79747E);
         switchOff = pureBlack ? neutralTrack : mix(neutralTrack, title, 7);
-        card = pureBlack ? Color.BLACK : mix(background, title, 5);
+        card = pureBlack ? Color.BLACK : mix(pageTone, title, 5);
         outline = tone(context, "system_neutral2_500", 0xFF79747E);
         iconSurface = tone(context, "system_neutral2_800", 0xFF322F35);
         onAccent = tone(context, "system_accent1_800", 0xFF381E72);
