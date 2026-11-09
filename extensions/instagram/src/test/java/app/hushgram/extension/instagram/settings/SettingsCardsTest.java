@@ -218,6 +218,7 @@ public class SettingsCardsTest {
         assertNull(page.findPreference(Settings.CATEGORY_PAGES.key));
         tap(category("Ads and privacy").opener);
         Preference setting = page.findPreference(Settings.HIDE_ADS.key);
+        tap(model().destination(setting).opener);
         View row = render(setting);
         TextView title = row.findViewById(android.R.id.title);
         assertNotNull(row.findViewWithTag(DescriptionInfo.TAG));
@@ -463,11 +464,16 @@ public class SettingsCardsTest {
         open(EnumSet.of(PatchFamily.ACCENT_COLOR));
         SettingsNavigation.Node layout = category("Layout");
         tap(layout.opener);
+        assertNull(page.getPreferenceScreen().findPreference(HushgramPreferenceFragment.ENABLE_ALL_KEY));
+        Settings.ACCENT_COLOR.save(true);
+        page.updateUIAvailability();
         Object hueBefore = Settings.ACCENT_HUE.savedValue();
-        android.preference.TwoStatePreference refused = layout.toggles().get(0);
+        android.preference.TwoStatePreference refused = (android.preference.TwoStatePreference)
+                page.getPreferenceScreen().findPreference(Settings.ACCENT_BADGES.key);
         refused.setChecked(false);
         refused.setOnPreferenceChangeListener((row, on) -> false);
         Preference all = page.getPreferenceScreen().findPreference(HushgramPreferenceFragment.ENABLE_ALL_KEY);
+        assertNotNull(all);
         all.getOnPreferenceChangeListener().onPreferenceChange(all, true);
         assertFalse(refused.isChecked());
         assertEquals(hueBefore, Settings.ACCENT_HUE.savedValue());
@@ -559,7 +565,10 @@ public class SettingsCardsTest {
         ScreenColors colors = ScreenColors.current();
         if (Build.VERSION.SDK_INT >= 31) {
             assertEquals(controller.get().getColor(android.R.color.system_accent1_200), colors.accent);
-            assertEquals(controller.get().getColor(android.R.color.system_neutral1_900), colors.card);
+            assertEquals(controller.get().getColor(android.R.color.system_neutral1_900), colors.dialog);
+            assertNotEquals("The page has its own accent backdrop", android.graphics.Color.BLACK, colors.background);
+            assertTrue("Rows are lighter than the page",
+                    android.graphics.Color.luminance(colors.card) > android.graphics.Color.luminance(colors.background));
         } else assertEquals(ScreenColors.DEFAULT.card, colors.card);
     }
 
@@ -567,7 +576,8 @@ public class SettingsCardsTest {
     public void compactEnableAllFitsWithInfoAndProducesPreview() throws Exception {
         Settings.DESCRIPTIONS_BEHIND_INFO.save(true);
         open(EnumSet.allOf(PatchFamily.class));
-        tap(category("Ads and privacy").opener);
+        tap(category("Feed").opener);
+        tap(model().destination(page.findPreference(Settings.START_ON_FOLLOWING.key)).opener);
         Preference all = page.getPreferenceScreen().findPreference(HushgramPreferenceFragment.ENABLE_ALL_KEY);
         assertNotNull(all);
         for (float scale : new float[]{1f, 2f}) {
