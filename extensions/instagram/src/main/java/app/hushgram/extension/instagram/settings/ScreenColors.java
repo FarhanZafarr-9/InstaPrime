@@ -42,6 +42,7 @@ import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 
+import app.hushgram.extension.instagram.misc.AccentTheme;
 import app.hushgram.extension.shared.Utils;
 import app.hushgram.extension.shared.settings.preference.ImmediateAction;
 
@@ -96,10 +97,18 @@ public final class ScreenColors {
     }
 
     public int choiceSelected() {
-        return android.graphics.Color.rgb(
-                (Color.red(iconSurface) * 9 + Color.red(accent)) / 10,
-                (Color.green(iconSurface) * 9 + Color.green(accent)) / 10,
-                (Color.blue(iconSurface) * 9 + Color.blue(accent)) / 10);
+        return choiceTone(25);
+    }
+
+    private int choiceTone(int strength) {
+        return mix(iconSurface, accent, strength);
+    }
+
+    private static int mix(int base, int tint, int strength) {
+        return Color.rgb(
+                (Color.red(base) * (100 - strength) + Color.red(tint) * strength) / 100,
+                (Color.green(base) * (100 - strength) + Color.green(tint) * strength) / 100,
+                (Color.blue(base) * (100 - strength) + Color.blue(tint) * strength) / 100);
     }
 
     ScreenColors(boolean pureBlack) {
@@ -113,15 +122,16 @@ public final class ScreenColors {
     private ScreenColors(@Nullable Context context, boolean pureBlack) {
         light = false;
         // System tonal palettes follow the wallpaper without requesting wallpaper access.
-        background = tone(context, "system_neutral1_1000", Color.BLACK);
         dialog = pureBlack ? Color.BLACK : tone(context, "system_neutral1_900", 0xFF211F26);
         title = tone(context, "system_neutral1_100", 0xFFE6E0E9);
         summary = tone(context, "system_neutral2_200", 0xFFCAC4D0);
         hint = tone(context, "system_neutral2_300", 0xFFB0A9B7);
         heading = tone(context, "system_accent1_200", 0xFFD0BCFF);
         accent = heading;
-        switchOff = tone(context, "system_neutral2_500", 0xFF79747E);
-        card = pureBlack ? Color.BLACK : tone(context, "system_neutral1_900", 0xFF211F26);
+        background = pureBlack ? Color.BLACK : mix(mix(Color.BLACK, dialog, 60), AccentTheme.settingsAccent(heading), 13);
+        int neutralTrack = tone(context, "system_neutral2_500", 0xFF79747E);
+        switchOff = pureBlack ? neutralTrack : mix(neutralTrack, title, 7);
+        card = pureBlack ? Color.BLACK : mix(background, title, 5);
         outline = tone(context, "system_neutral2_500", 0xFF79747E);
         iconSurface = tone(context, "system_neutral2_800", 0xFF322F35);
         onAccent = tone(context, "system_accent1_800", 0xFF381E72);
@@ -185,9 +195,16 @@ public final class ScreenColors {
                 new int[]{Color.TRANSPARENT, (color & 0x00FFFFFF) | 0x33000000});
     }
 
-    ColorStateList choiceFill(int normal) {
-        return new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}},
-                new int[]{(accent & 0x00FFFFFF) | 0x22000000, normal});
+    ColorStateList choiceFill() {
+        int selected = choiceSelected();
+        int focused = choiceTone(12);
+        int selectedFocus = choiceTone(34);
+        return new ColorStateList(new int[][]{
+                {android.R.attr.state_checked, android.R.attr.state_focused},
+                {android.R.attr.state_activated, android.R.attr.state_focused},
+                {android.R.attr.state_checked}, {android.R.attr.state_activated},
+                {android.R.attr.state_focused}, {android.R.attr.state_hovered}, {android.R.attr.state_selected}, {}},
+                new int[]{selectedFocus, selectedFocus, selected, selected, focused, focused, focused, iconSurface});
     }
 
     /** Secondary actions use the primary text token. */
