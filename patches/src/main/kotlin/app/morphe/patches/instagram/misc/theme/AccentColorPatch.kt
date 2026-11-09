@@ -107,6 +107,8 @@ val accentColorPatch = bytecodePatch(
         swapTextViewColors()
         applyAccentTheme(attributes)
         swapComposePalettes(palettes)
+        tintInboxRowPresses()
+        tintInboxRowBackgrounds()
         tintHeaderIcons()
         enableStatus("accentColor")
     }
