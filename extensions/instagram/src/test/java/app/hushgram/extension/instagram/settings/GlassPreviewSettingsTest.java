@@ -76,6 +76,21 @@ public class GlassPreviewSettingsTest {
         page = new HushgramPreferenceFragment();
         controller.get().getFragmentManager().beginTransaction().add(android.R.id.content, page).commitNow();
         Utils.awaitBackgroundTasksForTests();
+        ShadowLooper.idleMainLooper();
+        assertTrue("Tab bar page is available", openPage("Tab bar"));
+        openPage("Glass style");
+    }
+
+    private boolean openPage(String title) {
+        PreferenceGroup screen = page.getPreferenceScreen();
+        for (int index = 0; index < screen.getPreferenceCount(); index++) {
+            Preference row = screen.getPreference(index);
+            if (!title.equals(String.valueOf(row.getTitle())) || row.getOnPreferenceClickListener() == null) continue;
+            boolean opened = row.getOnPreferenceClickListener().onPreferenceClick(row);
+            ShadowLooper.idleMainLooper();
+            return opened;
+        }
+        return false;
     }
 
     private Preference row(String key) {
@@ -244,12 +259,18 @@ public class GlassPreviewSettingsTest {
         Bitmap bitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.ARGB_8888);
         int[] corners = new int[3];
         int[] tints = {100, 40, 0};
+        float density = view.getResources().getDisplayMetrics().density;
+        int inset = Math.min(Math.round(18 * density), view.getWidth() / 8);
+        int sampleWidth = Math.min(view.getWidth() - 2 * inset, Math.round(360 * density));
+        int sampleLeft = (view.getWidth() - sampleWidth) / 2;
         for (int draw = 0; draw < tints.length; draw++) {
             // The black settings page under the row, as on the phone.
             bitmap.eraseColor(Color.BLACK);
             view.live(GlassPreview.TINT, tints[draw]);
             view.draw(new Canvas(bitmap));
-            corners[draw] = bitmap.getPixel(2, 2);
+            assertEquals("the scene leaves space beside the card", Color.BLACK, bitmap.getPixel(2, 2));
+            corners[draw] = bitmap.getPixel(sampleLeft + Math.round(12 * density),
+                    Math.round(6 * density) + Math.round(8 * density));
         }
         assertTrue("the first draw shows the blue end of the scene: " + Integer.toHexString(corners[0]),
                 Color.blue(corners[0]) > 200);
@@ -260,6 +281,7 @@ public class GlassPreviewSettingsTest {
     private int indexOf(Preference preference) {
         for (int category = 0; category < page.getPreferenceScreen().getPreferenceCount(); category++) {
             Preference candidate = page.getPreferenceScreen().getPreference(category);
+            if (candidate == preference) return category;
             if (candidate instanceof PreferenceGroup) {
                 PreferenceGroup group = (PreferenceGroup) candidate;
                 for (int at = 0; at < group.getPreferenceCount(); at++) {
