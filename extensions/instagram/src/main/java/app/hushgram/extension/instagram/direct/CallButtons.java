@@ -19,15 +19,14 @@ import app.hushgram.extension.shared.diagnostics.HookStatus;
 import app.hushgram.extension.shared.settings.HushgramPause;
 
 /**
- * Helper for the call buttons switch of the "Ask before a call" patch (#217): takes the voice and
- * video call buttons off the top of a chat.
+ * Hides selected call buttons and Blend from the chat header using the "Ask before a call" patch.
  *
  * <p>Instagram 452 draws the buttons at the right of a chat's header from a list of button models,
  * each with a kind (an enum: {@code VIDEO_CALL}, {@code AUDIO_CALL}, the {@code COMBINED_CALL_*}
  * pills, {@code COLLAPSED_CALL} and the two AI call kinds). Two methods of the header's binder fill
  * a view from its model, one for the pill buttons and one for the icon buttons, and the patch hands
- * each of them the view and the model through {@link #bound} first thing. A view whose model is a
- * call kind goes GONE with the switch on, so the buttons give their room to the name. A button
+ * each of them the view and the model through {@link #bound} first thing. A view whose model is
+ * hidden by its setting goes GONE, giving its room to the name. A button
  * that's on a call still in progress is another kind and stays.
  *
  * <p>A view hidden here is remembered, weakly, so that the next bind with the switch off (or HushGram
@@ -80,7 +79,7 @@ public final class CallButtons {
             String kind = model == null ? null : access.kindOf(model);
             // A recycled view this hid can come back bound to another kind of button, or none, which shows again.
             boolean hide = kind != null && Utils.settingsReady() && !HushgramPause.isPaused() &&
-                    ((CALL_KINDS.contains(kind) && Settings.HIDE_CALL_BUTTONS.get()) ||
+                    (hideCall(kind) ||
                             (("BLEND".equals(kind) || "BLEND_ADD".equals(kind)) && Settings.HIDE_BLEND_BUTTON.get()));
             if (hide) {
                 view.setVisibility(View.GONE);
@@ -91,6 +90,22 @@ public final class CallButtons {
             }
         } catch (Throwable failure) {
             HookStatus.threw(FamilyNames.ASK_BEFORE_CALL, "call buttons", failure);
+        }
+    }
+
+    private static boolean hideCall(String kind) {
+        if (!CALL_KINDS.contains(kind)) return false;
+        if (Settings.HIDE_CALL_BUTTONS.get()) return true;
+        switch (kind) {
+            case "VIDEO_CALL":
+            case "AI_VIDEO_CALL":
+                return Settings.HIDE_VIDEO_CALL_BUTTON.get();
+            case "AUDIO_CALL":
+            case "AI_AUDIO_CALL":
+                return Settings.HIDE_AUDIO_CALL_BUTTON.get();
+            default:
+                // A combined or collapsed control can still offer the other call type.
+                return Settings.HIDE_VIDEO_CALL_BUTTON.get() && Settings.HIDE_AUDIO_CALL_BUTTON.get();
         }
     }
 }
