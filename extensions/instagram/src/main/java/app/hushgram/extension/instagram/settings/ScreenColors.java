@@ -129,7 +129,7 @@ public final class ScreenColors {
         heading = tone(context, "system_accent1_200", 0xFFD0BCFF);
         accent = heading;
         int pageTone = pureBlack ? Color.BLACK : mix(mix(Color.BLACK, dialog, 60), AccentTheme.settingsAccent(heading), 13);
-        background = mix(pageTone, Color.BLACK, 12);
+        background = mix(pageTone, Color.BLACK, 20);
         int neutralTrack = tone(context, "system_neutral2_500", 0xFF79747E);
         switchOff = pureBlack ? neutralTrack : mix(neutralTrack, title, 7);
         card = pureBlack ? Color.BLACK : mix(pageTone, title, 5);
@@ -317,6 +317,8 @@ public final class ScreenColors {
     }
 
     private static boolean isTopControl(Preference row) {
+        if (row instanceof HushgramPreferenceFragment.Heading
+                && !((HushgramPreferenceFragment.Heading) row).collapsible) return true;
         String key = row.getKey();
         return "hushgram_settings_search".equals(key) || HushgramPreferenceFragment.ENABLE_ALL_KEY.equals(key)
                 || "hushgram_status".equals(key)
