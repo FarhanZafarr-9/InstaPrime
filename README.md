@@ -30,7 +30,8 @@ If you need the latest available patches and compatibility updates promptly, ple
 
 I built on HushGram's existing settings and patch infrastructure, focusing on how its settings are presented and used:
 
-- **Category navigation:** the settings home shows category rows that open their own pages. Larger categories have another level of grouping, with a back action and restored scroll positions.
+- **Category navigation:** the settings home groups categories under text headings, with app tools and support in separate sections. Larger categories use subpages or headings within a page. Back restores the previous scroll position.
+- **Category overviews:** long-press a category or subcategory to see its description and counts for saved switches that are on or off, plus other controls. Pages with subcategories or named sections show a breakdown.
 - **Row layout:** borderless grouped rows, rounded corners, comfortable vertical and horizontal padding, space below search and at the bottom, and fully readable descriptions. Ripples stay inside the visible row. Enable all has a slightly taller row.
 - **Optional info buttons:** description-less mode puts descriptions behind a separate rounded info button before a switch or chevron. Row taps still toggle switches or open choices. Disabled rows keep their explanation visible.
 - **New-setting badges:** dots on the top-left of row icons and a subtle highlight identify unseen settings. Category and subcategory badges remain while any nested setting is unseen; visiting one subpage does not clear its siblings.
@@ -42,10 +43,10 @@ I built on HushGram's existing settings and patch infrastructure, focusing on ho
 - **Dialogs:** rounded selection indicators, tonal backgrounds for selected and unselected choices, borderless text fields, vertically stacked full-width actions, and a redesigned restart notice.
 - **Section controls:** **Enable all** appears on pages with at least five available switches. It respects each switch's availability and validation.
 - **Settings navigation:** larger pages are split into smaller sections. Search highlights the exact setting after scrolling to it. The header shows the current page icon and a compact back button on the right.
-- **Settings appearance:** the page and status bar share an accent backdrop. Selected choices use a tonal fill, and the glass tab bar preview sits in a centered card.
+- **Settings appearance:** the page and status bar share a darker accent backdrop that separates the rows from the page. Selected choices use a tonal fill, and the glass tab bar preview sits in a centered card.
 - **Call controls and downloads:** hide audio and video call buttons independently. Enable **Use chosen folder for chat downloads** to save chat photos and videos alongside regular downloads. Chat media uses its usual gallery folders by default.
 - **Inbox colors:** chat rows can use the selected accent background and press highlight. Standard Activity rows and the inbox's contact and friend prompts can still appear black. The **About this story** sheet still needs matching row styling.
-- **Fork information:** a section at the top with my fork's details, the original project and creator, licenses, reporting, and upstream support links.
+- **Fork information:** a section under **Support and diagnostics** with the fork's details, the original project and creator, licenses, reporting, and upstream support links.
 - **Branding:** the InstaPrime name and rounded camera icon in the settings entry, shortcut, launcher option, launch screen, and optional clone badge. The clone defaults to `InstaPrime` with package `com.instagram.android.prime`.
 
 The core Instagram patches come from HushGram. The fork-specific presentation and small chat-control changes are listed above; credit for the inherited patch infrastructure and functionality remains with upstream. I retained the existing setting keys and backup format for compatibility.
@@ -78,7 +79,11 @@ Left: the original HushGram interface. Right: the InstaPrime rework. These captu
 | --- | --- |
 | <img src="docs/screenshots/settings/old-4.jpg" width="300" alt="Original sharing-domain dialog with an outlined field and horizontal buttons"> | <img src="docs/screenshots/settings/new-4.jpg" width="300" alt="InstaPrime sharing-domain dialog with a filled field and stacked actions"> |
 
-The original screenshot files are kept in [docs/screenshots/settings](docs/screenshots/settings).
+### Category overview
+
+<img src="docs/screenshots/settings/new-5.jpg" width="300" alt="InstaPrime Feed overview with total and per-section counts for on, off, and other controls">
+
+The screenshot files are kept in [docs/screenshots/settings](docs/screenshots/settings).
 
 ## Patches and compatibility
 
