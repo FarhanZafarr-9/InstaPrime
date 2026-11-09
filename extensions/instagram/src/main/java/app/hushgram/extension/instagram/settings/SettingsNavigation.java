@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import app.hushgram.extension.shared.L10n;
+import app.hushgram.extension.shared.settings.BooleanSetting;
+import app.hushgram.extension.shared.settings.Setting;
 
 /** Navigation owns placement; the category builders remain the single source of setting rows. */
 final class SettingsNavigation {
@@ -29,6 +31,7 @@ final class SettingsNavigation {
         final String icon;
         final List<Preference> rows = new ArrayList<>();
         final List<Node> children = new ArrayList<>();
+        final Map<Preference, Preference> sectionHeadings = new HashMap<>();
         HushgramPreferenceFragment.Row opener;
 
         Node(String id, Node parent, PreferenceCategory category, CharSequence title, String icon) {
@@ -42,9 +45,7 @@ final class SettingsNavigation {
         List<TwoStatePreference> toggles() {
             List<TwoStatePreference> toggles = new ArrayList<>();
             for (Preference row : rows) {
-                if (row instanceof TwoStatePreference && row.isPersistent()
-                        && app.hushgram.extension.shared.settings.Setting.getSettingFromPath(row.getKey())
-                        instanceof app.hushgram.extension.shared.settings.BooleanSetting) {
+                if (savedToggle(row) != null) {
                     toggles.add((TwoStatePreference) row);
                 }
             }
@@ -60,11 +61,20 @@ final class SettingsNavigation {
     }
 
     final List<Node> categories = new ArrayList<>();
+    final List<Preference> overviewRows = new ArrayList<>();
     private final Map<String, Node> nodes = new LinkedHashMap<>();
     private final Map<Preference, Node> destinations = new HashMap<>();
 
-    void build(Context context, Map<PreferenceCategory, List<Preference>> source, Consumer<Node> open) {
+    static BooleanSetting savedToggle(Preference row) {
+        if (!(row instanceof TwoStatePreference) || !row.isPersistent()) return null;
+        Setting<?> setting = Setting.getSettingFromPath(row.getKey());
+        return setting instanceof BooleanSetting ? (BooleanSetting) setting : null;
+    }
+
+    void build(Context context, Map<PreferenceCategory, List<Preference>> source,
+               Consumer<Node> open, Consumer<Node> overview) {
         categories.clear();
+        overviewRows.clear();
         nodes.clear();
         destinations.clear();
         for (Map.Entry<PreferenceCategory, List<Preference>> entry : source.entrySet()) {
@@ -76,14 +86,81 @@ final class SettingsNavigation {
             int splitThreshold = icon.equals(SettingsIcons.PRIVACY) ? 10 : 16;
             if (node.rows.size() > splitThreshold) subdivide(node, icon);
             categories.add(node);
-            register(context, node, open);
+            register(context, node, open, overview);
         }
+        List<Node> remaining = new ArrayList<>(categories);
+        takeOverviewGroup(context, remaining, "privacy", L10n.t("Privacy and alerts"),
+                SettingsIcons.PRIVACY, SettingsIcons.AI, SettingsIcons.NOTIFICATIONS);
+        takeOverviewGroup(context, remaining, "content", L10n.t("Content"),
+                SettingsIcons.FEED, SettingsIcons.EXPLORE, SettingsIcons.REELS, SettingsIcons.STORIES);
+        takeOverviewGroup(context, remaining, "people", L10n.t("People and chats"),
+                SettingsIcons.CHATS, SettingsIcons.COMMENTS, SettingsIcons.PERSON);
+        takeOverviewGroup(context, remaining, "experience", L10n.t("App experience"),
+                SettingsIcons.LAYOUT, SettingsIcons.TAB_BAR, SettingsIcons.PLAYBACK, SettingsIcons.NETWORK);
+        takeOverviewGroup(context, remaining, "tools", L10n.t("App tools"),
+                SettingsIcons.DOWNLOADS, SettingsIcons.STORAGE, SettingsIcons.BATTERY,
+                SettingsIcons.SETTINGS, SettingsIcons.TOOLS);
+        addOverviewGroup(context, "support", L10n.t("Support and diagnostics"), remaining);
+    }
+
+    private void takeOverviewGroup(Context context, List<Node> remaining, String id, String title, String... icons) {
+        List<Node> group = new ArrayList<>();
+        for (String icon : icons) {
+            for (Node node : remaining) {
+                if (icon.equals(node.icon)) group.add(node);
+            }
+        }
+        remaining.removeAll(group);
+        addOverviewGroup(context, id, title, group);
+    }
+
+    private void addOverviewGroup(Context context, String id, String title, List<Node> group) {
+        if (group.isEmpty()) return;
+        overviewRows.add(plainHeading(context, "hushgram_overview_heading_" + id, title));
+        for (Node node : group) overviewRows.add(node.opener);
+    }
+
+    private static Preference plainHeading(Context context, String key, String title) {
+        HushgramPreferenceFragment.Heading heading = new HushgramPreferenceFragment.Heading(context);
+        heading.setKey(key);
+        heading.setTitle(title);
+        return heading;
+    }
+
+    private static void groupPage(Context context, Node node, String firstTitle, String secondTitle,
+                                  Set<String> secondKeys) {
+        List<Preference> second = new ArrayList<>();
+        for (Preference row : node.rows) {
+            if (secondKeys.contains(row.getKey())) second.add(row);
+        }
+        if (second.isEmpty() || second.size() == node.rows.size()) return;
+        node.rows.removeAll(second);
+        node.sectionHeadings.put(node.rows.get(0), plainHeading(context, node.id + "::heading-first", firstTitle));
+        node.sectionHeadings.put(second.get(0), plainHeading(context, node.id + "::heading-second", secondTitle));
+        node.rows.addAll(second);
     }
 
     Node find(String id) { return nodes.get(id); }
     Node destination(Preference row) { return destinations.get(row); }
 
-    private void register(Context context, Node node, Consumer<Node> open) {
+    private void register(Context context, Node node, Consumer<Node> open, Consumer<Node> overview) {
+        if (node.icon.equals(SettingsIcons.LAYOUT) && node.id.endsWith("::appearance")) {
+            groupPage(context, node, L10n.t("App layout"), L10n.t("Branding"), keys(
+                    Settings.LAUNCH_SCREEN.key, Settings.HEADER_TEXT.key, Settings.APP_ICON.key,
+                    HushgramPreferenceFragment.HEADER_PICTURE_KEY, HushgramPreferenceFragment.REMOVE_HEADER_PICTURE_KEY,
+                    HushgramPreferenceFragment.CUSTOM_ICON_KEY));
+        }
+        if (node.icon.equals(SettingsIcons.COMMENTS)) {
+            groupPage(context, node, L10n.t("Copy and media"), L10n.t("Display and input"),
+                    keys(Settings.HIDE_COMMENTS.key, Settings.HIDE_COMMENT_EMOJI_ROW.key, Settings.COMMENT_KEYBOARD_DOWN.key));
+        }
+        if (node.icon.equals(SettingsIcons.REELS) && node.id.endsWith("::content")) {
+            groupPage(context, node, L10n.t("Recommendations and thresholds"), L10n.t("Words, languages, and sounds"),
+                    keys(Settings.HIDE_CAPTION_WORD_REELS.key, Settings.HIDE_CAPTION_WORD_HOME.key,
+                            Settings.REELS_BLOCKED_WORDS.key, Settings.HIDE_OTHER_LANGUAGE_REELS.key,
+                            Settings.HIDE_OTHER_LANGUAGE_HOME.key, Settings.REELS_KEPT_LANGUAGES.key,
+                            Settings.HIDE_SOUND_REELS.key, HushgramPreferenceFragment.HIDDEN_SOUNDS_ROW));
+        }
         nodes.put(node.id, node);
         HushgramPreferenceFragment.Row row = node.opener = new HushgramPreferenceFragment.Row(context);
         row.setKey(HushgramPreferenceFragment.CATEGORY_ROW_KEY + "navigate:" + node.id);
@@ -94,12 +171,13 @@ final class SettingsNavigation {
         row.setSummary(L10n.f("%1$d settings · %2$s", node.count(), detail == null ? "" : detail));
         HushgramPreferenceFragment.mark(row, node.icon);
         row.setOnPreferenceClickListener(clicked -> { open.accept(node); return true; });
+        row.overview = () -> overview.accept(node);
         NewRowDots.opens(row, node);
         for (Preference setting : node.rows) destinations.put(setting, node);
-        for (Node child : node.children) register(context, child, open);
+        for (Node child : node.children) register(context, child, open, overview);
     }
 
-    private static CharSequence preview(List<Preference> rows) {
+    static CharSequence preview(List<Preference> rows) {
         if (rows.isEmpty()) return "";
         CharSequence first = rows.get(0).getTitle();
         return rows.size() == 1 ? first : first + ", " + rows.get(1).getTitle();
@@ -171,12 +249,14 @@ final class SettingsNavigation {
                     Settings.PINCH_ZOOM_REELS.key, Settings.KEEP_REELS_TOP_BAR.key, Settings.HIDE_REELS_TOP_BAR.key,
                     Settings.HIDE_REELS_CREATE_BUTTON.key, Settings.HIDE_REELS_YOUR_ALGORITHM.key,
                     Settings.HIDE_REELS_FRIENDS_TAB.key, Settings.SHOW_REELS_FRIENDS_TAB.key, Settings.PICK_FRIENDS_TAB.key));
-            split(node, "overlays", L10n.t("Buttons and overlays"), keys(Settings.HIDE_REEL_FOLLOW_BUTTON.key,
+            split(node, "buttons", L10n.t("Buttons and controls"), keys(Settings.HIDE_REEL_FOLLOW_BUTTON.key,
+                    Settings.HIDE_REEL_SAVE_BUTTON.key, Settings.TEXT_BUTTON_ON_REELS.key, Settings.SPEED_BUTTON_ON_REELS.key,
+                    Settings.FULL_SCREEN_BUTTON_ON_REELS.key));
+            split(node, "overlays", L10n.t("Overlays and details"), keys(
                     Settings.HIDE_REEL_CHIPS.key, Settings.HIDE_REEL_SEARCH_PILL.key, Settings.HIDE_REEL_PRODUCT_PILLS.key,
                     Settings.HIDE_REEL_POLL_PILLS.key, Settings.HIDE_REEL_SOCIAL_FOOTER.key, Settings.HIDE_REEL_COMMENT_BAR.key,
                     Settings.HIDE_REEL_COMMENT_BAR_EVERYWHERE.key, Settings.HIDE_REEL_REPLY_BAR.key,
-                    Settings.HIDE_REEL_SAVE_BUTTON.key, Settings.TEXT_BUTTON_ON_REELS.key, Settings.SPEED_BUTTON_ON_REELS.key,
-                    Settings.FULL_SCREEN_BUTTON_ON_REELS.key, Settings.SHOW_REEL_POST_TIME.key,
+                    Settings.SHOW_REEL_POST_TIME.key,
                     Settings.REEL_POST_TIME_SECONDS.key, Settings.REEL_POST_TIME_AGO.key));
             split(node, "clear-mode", L10n.t("Clear mode and burn-in"), keys(Settings.KEEP_REEL_CLEAR_MODE.key,
                     Settings.START_REEL_CLEAR_MODE.key, Settings.QUIET_REEL_CLEAR_MODE.key, Settings.CLEAR_MODE_SEEK_BAR.key,
@@ -254,7 +334,10 @@ final class SettingsNavigation {
         if (icon.equals(SettingsIcons.PERSON)) {
             split(node, "relationships", L10n.t("Followers and relationships"), keys(Settings.SHOW_FRIENDSHIP_STATUS.key, Settings.FRIENDSHIP_STATUS_CHIP.key, Settings.FOLLOW_LABEL_PLACE.key, Settings.MARK_FOLLOWING_LIST.key, Settings.FOLLOWING_NOT_BACK_FIRST.key, Settings.TRACK_UNFOLLOWERS.key, HushgramPreferenceFragment.UNFOLLOWERS_ROW, HushgramPreferenceFragment.CLEAR_UNFOLLOWERS));
             split(node, "suggestions", L10n.t("Suggestions and prompts"), keys(Settings.HIDE_PROFILE_SUGGESTIONS.key, Settings.HIDE_FOLLOW_LIST_SUGGESTIONS.key, Settings.HIDE_PROFILE_COMPLETION.key));
-            remainder(node, L10n.t("Appearance"));
+            split(node, "tabs-grid", L10n.t("Tabs and grid"), keys(Settings.HIDDEN_OWN_PROFILE_TABS.key,
+                    Settings.HIDDEN_PROFILE_TABS.key, Settings.SAVED_ON_PROFILE.key,
+                    Settings.PROFILE_POSTS_LIST.key, Settings.PROFILE_GRID_JUMP.key));
+            remainder(node, L10n.t("Profile header"));
         }
     }
 }
