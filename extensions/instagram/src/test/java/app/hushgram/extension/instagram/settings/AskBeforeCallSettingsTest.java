@@ -72,7 +72,9 @@ public class AskBeforeCallSettingsTest {
         assertEquals("Ask before a call", row.getTitle().toString());
         assertFalse(row.isChecked());
         assertFalse(Settings.ASK_BEFORE_CALL.get());
-        assertEquals(java.util.Arrays.asList(Settings.ASK_BEFORE_CALL, Settings.HIDE_CALL_BUTTONS, Settings.HIDE_BLEND_BUTTON), PatchFamily.ASK_BEFORE_CALL.switches);
+        assertEquals(java.util.Arrays.asList(Settings.ASK_BEFORE_CALL, Settings.HIDE_CALL_BUTTONS,
+                Settings.HIDE_VIDEO_CALL_BUTTON, Settings.HIDE_AUDIO_CALL_BUTTON, Settings.HIDE_BLEND_BUTTON),
+                PatchFamily.ASK_BEFORE_CALL.switches);
         assertNotNull(page.getPreferenceScreen().findPreference(Settings.HIDE_BLEND_BUTTON.key));
         assertFalse(Settings.HIDE_BLEND_BUTTON.defaultValue);
         assertTrue(ConfigurationBackup.eligible().containsKey(Settings.ASK_BEFORE_CALL.key));
