@@ -8,6 +8,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.RenderEffect;
 import android.graphics.RenderNode;
@@ -38,6 +39,7 @@ public final class GlassPreview extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF pill = new RectF();
     private final RectF capsule = new RectF();
+    private final Path sampleClip = new Path();
     private final int[] live = {-1, -1, -1};
     private final float density;
     private int base = 0xff000000;
@@ -98,7 +100,11 @@ public final class GlassPreview extends View {
     @Override
     protected void onMeasure(int widthSpec, int heightSpec) {
         int width = MeasureSpec.getSize(widthSpec);
-        setMeasuredDimension(width, Math.round(132 * density));
+        setMeasuredDimension(width, Math.round(132 * density) + 2 * verticalInset());
+    }
+
+    private int verticalInset() {
+        return Math.round(6 * density);
     }
 
     @Override
@@ -114,9 +120,26 @@ public final class GlassPreview extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        int width = getWidth();
-        int height = getHeight();
-        if (width <= 0 || height <= 0) return;
+        int availableWidth = getWidth();
+        int top = verticalInset();
+        int height = getHeight() - 2 * top;
+        if (availableWidth <= 0 || height <= 0) return;
+        int inset = Math.min(Math.round(18 * density), availableWidth / 8);
+        int width = Math.min(availableWidth - 2 * inset, Math.round(360 * density));
+        int left = (availableWidth - width) / 2;
+        sampleClip.rewind();
+        sampleClip.addRoundRect(0, 0, width, height, 14 * density, 14 * density, Path.Direction.CW);
+        int save = canvas.save();
+        try {
+            canvas.translate(left, top);
+            canvas.clipPath(sampleClip);
+            drawSample(canvas, width, height);
+        } finally {
+            canvas.restoreToCount(save);
+        }
+    }
+
+    private void drawSample(Canvas canvas, int width, int height) {
         blurred = false;
         try {
             drawScene(canvas, width, height);
