@@ -4,9 +4,14 @@
  */
 package app.morphe.patches.instagram.misc.theme
 
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patches.instagram.misc.extension.classesLoading
+import app.morphe.patches.instagram.misc.extension.classesLoadingString
+import app.morphe.patches.instagram.misc.extension.stringLoadedAt
 import app.morphe.util.addInstructionsAtControlFlowLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
@@ -16,10 +21,14 @@ import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
 private const val PATCH = "Accent color"
 
@@ -131,3 +140,220 @@ private fun List<Instruction>.lastWriteBefore(at: Int, register: Int): Instructi
         instruction.opcode.setsRegister() && written != null &&
             (written == register || instruction.opcode.setsWideRegister() && written + 1 == register)
     }
+
+internal val threadRows = listOf(
+    "com.instagram.direct.inbox.feature.threadrow.ui.ThreadRow (ThreadRow.kt:77)",
+    "com.instagram.direct.inbox.feature.threadrow.ui.ThreadRowV2 (ThreadRowV2.kt:105)",
+)
+
+internal const val inboxPromptRow =
+    "instagram.features.direct.inbox.feature.emptystate.ui.InboxEmptyStateRow (InboxEmptyStateRow.kt:69)"
+internal const val activityRowContent =
+    "com.instagram.newsfeed.fragment.NewsfeedRow.<anonymous> (NewsfeedYouComposeFragment.kt:3633)"
+internal const val activityFeedContent =
+    "com.instagram.newsfeed.fragment.ActivityFeed (NewsfeedYouComposeFragment.kt:2809)"
+
+private fun BytecodePatchContext.inboxRenderer(label: String): Method? =
+    classesLoadingString(label).flatMap { it.methods }.singleOrNull { candidate ->
+        val code = candidate.implementation?.instructions?.toList().orEmpty()
+        candidate.returnType == "V" && code.indices.any { stringLoadedAt(code, it) == label }
+    }
+
+private fun BytecodePatchContext.inboxRenderers(): List<Method> = threadRows.mapNotNull { inboxRenderer(it) }
+
+/** Supply an explicit indication only at the native thread rows' combined-click modifier calls. */
+internal fun BytecodePatchContext.tintInboxRowPresses() {
+    val string = "Ljava/lang/String;"
+    val action = "Lkotlin/jvm/functions/Function0;"
+    val sites = inboxRenderers().mapNotNull { row ->
+        val code = row.implementation!!.instructions.toList()
+        val at = code.indices.singleOrNull { index ->
+            val call = code[index]
+            if (call.opcode != Opcode.INVOKE_STATIC_RANGE) return@singleOrNull false
+            val target = call.target() ?: return@singleOrNull false
+            val args = target.parameterTypes.map(CharSequence::toString)
+            args.size == 6 && args[0] == target.returnType && args[0].startsWith("L") &&
+                args[1].startsWith("L") && args.drop(2) == listOf(string, action, action, "Z")
+        } ?: return@mapNotNull null
+        Triple(row, at, code[at])
+    }
+    if (sites.isEmpty()) return
+    val original = sites.mapNotNull { it.third.target() }.distinct().singleOrNull() ?: return
+    val owner = classDefByOrNull(original.definingClass) ?: return
+    val wrapper = owner.methods.singleOrNull { it.toString() == original.toString() } ?: return
+    val modifier = wrapper.returnType
+    val role = wrapper.parameterTypes[1].toString()
+    val delegate = wrapper.implementation?.instructions?.mapNotNull { it.target() }?.singleOrNull {
+        it.definingClass == owner.type && it.returnType == modifier &&
+            it.parameterTypes.drop(1).map(CharSequence::toString) == listOf(modifier, role, string, string, action, action, "Z", "Z")
+    } ?: return
+    val body = owner.methods.singleOrNull { it.toString() == delegate.toString() }?.implementation ?: return
+    val element = body.instructions.mapNotNull { it.target() }.singleOrNull {
+        it.name == "<init>" && it.parameterTypes.size == 11 &&
+            it.parameterTypes.drop(1).map(CharSequence::toString) ==
+                listOf(delegate.parameterTypes[0].toString(), role, string, string, action, action, action, "Z", "Z", "Z")
+    } ?: return
+    val append = body.instructions.singleOrNull {
+        it.opcode == Opcode.INVOKE_INTERFACE && it.target()?.let { ref ->
+            ref.definingClass == modifier && ref.returnType == modifier && ref.parameterTypes.map(CharSequence::toString) == listOf(modifier)
+        } == true
+    }?.target() ?: return
+    val indication = classesLoadingString("HighlightIndication(highlightColor=").singleOrNull {
+        AccessFlags.PUBLIC.isSet(it.accessFlags) && it.interfaces.contains(element.parameterTypes[0].toString())
+    } ?: return
+    val create = indication.methods.singleOrNull {
+        it.name == "<init>" && AccessFlags.PUBLIC.isSet(it.accessFlags) && it.parameterTypes.map(CharSequence::toString) == listOf("J")
+    } ?: return
+    val name = "instaprimeInboxClickable"
+    val scoped = ImmutableMethod(
+        owner.type, name, wrapper.parameters, modifier, AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+        emptySet(), emptySet(), ImmutableMethodImplementation(18, emptyList(), null, null),
+    ).toMutable().apply {
+        addInstructions(0, """
+            invoke-static {}, $ACCENT_THEME->inboxPressColor()J
+            move-result-wide v2
+            const-wide/16 v4, 0x0
+            cmp-long v6, v2, v4
+            if-eqz v6, :native
+            new-instance v1, ${indication.type}
+            invoke-direct { v1, v2, v3 }, $create
+            new-instance v0, ${element.definingClass}
+            const/4 v2, 0x0
+            move-object/from16 v3, p1
+            const/4 v4, 0x0
+            move-object/from16 v5, p2
+            move-object/from16 v6, p4
+            move-object/from16 v7, p3
+            const/4 v8, 0x0
+            const/4 v9, 0x1
+            move/from16 v10, p5
+            const/4 v11, 0x1
+            invoke-direct/range { v0 .. v11 }, $element
+            invoke-interface { p0, v0 }, $append
+            move-result-object v0
+            return-object v0
+            :native
+            invoke-static/range { p0 .. p5 }, $original
+            move-result-object v0
+            return-object v0
+        """)
+    }
+    mutableClassDefBy(owner.type).methods.add(scoped)
+    for ((row, at, call) in sites) {
+        val start = (call as RegisterRangeInstruction).startRegister
+        mutableClassDefBy(row.definingClass).methods.single { it.toString() == row.toString() }
+            .replaceInstruction(at, "invoke-static/range { v$start .. v${start + 5} }, $scoped")
+    }
+}
+
+private fun Instruction.target(): MethodReference? = (this as? ReferenceInstruction)?.reference as? MethodReference
+
+private fun Instruction.backgroundModifier(): MethodReference? {
+    if (opcode != Opcode.INVOKE_STATIC && opcode != Opcode.INVOKE_STATIC_RANGE) return null
+    return target()?.takeIf {
+        it.returnType.startsWith("L") && it.parameterTypes.map(CharSequence::toString) == listOf(it.returnType, "J")
+    }
+}
+
+/** The Activity row's body can be outlined from the lambda that holds its trace label. */
+private fun BytecodePatchContext.activityRowRenderer(background: MethodReference): Method? =
+    classesLoadingString(activityRowContent).flatMap { owner ->
+        owner.methods.filter { method ->
+            val code = method.implementation?.instructions?.toList().orEmpty()
+            code.any { it.backgroundModifier() == background } &&
+                (code.indices.any { stringLoadedAt(code, it) == activityRowContent } ||
+                    activityRowContent in outlinedLabels(owner, method))
+        }
+    }.singleOrNull()
+
+/** Most Activity rows have no opaque fill of their own and show the lazy list's backdrop. */
+private fun BytecodePatchContext.tintActivityList(activityRow: Method, background: MethodReference) {
+    val feed = inboxRenderer(activityFeedContent) ?: return
+    val composer = feed.parameterTypes.firstOrNull()?.toString() ?: return
+    val modifier = background.returnType
+    val getter = activityRow.implementation!!.instructions.mapNotNull { instruction ->
+        val call = instruction.target() ?: return@mapNotNull null
+        if (call.returnType != "J" || call.parameterTypes.map(CharSequence::toString) != listOf(composer)) return@mapNotNull null
+        val method = classDefByOrNull(call.definingClass)?.methods?.singleOrNull { it.toString() == call.toString() }
+            ?: return@mapNotNull null
+        call.takeIf { AccessFlags.STATIC.isSet(method.accessFlags) &&
+            method.implementation?.instructions?.count { it.opcode == Opcode.IGET_WIDE } == 1 }
+    }.distinct().singleOrNull() ?: return
+    val code = feed.implementation!!.instructions.toList()
+    val listIndex = code.indices.singleOrNull { index ->
+        val instruction = code[index]
+        if (instruction.opcode != Opcode.INVOKE_STATIC_RANGE) return@singleOrNull false
+        val target = instruction.target() ?: return@singleOrNull false
+        val args = target.parameterTypes.map(CharSequence::toString)
+        target.returnType == "V" && args.size == 16 &&
+            args[3] == "Landroidx/compose/foundation/lazy/LazyListState;" &&
+            args[4] == composer && args[5].startsWith("L") && args[6] == modifier
+    } ?: return
+    val listCall = code[listIndex].target() ?: return
+    val arguments = listCall.parameterTypes.subList(4, 7).map(CharSequence::toString)
+    val bridge = ImmutableMethod(
+        feed.definingClass, "instaprimeActivityListBackground",
+        arguments.map { ImmutableMethodParameter(it, emptySet(), null) },
+        modifier, AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
+        emptySet(), emptySet(), ImmutableMethodImplementation(8, emptyList(), null, null),
+    ).toMutable().apply {
+        addInstructions(0, """
+            invoke-static { p0 }, $getter
+            move-result-wide v0
+            invoke-static { v0, v1 }, $ACCENT_THEME->activityFeedBackground(J)J
+            move-result-wide v0
+            const-wide/16 v2, 0x0
+            cmp-long v4, v0, v2
+            if-eqz v4, :native
+            invoke-static { p2, v0, v1 }, $background
+            move-result-object p2
+            :native
+            return-object p2
+        """)
+    }
+    val owner = mutableClassDefBy(feed.definingClass)
+    owner.methods.add(bridge)
+    val first = (code[listIndex] as RegisterRangeInstruction).startRegister
+    owner.methods.single { it.toString() == feed.toString() }.addInstructionsAtControlFlowLabel(
+        listIndex,
+        """
+            invoke-static/range { v${first + 4} .. v${first + 6} }, $bridge
+            move-result-object v${first + 6}
+        """,
+    )
+}
+
+/** Inbox and Activity rows paint their Compose palette's background over the screen surface. */
+internal fun BytecodePatchContext.tintInboxRowBackgrounds() {
+    val threads = inboxRenderers()
+    val prompt = inboxRenderer(inboxPromptRow)
+    // The prompt renderer also uses a different modifier of the same signature.
+    val background = threads.mapNotNull { thread ->
+        thread.implementation!!.instructions.mapNotNull { it.backgroundModifier() }.singleOrNull()
+    }.distinct().singleOrNull() ?: return
+    val activity = activityRowRenderer(background)
+    if (activity != null) tintActivityList(activity, background)
+    for (method in threads + listOfNotNull(prompt, activity)) {
+        val code = method.implementation!!.instructions.toList()
+        val fills = code.indices.filter { code[it].backgroundModifier() == background }
+        // Thread rows have one fill. Prompts and Activity content can branch by layout.
+        if (fills.isEmpty() || (method in threads && fills.size != 1)) continue
+        val renderer = mutableClassDefBy(method.definingClass).methods.single { it.toString() == method.toString() }
+        for (index in fills.asReversed()) {
+            val register = when (val call = code[index]) {
+                is FiveRegisterInstruction -> call.registerD.takeIf {
+                    call.registerCount == 3 && call.registerE == it + 1 && call.registerC !in it..it + 1
+                }
+                is RegisterRangeInstruction -> (call.startRegister + 1).takeIf { call.registerCount == 3 }
+                else -> null
+            } ?: continue
+            renderer.addInstructionsAtControlFlowLabel(
+                index,
+                """
+                    invoke-static/range { v$register .. v${register + 1} }, $ACCENT_THEME->inboxRowBackground(J)J
+                    move-result-wide v$register
+                """,
+            )
+        }
+    }
+}
