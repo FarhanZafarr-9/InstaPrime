@@ -156,6 +156,12 @@ final class DownloadsCategory {
             }
             // Where every save goes, last, since the rows above it keep their places.
             downloads.addPreference(page.saveTreeRow(context));
+            if (build.contains(PatchFamily.VIDEO_DOWNLOAD)) {
+                downloads.addPreference(toggle(context, Settings.SAVE_CHAT_MEDIA_TO_TREE,
+                        L10n.t("Use chosen folder for chat downloads"),
+                        L10n.t("Save chat photos and videos alongside your other downloads in the chosen folder. "
+                                + "When off or the folder is unavailable, chat media uses its usual gallery folder.")));
+            }
             downloads.addPreference(page.galleryFoldersRow(context));
         }
     }
