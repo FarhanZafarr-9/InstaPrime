@@ -23,6 +23,7 @@ import java.util.Map;
 import app.hushgram.extension.instagram.settings.FamilyNames;
 import app.hushgram.extension.instagram.settings.Settings;
 import app.hushgram.extension.shared.Logger;
+import app.hushgram.extension.shared.Utils;
 import app.hushgram.extension.shared.diagnostics.HookStatus;
 
 /**
@@ -78,6 +79,72 @@ import app.hushgram.extension.shared.diagnostics.HookStatus;
  * anything thrown, the theme stays Instagram's. A change shows on screens opened after a restart.
  */
 public final class AccentTheme {
+    /** A packed Compose highlight color for inbox rows. Zero keeps Instagram's indication. */
+    public static long inboxPressColor() {
+        try {
+            AccentHue hue = AccentColor.picked();
+            if (hue == null || !Settings.ACCENT_BACKGROUNDS.get()) return 0L;
+            return (long) AccentColor.swap(0x2285a1ff, hue) << 32;
+        } catch (Throwable failure) {
+            HookStatus.threw(FamilyNames.ACCENT_COLOR, "inbox press highlight", failure);
+            return 0L;
+        }
+    }
+
+    /** Recolors the dark base fill passed to an inbox thread row's Compose background modifier. */
+    public static long inboxRowBackground(long color) {
+        // A packed sRGB Compose color has no color-space bits in its lower half.
+        if (color != 0xff00000000000000L && color != 0xff0c101400000000L) return color;
+        try {
+            return (long) darkBaseBackground(Utils.getContext(), (int) (color >>> 32)) << 32;
+        } catch (Throwable failure) {
+            HookStatus.threw(FamilyNames.ACCENT_COLOR, "inbox row background", failure);
+            return color;
+        }
+    }
+
+    /** The chosen app accent for settings, or the settings page's wallpaper accent. */
+    public static int settingsAccent(int fallback) {
+        try {
+            AccentHue hue = AccentColor.picked();
+            return hue == null ? fallback : AccentColor.swap(0xff85a1ff, hue);
+        } catch (RuntimeException failure) {
+            return fallback;
+        }
+    }
+
+    /** The same dark base tone as the app's accent backgrounds, or the caller's normal surface. */
+    private static int darkBaseBackground(@Nullable Context context, int fallback) {
+        if (context == null) return fallback;
+        try {
+            return baseBackground(context, true, fallback);
+        } catch (RuntimeException failure) {
+            HookStatus.threw(FamilyNames.ACCENT_COLOR, "base background", failure);
+            return fallback;
+        }
+    }
+
+    /** The Activity list borrows the native Compose background's light or dark role. */
+    public static long activityFeedBackground(long nativeColor) {
+        if ((nativeColor & 0xffffffffL) != 0 || (nativeColor >>> 56) != 0xff) return 0L;
+        try {
+            Context context = Utils.getContext();
+            return context == null ? 0L : (long) baseBackground(context, !readsLight((int) (nativeColor >>> 32)), 0) << 32;
+        } catch (Throwable failure) {
+            HookStatus.threw(FamilyNames.ACCENT_COLOR, "Activity feed background", failure);
+            return 0L;
+        }
+    }
+
+    private static int baseBackground(Context context, boolean dark, int fallback) {
+        AccentHue hue = AccentColor.picked();
+        if (hue == null || !Settings.ACCENT_BACKGROUNDS.get()) return fallback;
+        String name = "hushgram_accent_" + hue.name().toLowerCase(Locale.ROOT)
+                + (dark ? "_background_dark_base" : "_background_light_base");
+        int background = id(context.getResources(), name, "color", context.getPackageName());
+        return background == 0 ? fallback : context.getColor(background);
+    }
+
     /** What's counted each time the picked color goes onto a theme. */
     static final String APPLIED = "themes given the accent color";
 
