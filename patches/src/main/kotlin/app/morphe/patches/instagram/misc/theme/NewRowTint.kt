@@ -115,7 +115,7 @@ private fun BytecodePatchContext.notificationLabels(code: List<Instruction>): Li
  * takes the labels only when nothing outside its class calls it and a Notifications label reaches
  * every call, so a body the switch's other arms call keeps its colors.
  */
-private fun BytecodePatchContext.outlinedLabels(classDef: ClassDef, body: Method): List<String> {
+internal fun BytecodePatchContext.outlinedLabels(classDef: ClassDef, body: Method): List<String> {
     if (!AccessFlags.STATIC.isSet(body.accessFlags)) return emptyList()
     val parameters = body.parameterTypes.map(Any::toString)
     val labels = mutableListOf<String>()
