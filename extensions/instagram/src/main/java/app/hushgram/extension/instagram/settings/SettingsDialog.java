@@ -13,6 +13,9 @@ import android.app.Fragment;
 import android.app.FragmentManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -23,6 +26,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.Window;
+import android.view.WindowInsetsController;
+import android.view.WindowManager;
 import android.view.WindowInsets;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.Button;
@@ -60,6 +65,7 @@ public final class SettingsDialog extends DialogFragment {
     private boolean closing;
     private Button retry;
     private TextView heading;
+    private String headingIcon;
     private View restart;
     /** The lock's checks on this dialog's window while it's started. */
     private Window lockWindow;
@@ -116,13 +122,23 @@ public final class SettingsDialog extends DialogFragment {
         };
         Window window = dialog.getWindow();
         if (window != null) {
-            window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(ScreenColors.current().background));
+            int background = ScreenColors.forScreen(getActivity()).background;
+            window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(background));
             window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-            // With three-button navigation Android lays a grey scrim under the buttons; the
-            // screen is black edge to edge, so the scrim only shows as a grey band. Android 9 has
-            // no scrim to turn off.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) window.setNavigationBarContrastEnforced(false);
-            window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                // Edge-to-edge draws the tinted root behind the transparent status bar.
+                window.setDecorFitsSystemWindows(false);
+                window.setStatusBarColor(Color.TRANSPARENT);
+            } else {
+                window.setStatusBarColor(background);
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.setStatusBarContrastEnforced(false);
+                window.setNavigationBarContrastEnforced(false);
+            }
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
         return dialog;
     }
@@ -153,23 +169,26 @@ public final class SettingsDialog extends DialogFragment {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(palette.background);
 
-        LinearLayout bar = new LinearLayout(getContext());
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-        // Start and end, not left and right: in a right-to-left language the bar is mirrored.
-        bar.setPaddingRelative(dp(4), dp(4), dp(18), dp(4));
+        FrameLayout bar = new FrameLayout(getContext());
+        bar.setPadding(dp(18), dp(4), dp(18), dp(4));
 
         ImageButton back = new ImageButton(getContext());
-        android.graphics.drawable.Drawable arrow = SettingsIcons.icon(getContext(), SettingsIcons.BACK, palette.title);
-        arrow.setBounds(0, 0, dp(24), dp(24));
+        Drawable arrow = SettingsIcons.icon(getContext(), SettingsIcons.BACK, palette.title);
+        arrow.setBounds(0, 0, dp(20), dp(20));
         arrow.setLayoutDirection(rightToLeft() ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         back.setImageDrawable(arrow);
-        back.setPadding(dp(12), dp(12), dp(12), dp(12));
-        back.setBackground(new android.graphics.drawable.RippleDrawable(
-                android.content.res.ColorStateList.valueOf(ScreenColors.half(palette.heading)), null,
-                new android.graphics.drawable.ColorDrawable(Color.WHITE)));
-        back.setMinimumWidth(dp(48));
-        back.setMinimumHeight(dp(48));
+        back.setPadding(dp(6), dp(6), dp(6), dp(6));
+        GradientDrawable backSurface = new GradientDrawable();
+        backSurface.setColor(palette.iconSurface);
+        backSurface.setCornerRadius(dp(6));
+        GradientDrawable backMask = new GradientDrawable();
+        backMask.setColor(Color.WHITE);
+        backMask.setCornerRadius(dp(6));
+        back.setBackgroundTintList(null);
+        back.setBackground(ScreenColors.boundedRipple(ScreenColors.interactionRipple(palette.heading),
+                backSurface, backMask));
+        back.setMinimumWidth(dp(32));
+        back.setMinimumHeight(dp(32));
         back.setContentDescription(L10n.t(getContext(), "Back"));
         // A screen reader calls it a button, as it would the back arrow of any other screen.
         back.setAccessibilityDelegate(new View.AccessibilityDelegate() {
@@ -184,19 +203,21 @@ public final class SettingsDialog extends DialogFragment {
             SettingsEntry.onClosedByUser();
             dismissAllowingStateLoss();
         });
-        bar.addView(back, new LinearLayout.LayoutParams(dp(48), dp(48)));
-
         TextView title = new TextView(getContext());
         heading = title;
         title.setText("InstaPrime");
+        setHeadingIcon(title, null);
         title.setTextColor(palette.title);
         title.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-        title.setPaddingRelative(dp(8), 0, 0, 0);
-        // Next to the back arrow in a right-to-left layout too, not at the bar's far end.
+        title.setCompoundDrawablePadding(dp(8));
         title.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
         title.setAccessibilityHeading(true);
-        bar.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        FrameLayout.LayoutParams titleSpace = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.LEFT | Gravity.CENTER_VERTICAL);
+        titleSpace.rightMargin = dp(40);
+        bar.addView(title, titleSpace);
+        bar.addView(back, new FrameLayout.LayoutParams(dp(32), dp(32), Gravity.RIGHT | Gravity.CENTER_VERTICAL));
         root.addView(bar);
 
         FrameLayout container = new FrameLayout(getContext());
@@ -297,11 +318,21 @@ public final class SettingsDialog extends DialogFragment {
     /**
      * Shows the category or search title, and InstaPrime again for null.
      */
-    void showTitle(@androidx.annotation.Nullable CharSequence title, boolean pageHeader) {
+    void showTitle(@androidx.annotation.Nullable CharSequence title, @androidx.annotation.Nullable String icon) {
         TextView bar = heading;
         if (bar == null) return;
         CharSequence text = title == null ? "InstaPrime" : title;
         if (!TextUtils.equals(text, bar.getText())) bar.setText(text);
+        if (!TextUtils.equals(headingIcon, icon)) setHeadingIcon(bar, icon);
+    }
+
+    private void setHeadingIcon(TextView title, @androidx.annotation.Nullable String icon) {
+        headingIcon = icon;
+        Drawable drawable = icon == null
+                ? new BitmapDrawable(title.getResources(), InstaPrimeIcon.bitmap())
+                : SettingsIcons.icon(title.getContext(), icon, title.getCurrentTextColor());
+        drawable.setBounds(0, 0, dp(24), dp(24));
+        title.setCompoundDrawablesRelative(drawable, null, null, null);
     }
 
     /** Clears a search before Back closes the dialog. Expanding a section adds no Back level. */
@@ -350,8 +381,19 @@ public final class SettingsDialog extends DialogFragment {
     @Override
     public void onStart() {
         super.onStart();
+        Dialog dialog = getDialog();
+        Window window = dialog == null ? null : dialog.getWindow();
+        if (window != null) {
+            View decor = window.getDecorView();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                WindowInsetsController bars = decor.getWindowInsetsController();
+                if (bars != null) bars.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
+            } else {
+                decor.setSystemUiVisibility(decor.getSystemUiVisibility() & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+            }
+        }
         watchLock();
-        ShortcutCover.offOnceDrawn(getDialog());
+        ShortcutCover.offOnceDrawn(dialog);
     }
 
     @Override
