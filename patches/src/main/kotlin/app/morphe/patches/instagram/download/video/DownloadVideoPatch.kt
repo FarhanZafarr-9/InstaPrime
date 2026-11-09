@@ -7,6 +7,7 @@ package app.morphe.patches.instagram.download.video
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
@@ -32,12 +33,15 @@ import app.morphe.patches.instagram.download.reel.optionIcon
 import app.morphe.patches.instagram.download.reel.typesLoadingDownload
 import app.morphe.patches.instagram.misc.extension.EXTENSION_PACKAGE
 import app.morphe.patches.instagram.misc.extension.classesCallingInto
+import app.morphe.patches.instagram.misc.extension.classesLoadingString
 import app.morphe.patches.instagram.misc.extension.enableStatus
 import app.morphe.patches.instagram.misc.extension.instagramExtensionPatch
 import app.morphe.patches.instagram.misc.extension.markers
+import app.morphe.patches.instagram.misc.extension.methodsCalling
 import app.morphe.patches.instagram.misc.extension.originalName
 import app.morphe.patches.instagram.misc.extension.requireLocals
 import app.morphe.patches.instagram.misc.extension.requireStatusMethod
+import app.morphe.patches.instagram.misc.extension.stringLoadedAt
 import app.morphe.patches.instagram.misc.extension.typesMarked
 import app.morphe.patches.instagram.media.quality.target
 import app.morphe.patches.instagram.misc.settings.settingsPatch
@@ -180,8 +184,53 @@ val downloadVideoPatch = bytecodePatch(
         addFeedDownloadButton(button)
         addLithoDownloadButton(litho)
         addHoldToDownload(hold)
+        routeChatDownloads()
         enableStatus("videoDownload")
     }
+}
+
+/** A native chat save reports success after passing its completed file to the gallery scanner. */
+private fun BytecodePatchContext.routeChatDownloads() {
+    val marker = "direct_save_media"
+    val telemetry = classesLoadingString(marker).flatMap { it.methods }.singleOrNull { method ->
+        val code = method.code()
+        method.returnType == "V" && method.parameterTypes.lastOrNull()?.toString() == "Z" &&
+            code.indices.any { stringLoadedAt(code, it) == marker }
+    } ?: return
+    val scannerArgs = listOf("Landroid/content/Context;", "Ljava/io/File;")
+    val callback = methodsCalling(telemetry.definingClass, telemetry.name).singleOrNull { method ->
+        val code = method.code()
+        method.returnType == "V" && method.parameterTypes.map(CharSequence::toString) == listOf("Ljava/lang/Object;") &&
+            code.any { it.opcode == Opcode.CHECK_CAST && (it as ReferenceInstruction).reference.toString() == scannerArgs[1] } &&
+            code.any { (it as? ReferenceInstruction)?.reference?.toString() == telemetry.toString() }
+    } ?: return
+    val code = callback.code()
+    val index = code.indices.singleOrNull { at ->
+        val call = code[at]
+        if (call.opcode != Opcode.INVOKE_STATIC && call.opcode != Opcode.INVOKE_STATIC_RANGE) return@singleOrNull false
+        val target = (call as ReferenceInstruction).reference as? MethodReference ?: return@singleOrNull false
+        target.returnType == "V" && target.parameterTypes.map(CharSequence::toString) == scannerArgs
+    } ?: return
+    val scanner = (code[index] as ReferenceInstruction).reference as MethodReference
+    val scannerClass = classDefByOrNull(scanner.definingClass) ?: return
+    val scanMethod = scannerClass.methods.singleOrNull { it.toString() == scanner.toString() } ?: return
+    if (!AccessFlags.PUBLIC.isSet(scannerClass.accessFlags) || !AccessFlags.PUBLIC.isSet(scanMethod.accessFlags) ||
+        scanMethod.code().none { (it as? ReferenceInstruction)?.reference?.toString() ==
+            "Landroid/net/Uri;->fromFile(Ljava/io/File;)Landroid/net/Uri;" }) return
+
+    val extension = "$EXTENSION_PACKAGE/download/MediaSave;"
+    val hook = "$extension->finishChatDownload(${scannerArgs.joinToString("")})V"
+    val replacement = when (val call = code[index]) {
+        is Instruction35c -> "invoke-static { v${call.registerC}, v${call.registerD} }, $hook"
+        is RegisterRangeInstruction -> "invoke-static/range { v${call.startRegister} .. v${call.startRegister + 1} }, $hook"
+        else -> return
+    }
+    val bridge = mutableClassDefBy(extension).methods.single {
+        it.name == "scanChatDownload" && it.parameterTypes.map(CharSequence::toString) == scannerArgs
+    }
+    bridge.addInstructions(0, "invoke-static { p0, p1 }, $scanner")
+    mutableClassDefBy(callback.definingClass).methods.single { it.toString() == callback.toString() }
+        .replaceInstruction(index, replacement)
 }
 
 /**
