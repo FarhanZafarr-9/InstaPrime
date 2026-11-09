@@ -9,7 +9,9 @@
 package app.hushgram.extension.instagram.download;
 
 import android.content.Context;
+import android.net.Uri;
 
+import java.io.File;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,6 +55,35 @@ import app.hushgram.extension.shared.diagnostics.HookStatus;
  * {@code morphe: MediaSave}. Addresses are logged as kind of file and quality only.
  */
 public final class MediaSave {
+    /** Replaces the native gallery scan after a successful chat media download. */
+    public static void finishChatDownload(Context context, File file) {
+        if (!Utils.settingsReady() || !Settings.SAVE_CHAT_MEDIA_TO_TREE.get()) {
+            scanChatDownload(context, file);
+            return;
+        }
+        Uri picked = SaveTree.usable(context);
+        if (picked == null) {
+            SaveTree.tellIfLost(context);
+            scanChatDownload(context, file);
+            return;
+        }
+        Context application = context.getApplicationContext();
+        if (!Utils.runOnBackgroundThread(() -> {
+            boolean moved = false;
+            try {
+                moved = MediaStoreWriter.moveChatFileToTree(application, picked, file);
+            } catch (RuntimeException failure) {
+                failure(() -> "could not move a chat download into the picked folder", failure);
+            } finally {
+                if (!moved) scanChatDownload(application, file);
+            }
+        })) scanChatDownload(context, file);
+    }
+
+    /** The patch rewrites this bridge to call Instagram's original gallery scanner. */
+    public static void scanChatDownload(Context context, File file) {
+    }
+
 
     private MediaSave() {}
 
