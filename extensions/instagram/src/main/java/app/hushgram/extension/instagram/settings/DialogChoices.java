@@ -6,7 +6,6 @@
  */
 package app.hushgram.extension.instagram.settings;
 
-import android.content.res.ColorStateList;
 import android.database.DataSetObserver;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -77,11 +76,9 @@ final class DialogChoices extends BaseAdapter {
             choice.setMinimumHeight(Math.round(64 * density) + gap);
             choice.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
             GradientDrawable surface = new GradientDrawable();
-            surface.setColor(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}},
-                    new int[]{colors.choiceSelected(), colors.iconSurface}));
+            surface.setColor(colors.choiceFill());
             float top = Math.round((position == 0 ? 12 : 4) * density);
             float bottom = Math.round((position == getCount() - 1 ? 12 : 4) * density);
-            surface.setStroke(Math.round(2 * density), colors.interactionOutline(android.graphics.Color.TRANSPARENT));
             surface.setCornerRadii(new float[]{top, top, top, top, bottom, bottom, bottom, bottom});
             InsetDrawable inset = new InsetDrawable(surface, side, 0, side, gap);
             InsetDrawable mask = new InsetDrawable(surface.getConstantState().newDrawable().mutate(), side, 0, side, gap);
