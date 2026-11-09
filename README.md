@@ -10,7 +10,7 @@ I made InstaPrime as a personal settings UI and branding rework of HushGram, the
   <a href="https://morphe.software/add-source?github=FarhanZafarr-9%2FInstaPrime"><img src="https://img.shields.io/badge/Add_InstaPrime_to_Morphe-FFFFFF?style=for-the-badge" alt="Add InstaPrime to Morphe"></a>
 </p>
 
-<p align="center"><a href="https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.19">Download InstaPrime v0.0.19</a></p>
+<p align="center"><a href="https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.20">Download InstaPrime v0.0.20</a></p>
 
 **The Instagram patches, their underlying functionality, research, compatibility work, and ongoing upstream maintenance are the work of SysAdminDoc and the upstream contributors. I do not claim credit for that work.**
 
@@ -18,7 +18,7 @@ My contributions include the settings interface rework, chat popup styling and s
 
 I started this out of personal interest in interface design. It is not a critique of HushGram's original UI: everyone has their own preferences and likes different interfaces. I wanted to try a layout that suits mine, and I am sharing it for anyone who likes the same approach.
 
-InstaPrime v0.0.19 integrates HushGram 0.0.19 and subsequent main-branch changes, with 156 patches. The link adds my source to Morphe; patch and install Instagram with that source to use my redesigned interface.
+InstaPrime v0.0.20 integrates HushGram 0.0.19 and subsequent main-branch changes, with 156 patches. Add the InstaPrime source in Morphe to patch and install a supported Instagram build.
 
 ## Updates and maintenance
 
@@ -40,7 +40,11 @@ I built on HushGram's existing settings and patch infrastructure, focusing on ho
 - **Settings background consistency:** the independent Black settings page option controls settings surfaces; the app-wide Pure black patch no longer overrides their tonal backgrounds. Main inbox and notifications background coverage still needs follow-up.
 - **Switches:** rounded tracks and circular thumbs, an on-state checkmark, animations that survive row replacement, and clearer disabled states. Temporarily unavailable options retain their saved choices.
 - **Dialogs:** rounded selection indicators, tonal backgrounds for selected and unselected choices, borderless text fields, vertically stacked full-width actions, and a redesigned restart notice.
-- **Section controls:** an **Enable all** switch on pages containing direct toggle options, respecting each option's availability and validation. Category pages containing further subcategories do not show it.
+- **Section controls:** **Enable all** appears on pages with at least five available switches. It respects each switch's availability and validation.
+- **Settings navigation:** larger pages are split into smaller sections. Search highlights the exact setting after scrolling to it. The header shows the current page icon and a compact back button on the right.
+- **Settings appearance:** the page and status bar share an accent backdrop. Selected choices use a tonal fill, and the glass tab bar preview sits in a centered card.
+- **Call controls and downloads:** hide audio and video call buttons independently. Enable **Use chosen folder for chat downloads** to save chat photos and videos alongside regular downloads. Chat media uses its usual gallery folders by default.
+- **Inbox colors:** chat rows can use the selected accent background and press highlight. Standard Activity rows and the inbox's contact and friend prompts can still appear black. The **About this story** sheet still needs matching row styling.
 - **Fork information:** a section at the top with my fork's details, the original project and creator, licenses, reporting, and upstream support links.
 - **Branding:** the InstaPrime name and rounded camera icon in the settings entry, shortcut, launcher option, launch screen, and optional clone badge. The clone defaults to `InstaPrime` with package `com.instagram.android.prime`.
 
@@ -265,7 +269,7 @@ I inherited these compatibility targets from upstream; I have not independently 
 4. Select a stock Instagram APK matching the version and build above, choose the patches you want, then patch and install.
 5. Open **InstaPrime** at the top of Instagram's **Settings and activity**, or long-press the Instagram logo on Home. Choose a category to open its settings.
 
-For a local source, download the `.mpp` from [my release](https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.19) and add it through **Sources → + → Local**. A `.mpp` is a patch bundle, not an Instagram APK.
+For a local source, download the `.mpp` from [my release](https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.20) and add it through **Sources → + → Local**.
 
 For a separate installation, select **Install next to Instagram**. I set the clone defaults to the label **InstaPrime** and package **`com.instagram.android.prime`**. Keep the same package name and signing key for subsequent updates.
 
