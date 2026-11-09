@@ -170,7 +170,7 @@ public final class SettingsDialog extends DialogFragment {
         root.setBackgroundColor(palette.background);
 
         FrameLayout bar = new FrameLayout(getContext());
-        bar.setPadding(dp(18), dp(4), dp(18), dp(4));
+        bar.setPadding(dp(24), dp(4), dp(24), dp(4));
 
         ImageButton back = new ImageButton(getContext());
         Drawable arrow = SettingsIcons.icon(getContext(), SettingsIcons.BACK, palette.title);
