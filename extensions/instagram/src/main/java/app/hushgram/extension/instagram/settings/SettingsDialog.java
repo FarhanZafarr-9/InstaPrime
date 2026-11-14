@@ -66,6 +66,7 @@ public final class SettingsDialog extends DialogFragment {
     private boolean closing;
     private Button retry;
     private TextView heading;
+    private ImageButton backButton;
     private String headingIcon;
     private View restart;
     /** The lock's checks on this dialog's window while it's started. */
@@ -177,6 +178,7 @@ public final class SettingsDialog extends DialogFragment {
         bar.setPadding(dp(24), dp(4), dp(24), dp(4));
 
         ImageButton back = new ImageButton(getContext());
+        backButton = back;
         Drawable arrow = SettingsIcons.icon(getContext(), SettingsIcons.BACK, palette.title);
         arrow.setBounds(0, 0, dp(20), dp(20));
         arrow.setLayoutDirection(rightToLeft() ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
@@ -311,6 +313,44 @@ public final class SettingsDialog extends DialogFragment {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         space.setMargins(dp(18), dp(8), dp(18), dp(12));
         return space;
+    }
+
+    /** Repaints the existing dialog as soon as its settings palette changes. */
+    void applyLook() {
+        ScreenColors palette = ScreenColors.current();
+        View root = getView();
+        if (root != null) root.setBackgroundColor(palette.background);
+        Dialog dialog = getDialog();
+        Window window = dialog == null ? null : dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(palette.background));
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                window.setStatusBarColor(palette.background);
+            }
+        }
+        if (heading != null) {
+            heading.setTextColor(palette.title);
+            setHeadingIcon(heading, headingIcon);
+        }
+        if (backButton != null) {
+            backButton.setColorFilter(palette.title);
+            Drawable background = backButton.getBackground();
+            if (background instanceof android.graphics.drawable.RippleDrawable) {
+                android.graphics.drawable.RippleDrawable ripple = (android.graphics.drawable.RippleDrawable) background;
+                ripple.setColor(ScreenColors.interactionRipple(palette.heading));
+                Drawable surface = ripple.getDrawable(0);
+                if (surface instanceof GradientDrawable) ((GradientDrawable) surface).setColor(palette.iconSurface);
+            }
+        }
+        if (restart instanceof ViewGroup) {
+            ViewGroup bar = (ViewGroup) restart;
+            if (bar.getBackground() instanceof GradientDrawable) {
+                ((GradientDrawable) bar.getBackground()).setColor(palette.iconSurface);
+            }
+            ((TextView) bar.getChildAt(0)).setTextColor(palette.title);
+            ((TextView) bar.getChildAt(1)).setTextColor(palette.summary);
+            palette.paintAction((TextView) bar.getChildAt(2), true);
+        }
     }
 
     /** Shows the bar that restarts Instagram while [owed], and takes it off once nothing waits. */
@@ -556,6 +596,7 @@ public final class SettingsDialog extends DialogFragment {
     public void onDestroyView() {
         retry = null;
         heading = null;
+        backButton = null;
         restart = null;
         super.onDestroyView();
     }

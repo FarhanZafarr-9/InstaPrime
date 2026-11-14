@@ -904,6 +904,13 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
     /** Black settings page shows at once: the header, the category lines and every row's colours (#455). */
     void applyLook() {
         ScreenColors.shown = ScreenColors.forScreen(getActivity());
+        View view = getView();
+        if (view != null) view.setBackgroundColor(ScreenColors.current().background);
+        ListView list = listView();
+        if (list != null) list.setBackgroundColor(ScreenColors.current().background);
+        if (getParentFragment() instanceof SettingsDialog) {
+            ((SettingsDialog) getParentFragment()).applyLook();
+        }
         filterSettings();
         rebindRows();
     }

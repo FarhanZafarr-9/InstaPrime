@@ -139,6 +139,34 @@ public class SettingsCardsTest {
         assertTrue(model().destination(page.findPreference(Settings.UPLOAD_VIDEO_RESOLUTION.key)).id.endsWith("::uploads"));
     }
 
+    @Test public void blackLookRepaintsTheOpenDialogAndListWithoutReopening() throws Exception {
+        PatchFamily.inBuildForTests = EnumSet.allOf(PatchFamily.class);
+        controller = Robolectric.buildActivity(Activity.class).setup().visible();
+        SettingsDialog dialog = new SettingsDialog();
+        dialog.show(controller.get().getFragmentManager(), "live_palette");
+        controller.get().getFragmentManager().executePendingTransactions();
+        Utils.awaitBackgroundTasksForTests();
+        ShadowLooper.idleMainLooper();
+        page = (HushgramPreferenceFragment) dialog.getChildFragmentManager()
+                .findFragmentById(SettingsDialog.CONTAINER_ID);
+        assertNotNull(page);
+        View root = dialog.getView();
+        ListView list = page.getView().findViewById(android.R.id.list);
+        android.preference.SwitchPreference black = (android.preference.SwitchPreference)
+                page.findPreference(Settings.SETTINGS_BLACK_LOOK.key);
+        for (boolean enabled : new boolean[]{true, false}) {
+            assertTrue(black.getOnPreferenceChangeListener().onPreferenceChange(black, enabled));
+            black.setChecked(enabled);
+            ShadowLooper.idleMainLooper();
+            int expected = ScreenColors.forScreen(controller.get()).background;
+            assertSame(root, dialog.getView());
+            assertEquals(expected, ((android.graphics.drawable.ColorDrawable) root.getBackground()).getColor());
+            assertEquals(expected, ((android.graphics.drawable.ColorDrawable) list.getBackground()).getColor());
+            assertEquals(expected, ((android.graphics.drawable.ColorDrawable)
+                    dialog.getDialog().getWindow().getDecorView().getBackground()).getColor());
+        }
+    }
+
     private View render(Preference preference) {
         View row = preference.getView(null, new FrameLayout(controller.get()));
         int width = Math.round(320 * row.getResources().getDisplayMetrics().density);
