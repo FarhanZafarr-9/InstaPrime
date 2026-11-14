@@ -61,7 +61,7 @@ public final class MessageActions {
     static Lists rearrange(List<?> first, List<?> overflow, List<?> third,
                            Set<String> hidden, Set<String> moved, Kind kind) {
         List<Object> main = new ArrayList<>(), extra = new ArrayList<>(), ai = new ArrayList<>();
-        for (Object row : overflow) if (!hidden.contains(name(row, kind))) extra.add(row);
+        for (Object row : overflow) if (!hidden.contains(name(row, kind)) && !"MORE".equals(name(row, kind))) extra.add(row);
         for (Object row : first) {
             String name = name(row, kind);
             if (hidden.contains(name)) continue;
@@ -70,7 +70,7 @@ public final class MessageActions {
         }
         for (Object row : third) {
             String name = name(row, kind);
-            if (hidden.contains(name)) continue;
+            if (hidden.contains(name) || "MORE".equals(name)) continue;
             if (moved.contains(name)) extra.add(row);
             else ai.add(row);
         }

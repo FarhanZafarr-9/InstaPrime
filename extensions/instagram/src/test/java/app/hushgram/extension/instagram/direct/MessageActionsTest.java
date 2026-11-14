@@ -10,6 +10,12 @@ import java.util.List;
 import java.util.Set;
 
 public class MessageActionsTest {
+    @Test public void moreCannotKeepAnOtherwiseEmptyOverflowAlive() {
+        MessageActions.Lists result = MessageActions.rearrange(Arrays.asList(Action.REPLY, Action.MORE),
+                Arrays.asList(Action.MORE), Collections.emptyList(), set(), set(), KIND);
+        assertEquals(Collections.singletonList(Action.REPLY), result.primary);
+        assertTrue(result.more.isEmpty());
+    }
     enum Action { REPLY, COPY_TEXT, FORWARD, REPORT, MORE, META_AI, RESTYLE, IMAGINE_THIS, FUTURE_ACTION }
     static final MessageActions.Kind KIND = row -> (Action) row;
     private static Set<String> set(String... names) { return new LinkedHashSet<>(Arrays.asList(names)); }
