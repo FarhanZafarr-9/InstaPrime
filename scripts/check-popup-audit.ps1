@@ -26,10 +26,12 @@ if (Test-Path -LiteralPath $credentials) {
 . (Join-Path $PSScriptRoot 'build-jobs.ps1')
 Invoke-GradleBuild -ProjectDir $repo -Tasks @(':patches:test',
     '--tests', '*MessageGesturesHookTest', '--tests', '*ChatPlusMenuHookTest',
+    '--tests', '*NativeSnackbarHookTest',
     '--max-workers=1', '--offline')
 if ($LASTEXITCODE -ne 0) { throw 'Native hook checks failed; stopped before the MPP build.' }
 Invoke-GradleBuild -ProjectDir $repo -Tasks @(':extensions:instagram:testDebugUnitTest',
     '--tests', '*ChatPopupMenuTest', '--tests', '*StyledPopupNativeTest',
+    '--tests', '*NativeSnackbarTest',
     '--tests', '*SavedProfilesSettingsTest', '--tests', '*ChatPagerTest',
     '--tests', '*ProfileExtrasTest', '--tests', '*ProfilePictureTest',
     '--tests', '*MessageGesturesTest', '--tests', '*MessageActionsTest', '--tests', '*PlusMenuTest',
