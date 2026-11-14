@@ -11,7 +11,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
-import android.preference.PreferenceGroup;
 import android.preference.SwitchPreference;
 
 import org.junit.After;
@@ -30,6 +29,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 
 import app.hushgram.extension.shared.SettingsContextRule;
+import app.hushgram.extension.shared.L10n;
 import app.hushgram.extension.shared.Utils;
 import app.hushgram.extension.shared.settings.BaseSettings;
 import app.hushgram.extension.shared.settings.PauseForTests;
@@ -72,31 +72,29 @@ public class LaunchScreenSettingsTest {
 
     @Test public void missingPatchHasNoSwitch() throws Exception {
         open(EnumSet.of(PatchFamily.ACCENT_COLOR));
-        assertNull(page.getPreferenceScreen().findPreference(Settings.LAUNCH_SCREEN.key));
+        assertNull(page.findPreference(Settings.LAUNCH_SCREEN.key));
         assertFalse(ConfigurationBackup.eligible().containsKey(Settings.LAUNCH_SCREEN.key));
     }
 
     /** Layout opens for the launch screen alone. */
     @Test public void launchScreenAloneStillGetsLayout() throws Exception {
         open(EnumSet.of(PatchFamily.LAUNCH_SCREEN));
-        SwitchPreference row = (SwitchPreference) page.getPreferenceScreen().findPreference(Settings.LAUNCH_SCREEN.key);
+        SwitchPreference row = (SwitchPreference) page.findPreference(Settings.LAUNCH_SCREEN.key);
         assertNotNull(row);
-        assertEquals("Layout", row.getParent().getTitle().toString());
+        assertEquals("Layout", destination(row).category.getTitle().toString());
     }
 
-    @Test public void switchStartsOffAfterTheAccentRowsAndIsBackedUp() throws Exception {
+    @Test public void switchStartsOffOnItsSettingsPageAndIsBackedUp() throws Exception {
         open(EnumSet.of(PatchFamily.EMOJI_STYLE, PatchFamily.ACCENT_COLOR, PatchFamily.LAUNCH_SCREEN));
-        SwitchPreference row = (SwitchPreference) page.getPreferenceScreen().findPreference(Settings.LAUNCH_SCREEN.key);
+        SwitchPreference row = (SwitchPreference) page.findPreference(Settings.LAUNCH_SCREEN.key);
         assertNotNull(row);
-        assertEquals("HushGram launch screen", row.getTitle().toString());
-        assertEquals("Shows HushGram's logo instead of Instagram's on the screen you see while Instagram starts, "
-                + "on Android 13 and newer. It shows from the next start.", row.getSummary().toString());
-        PreferenceGroup layout = row.getParent();
-        String[] keys = new String[layout.getPreferenceCount()];
-        for (int i = 0; i < keys.length; i++) keys[i] = layout.getPreference(i).getKey();
-        assertEquals(Arrays.asList(Settings.NOTO_EMOJI.key, Settings.EMOJI_FONT.key, Settings.ACCENT_COLOR.key, Settings.ACCENT_HUE.key, Settings.ACCENT_CUSTOM.key, Settings.ACCENT_BADGES.key,
-                Settings.ACCENT_ICONS.key, Settings.ACCENT_RINGS.key, Settings.ACCENT_RINGS_SOLID.key, Settings.ACCENT_BACKGROUNDS.key,
-                LayoutCategory.PURE_BLACK_HINT_ROW, Settings.LAUNCH_SCREEN.key, Settings.LAUNCH_SCREEN_ACCENT.key), Arrays.asList(keys));
+        assertEquals(L10n.t("HushGram launch screen"), row.getTitle().toString());
+        assertEquals(L10n.t("Shows HushGram's logo instead of Instagram's on the screen you see while Instagram starts, "
+                + "on Android 13 and newer. It shows from the next start."), row.getSummary().toString());
+        SettingsNavigation.Node destination = destination(row);
+        android.preference.Preference fill = page.findPreference(Settings.LAUNCH_SCREEN_ACCENT.key);
+        assertTrue(destination.rows.indexOf(row) < destination.rows.indexOf(fill));
+        assertEquals(destination, destination(fill));
         assertFalse(row.isChecked());
         assertFalse(Settings.LAUNCH_SCREEN.get());
         assertEquals(Arrays.asList(Settings.LAUNCH_SCREEN, Settings.LAUNCH_SCREEN_ACCENT), PatchFamily.LAUNCH_SCREEN.switches);
@@ -109,8 +107,8 @@ public class LaunchScreenSettingsTest {
     /** #528: the accent fill sits under the launch screen switch and waits for it. */
     @Test public void accentFillWaitsForTheLaunchScreen() throws Exception {
         open(EnumSet.of(PatchFamily.ACCENT_COLOR, PatchFamily.LAUNCH_SCREEN));
-        SwitchPreference launch = (SwitchPreference) page.getPreferenceScreen().findPreference(Settings.LAUNCH_SCREEN.key);
-        SwitchPreference fill = (SwitchPreference) page.getPreferenceScreen().findPreference(Settings.LAUNCH_SCREEN_ACCENT.key);
+        SwitchPreference launch = (SwitchPreference) page.findPreference(Settings.LAUNCH_SCREEN.key);
+        SwitchPreference fill = (SwitchPreference) page.findPreference(Settings.LAUNCH_SCREEN_ACCENT.key);
         assertNotNull(fill);
         assertEquals("Launch screen in the accent color", fill.getTitle().toString());
         assertEquals("Fills that screen with the accent color, or Instagram's blue while Accent color is off. "
@@ -124,5 +122,11 @@ public class LaunchScreenSettingsTest {
         assertTrue(fill.isEnabled());
         fill.setChecked(true);
         assertTrue(Settings.LAUNCH_SCREEN_ACCENT.get());
+    }
+
+    private SettingsNavigation.Node destination(android.preference.Preference row) throws Exception {
+        java.lang.reflect.Field field = HushgramPreferenceFragment.class.getDeclaredField("navigation");
+        field.setAccessible(true);
+        return ((SettingsNavigation) field.get(page)).destination(row);
     }
 }
