@@ -4,6 +4,8 @@
  */
 package app.hushgram.extension.instagram.download;
 
+import app.hushgram.extension.instagram.settings.StyledPopupMenu;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.ContextWrapper;
@@ -172,7 +174,7 @@ public final class FeedDownloadButton {
         }
 
         @Override public void choose(View anchor, Runnable page, Runnable all, @Nullable Runnable some) {
-            PopupMenu menu = new PopupMenu(anchor.getContext(), anchor);
+            PopupMenu menu = new StyledPopupMenu(anchor.getContext(), anchor);
             menu.getMenu().add(0, 0, 0, L10n.t("Download"));
             menu.getMenu().add(0, 1, 1, L10n.t("Save all"));
             if (some != null) menu.getMenu().add(0, 2, 2, L10n.t("Choose pages"));

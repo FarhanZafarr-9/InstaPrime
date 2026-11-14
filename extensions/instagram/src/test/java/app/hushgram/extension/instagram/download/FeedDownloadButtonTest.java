@@ -80,6 +80,7 @@ public class FeedDownloadButtonTest {
 
     @After
     public void tearDown() {
+        app.hushgram.extension.instagram.settings.StyledPopupMenu.resetForTests();
         FeedDownloadButton.actions = original;
         FeedDownloadButton.resetForTests();
         Settings.FEED_DOWNLOAD_ALL_PAGES.resetToDefault();
@@ -369,12 +370,12 @@ public class FeedDownloadButtonTest {
         View anchor = new View(activity);
         activity.setContentView(anchor);
         original.choose(anchor, () -> ran.add("page"), () -> ran.add("all"));
-        PopupMenu two = ShadowPopupMenu.getLatestPopupMenu();
+        PopupMenu two = app.hushgram.extension.instagram.settings.StyledPopupMenu.latestForTests();
         assertEquals(2, two.getMenu().size());
         Shadows.shadowOf(two).getOnMenuItemClickListener().onMenuItemClick(two.getMenu().getItem(1));
 
         original.choose(anchor, () -> ran.add("page"), () -> ran.add("all"), () -> ran.add("some"));
-        PopupMenu three = ShadowPopupMenu.getLatestPopupMenu();
+        PopupMenu three = app.hushgram.extension.instagram.settings.StyledPopupMenu.latestForTests();
         assertEquals(3, three.getMenu().size());
         assertEquals("Choose pages", three.getMenu().getItem(2).getTitle().toString());
         PopupMenu.OnMenuItemClickListener clicks = Shadows.shadowOf(three).getOnMenuItemClickListener();
