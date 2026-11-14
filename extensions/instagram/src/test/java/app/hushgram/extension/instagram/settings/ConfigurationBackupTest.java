@@ -118,11 +118,12 @@ public class ConfigurationBackupTest {
         original.edit().putString("private-session", "secret-token").commit();
         PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.HIDE_ADS);
         JSONObject values = new JSONObject(new String(ConfigurationBackup.export(), StandardCharsets.UTF_8)).getJSONObject("settings");
-        assertEquals(13, values.length());
+        assertEquals(14, values.length());
         assertTrue(values.getJSONObject(Settings.CATEGORY_OWN_PAGE.key).getBoolean("value"));
         assertFalse(values.getJSONObject(Settings.DATE_SETTINGS_EXPORT.key).getBoolean("value"));
-        assertTrue(values.getJSONObject(Settings.DESCRIPTIONS_BEHIND_INFO.key).getBoolean("value"));
-        assertTrue(values.getJSONObject(Settings.SETTINGS_BLACK_LOOK.key).getBoolean("value"));
+        assertFalse(values.getJSONObject(Settings.DESCRIPTIONS_BEHIND_INFO.key).getBoolean("value"));
+        assertFalse(values.getJSONObject(Settings.SETTINGS_BLACK_LOOK.key).getBoolean("value"));
+        assertFalse(values.getJSONObject(Settings.SHOW_ENABLE_ALL.key).getBoolean("value"));
         assertTrue(values.getJSONObject(Settings.HIDE_ADS.key).getBoolean("value"));
         assertTrue(values.has(BaseSettings.DEBUG.key));
         assertEquals("OFF", values.getJSONObject(Settings.NAVIGATION_SETTINGS_TARGET.key).getString("value"));
@@ -138,6 +139,17 @@ public class ConfigurationBackupTest {
         assertFalse(values.has(Settings.SIGN_IN_NOTICE_HIDDEN.key));
         assertFalse(new String(ConfigurationBackup.export(), StandardCharsets.UTF_8).contains("secret-token"));
         assertFalse(values.has(Settings.DOWNLOAD_QUALITY.key));
+    }
+
+    @Test public void bulkControlVisibilityImportsAndCanBeUndoneWithoutARestart() throws Exception {
+        Settings.SHOW_ENABLE_ALL.save(false);
+        ConfigurationBackup.Result imported = ConfigurationBackup.restore(file(
+                entry(Settings.SHOW_ENABLE_ALL.key, "boolean", true)));
+        assertEquals(1, imported.applied);
+        assertTrue(Settings.SHOW_ENABLE_ALL.savedValue());
+        assertFalse(Settings.SHOW_ENABLE_ALL.rebootApp);
+        assertNotNull(ConfigurationBackup.undo());
+        assertFalse(Settings.SHOW_ENABLE_ALL.savedValue());
     }
 
     @Test public void roundTripRestoresBooleansEnumsAndNamesTogetherEvenDuringPause() throws Exception {
