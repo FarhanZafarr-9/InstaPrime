@@ -1028,6 +1028,12 @@ public class Settings extends BaseSettings {
     /** Gallery moves into the plus menu; the native microphone stays accessible. The saved key is retained. */
     public static final BooleanSetting MOVE_TO_PLUS_MENU = new BooleanSetting("hushgram_move_to_plus_menu", FALSE);
 
+    /** Native message-action enum names, read again whenever a menu opens. */
+    public static final StringSetting HIDE_MESSAGE_ACTIONS = new StringSetting("instaprime_hide_message_actions", "");
+    public static final StringSetting MORE_MESSAGE_ACTIONS = new StringSetting("instaprime_more_message_actions", "");
+    public static final BooleanSetting MESSAGE_TAP_ACTIONS = new BooleanSetting("instaprime_message_tap_actions", FALSE);
+    public static final BooleanSetting MESSAGE_TAP_REACTIONS = new BooleanSetting("instaprime_message_tap_reactions", FALSE);
+
     /**
      * The buttons the message box of a chat leaves off, as the names of Instagram's button enum with
      * commas between ({@link app.hushgram.extension.instagram.direct.MessageBox}, #217): any of

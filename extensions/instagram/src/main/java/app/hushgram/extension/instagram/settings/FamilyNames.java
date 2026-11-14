@@ -188,6 +188,8 @@ public final class FamilyNames {
     public static final String CALL_BLOCKER = "Call blocker";
     public static final String MESSAGE_BOX = "Message box buttons";
     public static final String PLUS_MENU = "Chat plus menu";
+    public static final String MESSAGE_ACTIONS = "Message action layout";
+    public static final String MESSAGE_GESTURES = "Message tap menus";
     public static final String GLASS_CHAT = "Glass in chats";
     public static final String ASK_BEFORE_LIKE = "Ask before a like";
     public static final String ASK_BEFORE_REFRESH = "Ask before a refresh";

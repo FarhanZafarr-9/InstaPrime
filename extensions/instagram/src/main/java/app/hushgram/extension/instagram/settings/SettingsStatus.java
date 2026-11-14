@@ -709,6 +709,14 @@ public final class SettingsStatus {
         return false;
     }
 
+    public static boolean messageActions() {
+        return false;
+    }
+
+    public static boolean messageGestures() {
+        return false;
+    }
+
     /** Rewritten by the Glass in chats patch. */
     public static boolean glassChat() {
         return false;
