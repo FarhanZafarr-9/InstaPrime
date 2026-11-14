@@ -82,7 +82,9 @@ val chatPlusMenuPatch = bytecodePatch(
     execute {
         requireStatusMethod("plusMenu")
         val site = findPlusMenu()
+        val empty = findEmptyPlusMenu()
         handPlusMenu(site)
+        hideEmptyPlusMenu(empty)
         enableStatus("plusMenu")
     }
 }
@@ -156,7 +158,7 @@ internal fun BytecodePatchContext.handPlusMenu(site: PlusMenuSite) {
 }
 
 /** The static field each enum constant of [enumClass] lands in, by the constant's name. */
-private fun constantFields(enumClass: ClassDef): Map<String, String> {
+internal fun constantFields(enumClass: ClassDef): Map<String, String> {
     val initializer = enumClass.methods.singleOrNull { it.name == "<clinit>" } ?: return emptyMap()
     val found = LinkedHashMap<String, String>()
     var lastName: String? = null

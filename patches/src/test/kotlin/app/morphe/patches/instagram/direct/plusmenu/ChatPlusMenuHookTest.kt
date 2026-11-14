@@ -34,6 +34,11 @@ import java.io.File
  * hook goes in once, on the loop's exit label, and nothing else moves.
  */
 class ChatPlusMenuHookTest {
+    @Test fun standaloneNativeApk() {
+        val path = System.getenv("HUSHGRAM_MESSAGE_FIXTURE_APK")
+        org.junit.Assume.assumeTrue("HUSHGRAM_MESSAGE_FIXTURE_APK is unset", !path.isNullOrBlank())
+        builds(File(path!!), "message fixture")
+    }
     @Test
     fun theHookIsInTheExtension() {
         val declared = ExtensionDex.classDef(PLUS_MENU).methods
@@ -93,6 +98,15 @@ class ChatPlusMenuHookTest {
     private fun builds(bundle: File, label: String) {
         val kept = holders(bundle)
         val context = PatchContexts.of(kept + ExtensionDex.classDef(PLUS_MENU))
+        val empty = context.findEmptyPlusMenu()
+        assertTrue("$label: reads this item's actual overflow list", empty.field.endsWith(":Ljava/util/List;"))
+        context.hideEmptyPlusMenu(empty)
+        val availability = context.mutableClassDefBy(empty.owner).methods.single {
+            it.name == empty.method && it.parameterTypes.map(Any::toString) == empty.parameters
+        }.code()
+        assertEquals("$label: empty menu hook once", 1, availability.count {
+            it.reference() == "$PLUS_MENU->empty(Ljava/util/List;)Z"
+        })
         val site = context.findPlusMenu()
         val holder = kept.single { it.type == site.type }
         val own = holder.methods.single {
