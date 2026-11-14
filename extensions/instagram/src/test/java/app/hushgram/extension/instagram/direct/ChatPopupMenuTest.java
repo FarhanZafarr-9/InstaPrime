@@ -17,6 +17,7 @@ import android.widget.CheckedTextView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import org.junit.Test;
+import org.junit.Rule;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
@@ -24,11 +25,14 @@ import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
 import static org.junit.Assert.*;
+import app.hushgram.extension.shared.SettingsContextRule;
 
 /** Real anchored lists: checked choices, dismissal, wrapping and rounded clipping on both API floors. */
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = {28, 37}, qualifiers = "w320dp-h640dp-xhdpi")
 public class ChatPopupMenuTest {
+    @Rule public final SettingsContextRule settings = new SettingsContextRule();
+
     @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
     public void longProfileOptionsUseAvailableSpaceAndHighlightedRowsDoNotReachTheWalls() {
         try (ActivityController<Activity> activity = Robolectric.buildActivity(Activity.class).setup().visible()) {
