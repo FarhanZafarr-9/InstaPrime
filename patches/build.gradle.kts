@@ -850,6 +850,12 @@ tasks.withType<Test>().configureEach {
     inputs.files(fixtureDirectory.map { if (it.isBlank()) emptyList() else listOf(File(it)) }.orElse(emptyList()))
         .withPropertyName("fixtures")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    for (variable in listOf("HUSHGRAM_MESSAGE_FIXTURE_APK", "HUSHGRAM_GESTURE_APK")) {
+        inputs.files(providers.environmentVariable(variable)
+            .map { if (it.isBlank()) emptyList() else listOf(File(it)) }.orElse(emptyList()))
+            .withPropertyName(variable)
+            .withPathSensitivity(PathSensitivity.NAME_ONLY)
+    }
     if (name == "testMisc") {
         inputs.files(providers.environmentVariable("HUSHGRAM_ROW_FIXTURE_APK")
             .map { if (it.isBlank()) emptyList() else listOf(File(it)) }.orElse(emptyList()))
