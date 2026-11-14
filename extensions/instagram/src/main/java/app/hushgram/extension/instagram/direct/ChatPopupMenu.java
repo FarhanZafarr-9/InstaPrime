@@ -134,21 +134,20 @@ final class ChatPopupMenu extends PopupMenu {
                 }
                 int tint = (colors.accent & 0x00FFFFFF) | 0x33000000;
                 int focus = colors.choiceSelected();
-                float top = dp(position == 0 ? 12 : 4);
-                float bottom = dp(position == getCount() - 1 ? 12 : 4);
-                float[] corners = {top, top, top, top, bottom, bottom, bottom, bottom};
+                float radius = dp(12);
+                float[] corners = {radius, radius, radius, radius, radius, radius, radius, radius};
                 GradientDrawable fill = new GradientDrawable();
                 fill.setCornerRadii(corners);
                 fill.setColor(new ColorStateList(new int[][]{{-android.R.attr.state_enabled},
                         {android.R.attr.state_selected}, {android.R.attr.state_focused},
-                        {android.R.attr.state_hovered}, {}}, new int[]{colors.iconSurface, focus, focus,
-                        focus, item.isChecked() ? focus : colors.iconSurface}));
+                        {android.R.attr.state_hovered}, {}}, new int[]{Color.TRANSPARENT, focus, focus,
+                        focus, Color.TRANSPARENT}));
                 GradientDrawable mask = new GradientDrawable();
                 mask.setColor(Color.WHITE);
                 mask.setCornerRadii(corners);
                 container.setBackground(new InsetDrawable(new RippleDrawable(ColorStateList.valueOf(tint),
-                        fill, mask), dp(10), 0, dp(10), position == getCount() - 1 ? 0 : dp(4)));
-                container.setPadding(dp(10), 0, dp(10), position == getCount() - 1 ? 0 : dp(4));
+                        fill, mask), dp(10), 0, dp(10), dp(4)));
+                container.setPadding(dp(10), 0, dp(10), dp(4));
                 container.addView(row, new android.widget.FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
                 return container;

@@ -109,9 +109,17 @@ public class ChatPopupMenuTest {
                 android.graphics.drawable.RippleDrawable option = (android.graphics.drawable.RippleDrawable)
                         ((android.graphics.drawable.InsetDrawable) large.getBackground()).getDrawable();
                 GradientDrawable mask = (GradientDrawable) option.findDrawableByLayerId(android.R.id.mask);
-                float inner = 4 * list.getResources().getDisplayMetrics().density;
-                assertArrayEquals("middle options use the connected inner corners",
+                float inner = 12 * list.getResources().getDisplayMetrics().density;
+                assertArrayEquals("all options have the same rounded ripple boundary",
                         new float[]{inner, inner, inner, inner, inner, inner, inner, inner}, mask.getCornerRadii(), 0.1f);
+                for (int at = 0; at < list.getAdapter().getCount(); at++) {
+                    View entry = list.getAdapter().getView(at, null, list);
+                    android.graphics.drawable.RippleDrawable ripple = (android.graphics.drawable.RippleDrawable)
+                            ((android.graphics.drawable.InsetDrawable) entry.getBackground()).getDrawable();
+                    assertEquals(Color.TRANSPARENT, ((GradientDrawable) ripple.getDrawable(0)).getColor().getDefaultColor());
+                    assertArrayEquals(mask.getCornerRadii(), ((GradientDrawable)
+                            ripple.findDrawableByLayerId(android.R.id.mask)).getCornerRadii(), 0.1f);
+                }
                 CheckedTextView row = large.findViewById(android.R.id.text1);
                 row.setTextSize(32);
                 int width = popup.windowForTests().getWidth();
