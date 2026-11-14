@@ -29,6 +29,38 @@ import static org.junit.Assert.*;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = {28, 37}, qualifiers = "w320dp-h640dp-xhdpi")
 public class ChatPopupMenuTest {
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    public void longProfileOptionsStayCompactAndHighlightedRowsDoNotReachTheWalls() {
+        try (ActivityController<Activity> activity = Robolectric.buildActivity(Activity.class).setup().visible()) {
+            Button anchor = new Button(activity.get());
+            activity.get().setContentView(anchor);
+            ChatPopupMenu popup = new ChatPopupMenu(activity.get(), anchor);
+            popup.getMenu().add("Copy the full profile picture address for this account");
+            popup.show();
+            ListView list = popup.windowForTests().getListView();
+            int width = popup.windowForTests().getWidth();
+            float density = list.getResources().getDisplayMetrics().density;
+            assertTrue(width <= Math.round(240 * density));
+            int height = Math.round(160 * density);
+            list.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+            list.layout(0, 0, width, height);
+            View row = list.getChildAt(0);
+            assertNotNull(row);
+            assertTrue(row.getLeft() >= list.getPaddingLeft());
+            assertTrue(row.getRight() <= width - list.getPaddingRight());
+            row.setSelected(true);
+            row.jumpDrawablesToCurrentState();
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            list.draw(new Canvas(bitmap));
+            int y = row.getTop() + row.getHeight() / 2;
+            int panel = ((GradientDrawable) list.getBackground()).getColor().getDefaultColor();
+            assertEquals(panel, bitmap.getPixel(list.getPaddingLeft() / 2, y));
+            assertEquals(panel, bitmap.getPixel(width - list.getPaddingRight() / 2 - 1, y));
+            bitmap.recycle();
+        } finally { ChatPopupMenu.resetForTests(); }
+    }
+
     @Test public void shortMenusUseContentWidthInsteadOfTheMaximum() {
         try (ActivityController<Activity> activity = Robolectric.buildActivity(Activity.class).setup().visible()) {
             Button anchor = new Button(activity.get());
@@ -120,10 +152,9 @@ public class ChatPopupMenuTest {
                         background.getColor().getDefaultColor());
                 assertEquals(16 * list.getResources().getDisplayMetrics().density, background.getCornerRadius(), 0.1f);
                 View large = list.getAdapter().getView(1, null, list);
-                assertTrue("each option has its own inset", large.getBackground()
-                        instanceof android.graphics.drawable.InsetDrawable);
+                assertTrue("the list reserves a real gutter beside every option", list.getPaddingLeft() > 0);
                 android.graphics.drawable.RippleDrawable option = (android.graphics.drawable.RippleDrawable)
-                        ((android.graphics.drawable.InsetDrawable) large.getBackground()).getDrawable();
+                        large.getBackground();
                 GradientDrawable mask = (GradientDrawable) option.findDrawableByLayerId(android.R.id.mask);
                 float inner = 12 * list.getResources().getDisplayMetrics().density;
                 assertArrayEquals("all options have the same rounded ripple boundary",
@@ -131,7 +162,7 @@ public class ChatPopupMenuTest {
                 for (int at = 0; at < list.getAdapter().getCount(); at++) {
                     View entry = list.getAdapter().getView(at, null, list);
                     android.graphics.drawable.RippleDrawable ripple = (android.graphics.drawable.RippleDrawable)
-                            ((android.graphics.drawable.InsetDrawable) entry.getBackground()).getDrawable();
+                            entry.getBackground();
                     assertEquals(Color.TRANSPARENT, ((GradientDrawable) ripple.getDrawable(0)).getColor().getDefaultColor());
                     assertArrayEquals(mask.getCornerRadii(), ((GradientDrawable)
                             ripple.findDrawableByLayerId(android.R.id.mask)).getCornerRadii(), 0.1f);

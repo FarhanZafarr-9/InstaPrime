@@ -49,12 +49,14 @@ public class StyledPopupNativeTest {
             TextView action = new TextView(host.get());
             action.setText("Report"); action.setTextColor(0xffcc1111);
             action.setPadding(17, 9, 17, 9);
+            action.setForeground(new RippleDrawable(android.content.res.ColorStateList.valueOf(Color.RED), null, null));
             int[] clicks = {0}; action.setOnClickListener(v -> clicks[0]++);
             root.addView(action);
             PopupWindow popup = new PopupWindow(root, 320, 400);
             StyledPopupMenu.styleNative(popup);
             assertTrue(popup.getBackground() instanceof GradientDrawable);
             assertTrue(action.getBackground() instanceof android.graphics.drawable.InsetDrawable);
+            assertNull("the old full-width foreground cannot paint over the inset ripple", action.getForeground());
             assertEquals(17, action.getPaddingLeft());
             assertEquals(0xffcc1111, action.getCurrentTextColor());
             RippleDrawable ripple = (RippleDrawable) ((android.graphics.drawable.InsetDrawable) action.getBackground()).getDrawable();

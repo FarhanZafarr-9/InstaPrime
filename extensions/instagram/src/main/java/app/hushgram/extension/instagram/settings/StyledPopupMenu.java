@@ -78,7 +78,10 @@ public class StyledPopupMenu extends PopupMenu {
         Rect frame = new Rect();
         anchor.getWindowVisibleDisplayFrame(frame);
         int available = frame.width() > 0 ? frame.width() : context.getResources().getDisplayMetrics().widthPixels;
-        int maxWidth = Math.max(1, Math.min(dp(320), available - dp(24)));
+        int maxWidth = Math.max(1, Math.min(dp(240), available - dp(24)));
+        int gutter = Math.min(dp(8), Math.max(0, (maxWidth - 1) / 2));
+        int maxRowWidth = Math.max(1, maxWidth - gutter * 2);
+        window.setListSelector(new ColorDrawable(Color.TRANSPARENT));
         BaseAdapter adapter = new BaseAdapter() {
             @Override public int getCount() { return items.size(); }
             @Override public MenuItem getItem(int position) { return items.get(position); }
@@ -110,6 +113,8 @@ public class StyledPopupMenu extends PopupMenu {
                 row.setMinHeight(dp(48));
                 row.setPaddingRelative(dp(12), dp(6), dp(12), dp(6));
                 row.setEnabled(item.isEnabled());
+                row.setBackground(null);
+                row.setForeground(null);
                 container.setAccessibilityDelegate(new View.AccessibilityDelegate() {
                     @Override public void onInitializeAccessibilityNodeInfo(View host,
                             android.view.accessibility.AccessibilityNodeInfo info) {
@@ -132,8 +137,8 @@ public class StyledPopupMenu extends PopupMenu {
                     row.setCompoundDrawablesRelative(icon, null, null, null);
                     row.setCompoundDrawablePadding(dp(12));
                 }
-                container.setBackground(optionBackground(colors, context.getResources().getDisplayMetrics().density, true));
-                container.setPadding(dp(6), 0, dp(6), dp(2));
+                container.setBackground(optionBackground(colors, context.getResources().getDisplayMetrics().density, false));
+                container.setPadding(0, 0, 0, dp(2));
                 container.addView(row, new android.widget.FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
                 return container;
@@ -143,11 +148,11 @@ public class StyledPopupMenu extends PopupMenu {
         android.widget.FrameLayout measuringParent = new android.widget.FrameLayout(context);
         for (int i = 0; i < adapter.getCount(); i++) {
             View option = adapter.getView(i, null, measuringParent);
-            option.measure(View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
+            option.measure(View.MeasureSpec.makeMeasureSpec(maxRowWidth, View.MeasureSpec.AT_MOST),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
             width = Math.max(width, option.getMeasuredWidth());
         }
-        width = Math.max(1, Math.min(maxWidth, width));
+        width = Math.max(1, Math.min(maxWidth, width + gutter * 2));
         window.setWidth(width);
         window.setAdapter(adapter);
         // Measure wrapped options at their real width before opening the window. A fixed row
@@ -155,7 +160,7 @@ public class StyledPopupMenu extends PopupMenu {
         int contentHeight = dp(12);
         for (int i = 0; i < adapter.getCount(); i++) {
             View option = adapter.getView(i, null, measuringParent);
-            option.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            option.measure(View.MeasureSpec.makeMeasureSpec(Math.max(1, width - gutter * 2), View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
             contentHeight += option.getMeasuredHeight();
         }
@@ -178,7 +183,8 @@ public class StyledPopupMenu extends PopupMenu {
         window.getListView().setLayoutDirection(anchor.getLayoutDirection());
         window.getListView().setClipToOutline(true);
         window.getListView().setDivider(null);
-        window.getListView().setPadding(0, dp(6), 0, dp(6));
+        window.getListView().setPadding(gutter, dp(6), gutter, dp(6));
+        window.getListView().setClipToPadding(true);
         window.getListView().setSelector(new ColorDrawable(Color.TRANSPARENT));
         window.getListView().setElevation(dp(8));
     }
@@ -300,6 +306,9 @@ public class StyledPopupMenu extends PopupMenu {
             int start = view.getPaddingStart(), top = view.getPaddingTop(), end = view.getPaddingEnd(), bottom = view.getPaddingBottom();
             Drawable background = optionBackground(colors, view.getResources().getDisplayMetrics().density, true);
             view.setBackgroundTintList(null);
+            Drawable foreground = view.getForeground();
+            if (foreground instanceof RippleDrawable || foreground instanceof android.graphics.drawable.StateListDrawable)
+                view.setForeground(null);
             view.setBackground(background);
             view.setPaddingRelative(start, top, end, bottom);
             painted.put(view, new WeakReference<>(background));
