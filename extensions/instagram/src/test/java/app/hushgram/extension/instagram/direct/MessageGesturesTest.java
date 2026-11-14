@@ -86,6 +86,8 @@ public class MessageGesturesTest {
 
     @Test public void nativeReactionAnchorUsesTheActualTapPosition() {
         Settings.MESSAGE_TAP_REACTIONS.save(true);
+        android.view.MotionEvent down = android.view.MotionEvent.obtain(1, 1, android.view.MotionEvent.ACTION_DOWN, 80, 240, 0);
+        try { MessageGestures.observe(down); } finally { down.recycle(); }
         android.view.MotionEvent up = android.view.MotionEvent.obtain(1, 2, android.view.MotionEvent.ACTION_UP, 80, 240, 0);
         try { MessageGestures.observe(up); } finally { up.recycle(); }
         MessageGestures.bridgeForTests = delegate -> {

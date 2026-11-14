@@ -25,6 +25,7 @@ public final class MessageGestures {
     }
     private static float touchX, touchY;
     private static long touchTime;
+    private static boolean touchActive;
     private static final class EmptyMenu extends RuntimeException {
         EmptyMenu() { super(null, null, false, false); }
     }
@@ -47,11 +48,20 @@ public final class MessageGestures {
     public static void observe(android.view.MotionEvent event) {
         if (event == null) return;
         int action = event.getActionMasked();
-        if (action == android.view.MotionEvent.ACTION_UP && event.getPointerCount() == 1) {
-            touchX = event.getRawX(); touchY = event.getRawY();
-            touchTime = android.os.SystemClock.uptimeMillis();
-        } else if (action == android.view.MotionEvent.ACTION_DOWN || action == android.view.MotionEvent.ACTION_CANCEL
-                || action == android.view.MotionEvent.ACTION_POINTER_DOWN) touchTime = 0;
+        if (action == android.view.MotionEvent.ACTION_DOWN) {
+            touchTime = 0;
+            touchActive = event.getPointerCount() == 1;
+        } else if (action == android.view.MotionEvent.ACTION_UP) {
+            if (touchActive && event.getPointerCount() == 1) {
+                touchX = event.getRawX(); touchY = event.getRawY();
+                touchTime = android.os.SystemClock.uptimeMillis();
+            }
+            touchActive = false;
+        } else if (action == android.view.MotionEvent.ACTION_CANCEL
+                || action == android.view.MotionEvent.ACTION_POINTER_DOWN) {
+            touchTime = 0;
+            touchActive = false;
+        }
     }
 
     public static float x() { Scope scope = opening.get(); return scope == null ? 0 : scope.x; }
