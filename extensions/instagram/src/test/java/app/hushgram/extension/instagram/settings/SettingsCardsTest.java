@@ -64,6 +64,7 @@ public class SettingsCardsTest {
         Settings.SIGN_IN_NOTICE_HIDDEN.save(true);
         // The classic charcoal cards and category lines; BlackSettingsPageTest covers the black ones.
         Settings.SETTINGS_BLACK_LOOK.save(false);
+        Settings.SHOW_ENABLE_ALL.save(true);
     }
 
     @After public void close() throws Exception {
@@ -74,6 +75,8 @@ public class SettingsCardsTest {
         Settings.SETTINGS_BLACK_LOOK.resetToDefault();
         Settings.CATEGORY_PAGES.resetToDefault();
         Settings.DESCRIPTIONS_BEHIND_INFO.resetToDefault();
+        Settings.SHOW_ENABLE_ALL.resetToDefault();
+        app.hushgram.extension.shared.settings.preference.AbstractPreferenceFragment.restartPending.clear();
         DescriptionInfo.searching = false;
         Settings.SIGN_IN_NOTICE_HIDDEN.resetToDefault();
         Settings.START_ON_FOLLOWING.resetToDefault();
@@ -185,6 +188,119 @@ public class SettingsCardsTest {
         assertEquals("", page.currentPage());
         assertEquals(1f, list.getAlpha(), 0.001f);
         assertEquals(0f, list.getTranslationX(), 0.001f);
+    }
+
+    @Test public void enableAllIsOptionalAndHiddenByDefault() throws Exception {
+        Settings.SHOW_ENABLE_ALL.resetToDefault();
+        assertFalse(Settings.SHOW_ENABLE_ALL.savedValue());
+        open(EnumSet.allOf(PatchFamily.class));
+        SettingsNavigation.Node feed = category("Feed");
+        SettingsNavigation.Node leaf = feed.children.stream().filter(n -> n.id.endsWith("::content")).findFirst().get();
+        tap(leaf.opener);
+        assertNull(page.getPreferenceScreen().findPreference(HushgramPreferenceFragment.ENABLE_ALL_KEY));
+        Settings.SHOW_ENABLE_ALL.save(true);
+        page.refreshEnableAll();
+        assertNotNull(page.getPreferenceScreen().findPreference(HushgramPreferenceFragment.ENABLE_ALL_KEY));
+        Settings.SHOW_ENABLE_ALL.save(false);
+        page.refreshEnableAll();
+        assertNull(page.getPreferenceScreen().findPreference(HushgramPreferenceFragment.ENABLE_ALL_KEY));
+        assertTrue(ConfigurationBackup.eligible().containsKey(Settings.SHOW_ENABLE_ALL.key));
+        assertFalse(category("Settings entry").toggles().stream()
+                .anyMatch(row -> Settings.SHOW_ENABLE_ALL.key.equals(row.getKey())));
+    }
+
+    @Test public void untitledSectionsKeepCountsAndDependentOptionsTogether() throws Exception {
+        open(EnumSet.allOf(PatchFamily.class));
+        SettingsNavigation.Node notifications = category("Notifications");
+        assertTrue(notifications.children.isEmpty());
+        assertEquals(8, notifications.rows.size());
+        assertTrue(notifications.sectionHeadings.isEmpty());
+        assertTrue(SettingsNavigation.beginsSection(page.findPreference(Settings.HIDE_FOLLOW_BACK_SUGGESTIONS.key)));
+        assertTrue(SettingsNavigation.beginsSection(page.findPreference(Settings.HIDE_NOTIFICATION_FEATURED.key)));
+        assertFalse(SettingsNavigation.beginsSection(page.findPreference(Settings.GROUP_NOTIFICATIONS_BY_TYPE.key)));
+        tap(notifications.opener);
+        Preference start = page.findPreference(Settings.HIDE_NOTIFICATION_FEATURED.key);
+        Preference before = notifications.rows.get(notifications.rows.indexOf(start) - 1);
+        assertTrue(ScreenColors.opensCard(start));
+        assertTrue(ScreenColors.closesCard(before));
+        View visible = render(start);
+        assertTrue("separation has real vertical space", visible.getPaddingTop() > render(before).getPaddingTop());
+        for (SettingsNavigation.Node category : model().categories) {
+            java.util.List<SettingsNavigation.Node> leaves = category.children.isEmpty()
+                    ? java.util.List.of(category) : category.children;
+            for (SettingsNavigation.Node leaf : leaves) {
+                java.util.Map<String, Integer> positions = new java.util.HashMap<>();
+                for (int i = 0; i < leaf.rows.size(); i++) positions.put(leaf.rows.get(i).getKey(), i);
+                for (int i = 0; i < leaf.rows.size(); i++) {
+                    app.hushgram.extension.shared.settings.Setting<?> setting =
+                            app.hushgram.extension.shared.settings.Setting.getSettingFromPath(leaf.rows.get(i).getKey());
+                    if (setting == null) continue;
+                    for (app.hushgram.extension.shared.settings.Setting<?> parent : setting.getParentSettings()) {
+                        Integer at = positions.get(parent.key);
+                        if (at == null) continue;
+                        for (int j = Math.min(at, i) + 1; j <= Math.max(at, i); j++) {
+                            assertFalse("dependency split: " + setting.key, SettingsNavigation.beginsSection(leaf.rows.get(j)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test public void switchShowsRestartOnlyForAnUnappliedSavedState() throws Exception {
+        Settings.ACCENT_COLOR.save(false);
+        open(EnumSet.of(PatchFamily.ACCENT_COLOR));
+        android.preference.SwitchPreference preference = (android.preference.SwitchPreference) page.findPreference(Settings.ACCENT_COLOR.key);
+        assertFalse(((AnimatedSettingsSwitch) render(preference).findViewById(android.R.id.switch_widget)).restartPending());
+        preference.setChecked(true);
+        ShadowLooper.idleMainLooper();
+        View row = render(preference);
+        assertTrue(((AnimatedSettingsSwitch) row.findViewById(android.R.id.switch_widget)).restartPending());
+        assertFalse(((TextView) row.findViewById(android.R.id.summary)).getText().toString().contains("Restart Instagram"));
+        assertTrue("search keeps the original explanatory text", preference.getSummary().toString().contains("Restart Instagram"));
+        android.view.accessibility.AccessibilityNodeInfo info = row.createAccessibilityNodeInfo();
+        assertTrue(info.getContentDescription().toString().contains("Restart required"));
+        preference.setChecked(false);
+        ShadowLooper.idleMainLooper();
+        assertFalse(((AnimatedSettingsSwitch) render(preference).findViewById(android.R.id.switch_widget)).restartPending());
+        assertEquals("Keeps the speed until you restart Instagram.",
+                AnimatedSettingsSwitch.compact("Keeps the speed until you restart Instagram. Restart Instagram to see the change."));
+    }
+
+    @Test @Config(sdk = 37) @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    public void previewUntitledSectionsAndRestartStates() throws Exception {
+        open(EnumSet.allOf(PatchFamily.class));
+        SettingsNavigation.Node notifications = category("Notifications");
+        tap(notifications.opener);
+        LinearLayout preview = new LinearLayout(controller.get());
+        preview.setOrientation(LinearLayout.VERTICAL);
+        preview.setBackgroundColor(ScreenColors.current().background);
+        for (Preference preference : notifications.rows) preview.addView(render(preference));
+        for (int state = 0; state < 3; state++) {
+            HushgramPreferenceFragment.Toggle preference = new HushgramPreferenceFragment.Toggle(controller.get());
+            preference.setPersistent(false);
+            preference.setKey(Settings.ACCENT_COLOR.key);
+            preference.setTitle(state == 0 ? "Applied" : state == 1 ? "On, restart pending" : "Off, restart pending");
+            preference.setSummary("Applies accent colors. Restart Instagram to see the change.");
+            preference.setChecked(state != 2);
+            if (state == 0) app.hushgram.extension.shared.settings.preference.AbstractPreferenceFragment.restartPending.clear();
+            else app.hushgram.extension.shared.settings.preference.AbstractPreferenceFragment.restartPending.add(Settings.ACCENT_COLOR.key);
+            preview.addView(render(preference));
+        }
+        int width = Math.round(360 * preview.getResources().getDisplayMetrics().density);
+        preview.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        preview.layout(0, 0, width, preview.getMeasuredHeight());
+        android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(width, preview.getHeight(), android.graphics.Bitmap.Config.ARGB_8888);
+        preview.draw(new android.graphics.Canvas(bitmap));
+        java.io.File root = new java.io.File(System.getProperty("user.dir"));
+        while (!new java.io.File(root, "README.md").isFile() && root.getParentFile() != null) root = root.getParentFile();
+        java.io.File folder = new java.io.File(root, ".mockups");
+        folder.mkdirs();
+        try (java.io.FileOutputStream out = new java.io.FileOutputStream(new java.io.File(folder, "settings-untitled-and-restart.png"))) {
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
+        }
+        bitmap.recycle();
     }
 
     private View render(Preference preference) {

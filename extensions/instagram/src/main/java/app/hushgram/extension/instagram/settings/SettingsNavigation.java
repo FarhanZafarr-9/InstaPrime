@@ -23,6 +23,8 @@ import app.hushgram.extension.shared.settings.Setting;
 
 /** Navigation owns placement; the category builders remain the single source of setting rows. */
 final class SettingsNavigation {
+    private static final Set<Preference> sectionStarts = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
+    static boolean beginsSection(Preference row) { return sectionStarts.contains(row); }
     static final class Node {
         final String id;
         final Node parent;
@@ -45,7 +47,7 @@ final class SettingsNavigation {
         List<TwoStatePreference> toggles() {
             List<TwoStatePreference> toggles = new ArrayList<>();
             for (Preference row : rows) {
-                if (savedToggle(row) != null) {
+                if (savedToggle(row) != null && !Settings.SHOW_ENABLE_ALL.key.equals(row.getKey())) {
                     toggles.add((TwoStatePreference) row);
                 }
             }
@@ -162,6 +164,7 @@ final class SettingsNavigation {
                             Settings.HIDE_OTHER_LANGUAGE_HOME.key, Settings.REELS_KEPT_LANGUAGES.key,
                             Settings.HIDE_SOUND_REELS.key, HushgramPreferenceFragment.HIDDEN_SOUNDS_ROW));
         }
+        untitledSections(node);
         nodes.put(node.id, node);
         HushgramPreferenceFragment.Row row = node.opener = new HushgramPreferenceFragment.Row(context);
         row.setKey(HushgramPreferenceFragment.CATEGORY_ROW_KEY + "navigate:" + node.id);
@@ -185,6 +188,137 @@ final class SettingsNavigation {
     }
 
     private static Set<String> keys(String... keys) { return new HashSet<>(Arrays.asList(keys)); }
+
+    /** Real rows form visual sections: no blank preferences, extra focus stops, or count changes. */
+    @SafeVarargs
+    private static void bands(Node node, Set<String>... groups) {
+        List<Preference> remaining = new ArrayList<>(node.rows);
+        List<Preference> ordered = new ArrayList<>();
+        for (Set<String> group : groups) {
+            List<Preference> band = new ArrayList<>();
+            for (Preference row : remaining) if (group.contains(row.getKey())) band.add(row);
+            if (band.isEmpty()) continue;
+            if (!ordered.isEmpty()) sectionStarts.add(band.get(0));
+            ordered.addAll(band);
+            remaining.removeAll(band);
+        }
+        if (!remaining.isEmpty()) {
+            if (!ordered.isEmpty()) sectionStarts.add(remaining.get(0));
+            ordered.addAll(remaining);
+        }
+        node.rows.clear();
+        node.rows.addAll(ordered);
+    }
+
+    private static void untitledSections(Node node) {
+        sectionStarts.removeAll(node.rows);
+        if (!node.children.isEmpty() || node.rows.size() < 6) return;
+        String icon = node.icon, id = node.id;
+        if (icon.equals(SettingsIcons.NOTIFICATIONS)) {
+            bands(node, keys(Settings.GROUP_NOTIFICATIONS.key, Settings.GROUP_NOTIFICATIONS_BY_TYPE.key,
+                            Settings.MUTED_NOTIFICATION_CHANNELS.key),
+                    keys(Settings.HIDE_FOLLOW_BACK_SUGGESTIONS.key, Settings.HIDE_NOTIFICATION_SUGGESTIONS.key,
+                            Settings.HIDE_NOTIFICATION_CHANNEL_INVITES.key),
+                    keys(Settings.HIDE_NOTIFICATION_FEATURED.key, Settings.HIDE_FEATURED_DOT.key));
+        } else if (icon.equals(SettingsIcons.AI)) {
+            bands(node, keys(Settings.HIDE_META_AI_SEARCH.key, Settings.HIDE_META_AI_POSTS.key, Settings.HIDE_META_AI_SHARE_TARGET.key),
+                    keys(Settings.HIDE_ABOUT_THIS_REEL.key, Settings.HIDE_ASK_META_AI.key, Settings.HIDE_META_AI_BLEND.key),
+                    keys(Settings.HIDE_META_AI_PROFILE_BANNER.key, Settings.HIDE_META_AI_PROFILE_BUTTON.key));
+        } else if (icon.equals(SettingsIcons.SETTINGS)) {
+            bands(node, keys(Settings.NAVIGATION_SETTINGS_TARGET.key, Settings.PROFILE_MENU_LONG_PRESS.key,
+                    Settings.SETTINGS_SHORTCUT.key, Settings.SETTINGS_LOGO_PRESS.key, Settings.HIDE_MENU_ROW.key));
+        } else if (icon.equals(SettingsIcons.FEED) && id.endsWith("::appearance")) {
+            bands(node, keys(Settings.FULL_RESOLUTION_PHOTOS.key, Settings.ASK_FOR_LARGER_PHOTOS.key, Settings.FULL_SIZE_COVERS.key),
+                    keys(Settings.SHOW_POST_TIME.key, Settings.SHOW_HIDDEN_LIKE_COUNTS.key, Settings.HIDE_CAPTIONS.key,
+                            Settings.SKIP_COLLECTIONS_TRAY.key, Settings.HIDE_ACTIVITY_BUBBLES.key),
+                    keys(Settings.FULL_SCREEN_HOME.key, Settings.KEEP_HOME_TOP_BAR.key, Settings.SEE_THROUGH_HOME_TOP_BAR.key));
+        } else if (icon.equals(SettingsIcons.FEED) && id.endsWith("::home")) {
+            bands(node, keys(Settings.START_ON_FOLLOWING.key, Settings.ONLY_FOLLOWING.key, Settings.LOGO_ON_FOLLOWING.key,
+                            Settings.FOLLOWING_FALLBACK.key, Settings.FOLLOWING_MIX.key),
+                    keys(Settings.FAVORITES_TAB_BAR.key, Settings.FAVORITES_TAB_TARGET.key),
+                    keys(Settings.BACK_LEAVES_HOME.key, Settings.KEEP_HOME_PLACE.key));
+        } else if (icon.equals(SettingsIcons.FEED) && id.endsWith("::post-style")) {
+            bands(node, keys(Settings.ROUNDED_POST_CORNERS.key, Settings.ROUNDED_REEL_CORNERS.key,
+                    Settings.ROUNDED_STORY_CORNERS.key, Settings.ROUNDED_CORNER_SIZE.key));
+        } else if (icon.equals(SettingsIcons.FEED) && id.endsWith("::interaction")) {
+            bands(node, keys(Settings.STOP_SWIPE_TO_CREATE.key, Settings.HOME_SWIPE_OPENS.key, Settings.STOP_TAB_SWIPING.key),
+                    keys(Settings.ASK_BEFORE_LIKE.key, Settings.ASK_BEFORE_REFRESH.key));
+        } else if (icon.equals(SettingsIcons.FEED) && id.endsWith("::video")) {
+            bands(node, keys(Settings.START_FEED_VIDEOS_WITH_SOUND.key, Settings.TAP_FEED_VIDEO_TO_PAUSE.key,
+                    Settings.HIDE_FEED_AUDIO_ICON.key));
+        } else if (icon.equals(SettingsIcons.FEED) && id.endsWith("::video-controls")) {
+            bands(node, keys(Settings.HOLD_FEED_VIDEO_FAST.key, Settings.FEED_DOUBLE_TAP_SKIP.key, Settings.FEED_DOUBLE_TAP_SKIP_SECONDS.key),
+                    keys(Settings.FEED_SEEK_BAR_ON_EDGE.key, Settings.SEEK_BAR_SHAPE.key, Settings.SEEK_PREVIEW.key));
+        } else if (icon.equals(SettingsIcons.CHATS) && id.endsWith("::inbox")) {
+            bands(node, keys(Settings.HIDE_NOTES_ROW.key, Settings.SPLIT_NOTES_ROW.key, Settings.HIDE_NOTES_MAP.key),
+                    keys(Settings.HIDE_INBOX_SEARCH.key, Settings.HIDE_INBOX_SUGGESTIONS.key));
+        } else if (icon.equals(SettingsIcons.PERSON) && id.endsWith("::relationships")) {
+            bands(node, keys(Settings.SHOW_FRIENDSHIP_STATUS.key, Settings.FRIENDSHIP_STATUS_CHIP.key, Settings.FOLLOW_LABEL_PLACE.key),
+                    keys(Settings.ASK_BEFORE_FOLLOW.key, Settings.MARK_FOLLOWING_LIST.key, Settings.FOLLOW_MARK_ON_PICTURE.key,
+                            Settings.FOLLOWING_NOT_BACK_FIRST.key));
+        } else if (icon.equals(SettingsIcons.REELS) && id.endsWith("::likes")) {
+            bands(node, keys(Settings.TURN_OFF_DOUBLE_TAP_LIKE.key, Settings.TURN_OFF_DOUBLE_TAP_LIKE_ON_POSTS.key,
+                    Settings.TURN_OFF_DOUBLE_TAP_LIKE_ON_REELS.key, Settings.TURN_OFF_DOUBLE_TAP_LIKE_ON_COMMENTS.key,
+                    Settings.TURN_OFF_DOUBLE_TAP_LIKE_ON_MESSAGES.key));
+        } else if (icon.equals(SettingsIcons.REELS) && id.endsWith("::gestures")) {
+            bands(node, keys(Settings.STOP_REELS_SCROLLING.key, Settings.REEL_SCROLL_FROM_PROFILE.key,
+                    Settings.REEL_SCROLL_FROM_SEARCH.key, Settings.REEL_SCROLL_FROM_AUDIO.key, Settings.REEL_SWIPE_TO_PROFILE.key));
+        } else if (icon.equals(SettingsIcons.REELS) && id.endsWith("::overlays")) {
+            bands(node, keys(Settings.HIDE_REEL_CHIPS.key, Settings.HIDE_REEL_SEARCH_PILL.key,
+                            Settings.HIDE_REEL_PRODUCT_PILLS.key, Settings.HIDE_REEL_POLL_PILLS.key),
+                    keys(Settings.HIDE_REEL_SOCIAL_FOOTER.key, Settings.HIDE_REEL_COMMENT_BAR.key,
+                            Settings.HIDE_REEL_COMMENT_BAR_EVERYWHERE.key, Settings.KEEP_REEL_COMMENT_BAR_SPACE.key,
+                            Settings.HIDE_REEL_REPLY_BAR.key));
+        } else if (icon.equals(SettingsIcons.REELS) && id.endsWith("::buttons")) {
+            bands(node, keys(Settings.HIDE_REEL_FOLLOW_BUTTON.key, Settings.HIDE_REEL_SAVE_BUTTON.key,
+                            Settings.HIDE_REEL_LIKE_BUTTON.key, Settings.HIDE_REEL_COMMENT_BUTTON.key),
+                    keys(Settings.MUTE_BUTTON_ON_REELS.key, Settings.MUTE_BUTTON_IN_CLEAR_MODE.key));
+        } else {
+            // Preserve source order and existing headings. Break only at a feature boundary,
+            // and never between a control and any of its dependent controls further down the page.
+            int start = 0;
+            for (int at = 1; at < node.rows.size(); at++) {
+                if (node.sectionHeadings.containsKey(node.rows.get(at))) { start = at; continue; }
+                if (Setting.getSettingFromPath(node.rows.get(at).getKey()) == null) continue;
+                if (at - start < 3 || sameFeature(node.rows.get(at - 1), node.rows.get(at))) continue;
+                if (dependencyCrosses(node.rows, at)) continue;
+                sectionStarts.add(node.rows.get(at));
+                start = at;
+            }
+        }
+        // Explicit bands respect dependencies too, including sparse patch selections.
+        for (int at = 1; at < node.rows.size(); at++) {
+            if (dependencyCrosses(node.rows, at)) sectionStarts.remove(node.rows.get(at));
+        }
+    }
+
+    private static boolean sameFeature(Preference left, Preference right) {
+        for (PatchFamily family : PatchFamily.values()) {
+            boolean a = false, b = false;
+            for (Setting<?> setting : family.switches) {
+                a |= setting.key.equals(left.getKey()); b |= setting.key.equals(right.getKey());
+            }
+            for (Setting<?> setting : family.choices()) {
+                a |= setting.key.equals(left.getKey()); b |= setting.key.equals(right.getKey());
+            }
+            if (a && b) return true;
+        }
+        return false;
+    }
+
+    private static boolean dependencyCrosses(List<Preference> rows, int boundary) {
+        Map<String, Integer> positions = new HashMap<>();
+        for (int at = 0; at < rows.size(); at++) positions.put(rows.get(at).getKey(), at);
+        for (int at = 0; at < rows.size(); at++) {
+            Setting<?> setting = Setting.getSettingFromPath(rows.get(at).getKey());
+            if (setting == null) continue;
+            for (Setting<?> parent : setting.getParentSettings()) {
+                Integer parentAt = positions.get(parent.key);
+                if (parentAt != null && (at < boundary) != (parentAt < boundary)) return true;
+            }
+        }
+        return false;
+    }
 
     private static void split(Node parent, String id, String title, Set<String> keys) {
         Node child = new Node(parent.id + "::" + id, parent, parent.category, title, parent.icon);

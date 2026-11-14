@@ -312,6 +312,7 @@ public final class ScreenColors {
      * last rows (Report a problem, Support HushGram) follows a page's row or the other one.
      */
     private static boolean sharesCard(Preference above, Preference below) {
+        if (SettingsNavigation.beginsSection(below)) return false;
         if (isTopControl(above) || isTopControl(below)) return false;
         return true;
     }
@@ -375,7 +376,8 @@ public final class ScreenColors {
             afterSearch = at > 0 && ("hushgram_settings_search".equals(parent.getPreference(at - 1).getKey())
                     || HushgramPreferenceFragment.ENABLE_ALL_KEY.equals(parent.getPreference(at - 1).getKey()));
         }
-        int above = category || afterSearch ? dp(row, 8) : 0;
+        int above = SettingsNavigation.beginsSection(preference) ? dp(row, 12)
+                : category || afterSearch ? dp(row, 8) : 0;
         Drawable inset = new InsetDrawable(surface, side, above, side, dp(row, 1));
         Drawable mask = new InsetDrawable(surface.getConstantState().newDrawable().mutate(),
                 side, above, side, dp(row, 1));
@@ -780,7 +782,13 @@ public final class ScreenColors {
     static void row(View row, Preference preference) {
         ScreenColors used = current();
         used.paintRow(row, preference);
-        DescriptionInfo.bind(row, preference.isEnabled() && preference.isSelectable() ? preference.getSummary() : null);
+        CharSequence description = AnimatedSettingsSwitch.summary(preference);
+        TextView summary = row.findViewById(android.R.id.summary);
+        if (summary != null && preference.getSummary() != null) {
+            summary.setText(description);
+            if (android.text.TextUtils.isEmpty(description)) summary.setVisibility(View.GONE);
+        }
+        DescriptionInfo.bind(row, preference.isEnabled() && preference.isSelectable() ? description : null);
         NewRowDots.paint(row, preference, used.accent);
     }
 
