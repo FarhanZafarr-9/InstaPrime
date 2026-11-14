@@ -231,6 +231,10 @@ final class MessagesCategory {
                 messages.addPreference(page.messageActionsRow(context, true));
             }
             if (build.contains(PatchFamily.PLUS_MENU)) {
+                messages.addPreference(toggle(context, Settings.HIDE_PLUS_BUTTON, L10n.t("Hide the + button"),
+                        L10n.t("Hide the message composer's extra options button.")));
+                messages.addPreference(toggle(context, Settings.HIDE_EMPTY_PLUS_MENU, L10n.t("Hide + when empty"),
+                        L10n.t("Hide the button when its menu has no remaining options.")));
                 messages.addPreference(toggle(context, Settings.HIDE_PLUS_SAVED, L10n.t("Hide Saved in the plus menu"),
                         L10n.t("Takes Saved off the menu the plus button opens in a chat's message bar.")));
                 messages.addPreference(toggle(context, Settings.HIDE_PLUS_AI_IMAGES, L10n.t("Hide AI images in the plus menu"),

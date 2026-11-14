@@ -1011,6 +1011,8 @@ public class Settings extends BaseSettings {
      * The plus menu of a chat's message bar leaves off its Saved, AI images and Draw rows
      * ({@link app.hushgram.extension.instagram.direct.PlusMenu}, #448). Each off to start.
      */
+    public static final BooleanSetting HIDE_PLUS_BUTTON = new BooleanSetting("instaprime_hide_plus_button", FALSE);
+    public static final BooleanSetting HIDE_EMPTY_PLUS_MENU = new BooleanSetting("instaprime_hide_empty_plus_menu", TRUE);
     public static final BooleanSetting HIDE_PLUS_SAVED = new BooleanSetting("hushgram_hide_plus_saved", FALSE);
     public static final BooleanSetting HIDE_PLUS_AI_IMAGES = new BooleanSetting("hushgram_hide_plus_ai_images", FALSE);
     public static final BooleanSetting HIDE_PLUS_DRAW = new BooleanSetting("hushgram_hide_plus_draw", FALSE);
