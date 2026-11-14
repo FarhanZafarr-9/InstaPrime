@@ -32,6 +32,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
@@ -138,20 +139,7 @@ internal fun BytecodePatchContext.findMessageGestures(): MessageGestureSite {
     val fragment = classesHolding("reactionsCreationController must be initialized", "vibrator")
         .flatMap { it.methods }.singleOrNull { it.name == "onViewCreated" && it.code().any { ins -> ins.string() == "vibrator" } }
         ?: refuse("no unique native message menu fragment")
-    val fragmentCode = fragment.code()
-    val offsets = IntArray(fragmentCode.size)
-    var units = 0
-    fragmentCode.forEachIndexed { i, ins -> offsets[i] = units; units += ins.codeUnits }
-    val vibrator = fragmentCode.indexOfFirst { it.string() == "vibrator" }
-    val gates = fragmentCode.indices.mapNotNull { at ->
-        val ins = fragmentCode[at]
-        val field = ins.field()?.takeIf { ins.opcode == Opcode.IGET_BOOLEAN && it.definingClass == MODEL } ?: return@mapNotNull null
-        val branch = fragmentCode.getOrNull(at + 1)
-        if (branch?.opcode != Opcode.IF_EQZ || branch !is OffsetInstruction) return@mapNotNull null
-        val target = offsets[at + 1] + branch.codeOffset
-        if (at < vibrator && target > offsets[vibrator]) field else null
-    }.distinctBy { it.toString() }
-    val reaction = gates.singleOrNull() ?: refuse("expected one native reaction tray gate, found ${gates.size}")
+    val reaction = findReactionTrayGate(fragment.code())
     val reactionWrite = factory.code().indices.singleOrNull { at ->
         factory.code()[at].opcode == Opcode.IPUT_BOOLEAN && factory.code()[at].field()?.toString() == reaction.toString()
     } ?: refuse("reaction tray availability is not set once by factory")
@@ -166,6 +154,29 @@ internal fun BytecodePatchContext.findMessageGestures(): MessageGestureSite {
     }
     return MessageGestureSite(tap, hold, provider, data, eligible, controller, blocked, factory,
         actionWrites, reactionWrite, scratch)
+}
+
+/** Outer model conditions may also skip the setup. Only its innermost enclosing gate owns it. */
+internal fun findReactionTrayGate(fragmentCode: List<Instruction>): FieldReference {
+    val offsets = IntArray(fragmentCode.size)
+    var units = 0
+    fragmentCode.forEachIndexed { i, ins -> offsets[i] = units; units += ins.codeUnits }
+    val vibrator = fragmentCode.indexOfFirst { it.string() == "vibrator" }
+    if (vibrator < 0) refuse("no reaction tray vibrator setup")
+    val gates = fragmentCode.indices.mapNotNull { at ->
+        val ins = fragmentCode[at]
+        val field = ins.field()?.takeIf { ins.opcode == Opcode.IGET_BOOLEAN && it.definingClass == MODEL } ?: return@mapNotNull null
+        val branch = fragmentCode.getOrNull(at + 1)
+        if (branch?.opcode != Opcode.IF_EQZ || branch !is OffsetInstruction) return@mapNotNull null
+        if ((branch as OneRegisterInstruction).registerA != (ins as TwoRegisterInstruction).registerA) return@mapNotNull null
+        val target = offsets[at + 1] + branch.codeOffset
+        if (at < vibrator && target > offsets[vibrator] && target in offsets) Triple(at, target, field) else null
+    }
+    val innermost = gates.filter { candidate -> gates.all { other ->
+        candidate.first >= other.first && candidate.second <= other.second
+    } }
+    return innermost.singleOrNull()?.third
+        ?: refuse("expected one innermost native reaction tray gate, found ${innermost.size} among ${gates.size}")
 }
 
 internal fun BytecodePatchContext.applyMessageGestures(site: MessageGestureSite) {

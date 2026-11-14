@@ -18,11 +18,43 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableClassDef
+import com.android.tools.smali.dexlib2.immutable.instruction.*
+import com.android.tools.smali.dexlib2.immutable.reference.ImmutableFieldReference
+import com.android.tools.smali.dexlib2.immutable.reference.ImmutableStringReference
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
 
 class MessageGesturesHookTest {
+    @Test fun reactionGateIgnoresAnEnclosingModelCondition() {
+        assertEquals("tray", findReactionTrayGate(gates(10, 5)).name)
+    }
+
+    @Test fun crossingReactionGateCandidatesRefuse() {
+        assertThrows(PatchException::class.java) { findReactionTrayGate(gates(9, 6)) }
+    }
+
+    @Test fun aBranchOnAnotherRegisterIsNotAReactionGate() {
+        val code = gates(10, 5).toMutableList()
+        code[3] = ImmutableInstruction21t(Opcode.IF_EQZ, 1, 5)
+        assertEquals("outer", findReactionTrayGate(code).name)
+    }
+
+    // Offsets: outer read 0, branch 2; tray read 4, branch 6; vibrator 8;
+    // three trailing instruction boundaries at 10, 11, 12.
+    private fun gates(outerJump: Int, trayJump: Int): List<Instruction> = listOf(
+        ImmutableInstruction22c(Opcode.IGET_BOOLEAN, 0, 2,
+            ImmutableFieldReference("Lcom/instagram/direct/messagethread/messageactions/model/MessageActionsViewModel;", "outer", "Z")),
+        ImmutableInstruction21t(Opcode.IF_EQZ, 0, outerJump),
+        ImmutableInstruction22c(Opcode.IGET_BOOLEAN, 0, 2,
+            ImmutableFieldReference("Lcom/instagram/direct/messagethread/messageactions/model/MessageActionsViewModel;", "tray", "Z")),
+        ImmutableInstruction21t(Opcode.IF_EQZ, 0, trayJump),
+        ImmutableInstruction21c(Opcode.CONST_STRING, 1, ImmutableStringReference("vibrator")),
+        ImmutableInstruction10x(Opcode.NOP),
+        ImmutableInstruction10x(Opcode.NOP),
+        ImmutableInstruction10x(Opcode.RETURN_VOID),
+    )
+
     @Test fun absentNativeRoutesRefuseBeforeMutation() {
         assertThrows(PatchException::class.java) {
             PatchContexts.of(listOf(ExtensionDex.classDef(GESTURES))).findMessageGestures()
