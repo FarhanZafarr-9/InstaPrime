@@ -227,7 +227,7 @@ final class ProfileHistoryPage {
     }
 
     private boolean options(View anchor, ProfileHistory.Past change) {
-        PopupMenu menu = new PopupMenu(anchor.getContext(), anchor);
+        PopupMenu menu = new StyledPopupMenu(anchor.getContext(), anchor);
         fill(menu.getMenu(), change);
         if (menu.getMenu().size() == 0) return false;
         menu.setOnMenuItemClickListener(item -> pick(item.getItemId(), change));

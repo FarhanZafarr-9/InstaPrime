@@ -297,7 +297,7 @@ final class ViewingHistoryPage {
     }
 
     private void options(View anchor, ViewingHistory.Row row) {
-        PopupMenu menu = new PopupMenu(anchor.getContext(), anchor);
+        PopupMenu menu = new StyledPopupMenu(anchor.getContext(), anchor);
         fill(menu.getMenu(), row);
         menu.setOnMenuItemClickListener(item -> pick(item.getItemId(), row));
         menu.show();

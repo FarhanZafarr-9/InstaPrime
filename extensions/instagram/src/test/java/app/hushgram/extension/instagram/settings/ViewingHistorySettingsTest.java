@@ -55,6 +55,7 @@ public class ViewingHistorySettingsTest {
     @Rule public final SettingsContextRule settingsContext = new SettingsContextRule();
 
     @After public void restore() {
+        app.hushgram.extension.instagram.settings.StyledPopupMenu.resetForTests();
         PatchFamily.inBuildForTests = null;
         Settings.VIEWING_HISTORY.resetToDefault();
         Context context = RuntimeEnvironment.getApplication();
@@ -301,7 +302,7 @@ public class ViewingHistorySettingsTest {
             assertEquals("1949525278281554174_2", post.id);
 
             assertTrue(page.list.getOnItemLongClickListener().onItemLongClick(page.list, page.list, 0, 0));
-            android.widget.PopupMenu popup = org.robolectric.shadows.ShadowPopupMenu.getLatestPopupMenu();
+            android.widget.PopupMenu popup = app.hushgram.extension.instagram.settings.StyledPopupMenu.latestForTests();
             assertNotNull("a long press opens the menu", popup);
             android.view.Menu menu = popup.getMenu();
             assertEquals(Arrays.asList("Copy link", "Open profile", "Remove from history"), titles(menu));
