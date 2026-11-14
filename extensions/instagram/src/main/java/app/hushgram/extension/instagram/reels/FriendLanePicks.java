@@ -275,6 +275,7 @@ public final class FriendLanePicks {
             if (changed[0]) Utils.showToastShort(L10n.t("Applies to the next reels loaded."));
         });
         dialog.show();
+        app.hushgram.extension.instagram.settings.ScreenColors.dialog(dialog);
     }
 
     /** Whether the switch is on and HushGram isn't paused. False before the settings are read. */
