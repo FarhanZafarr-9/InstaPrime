@@ -9,6 +9,7 @@ import app.morphe.Fixtures
 import app.morphe.PatchContexts
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patches.instagram.FixtureDex
+import app.morphe.patches.instagram.media.taptoplay.FRAGMENT_ACTIVITY
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.ClassDef
 import com.android.tools.smali.dexlib2.iface.Method
@@ -105,6 +106,10 @@ class MessageGesturesHookTest {
             assertTrue(bridge.any { reference(it) == site.hold.text() })
             assertTrue(bridge.any { reference(it) == site.eligible.text() })
             assertTrue(bridge.any { reference(it) == site.blocked.text() })
+            assertTrue(bridge.any { reference(it) == site.messageType.text() })
+            assertTrue(bridge.any { reference(it) == "$GESTURES->x()F" })
+            assertTrue(bridge.any { reference(it) == "$GESTURES->y()F" })
+            assertEquals(1, factory.count { reference(it) == "$GESTURES->requireVisible()V" })
             assertEquals(Opcode.RETURN, bridge.last().opcode)
         }
     }
@@ -120,7 +125,7 @@ class MessageGesturesHookTest {
         } }
         FixtureDex.forEach(bundle) { dex -> for (owner in dex.classes) {
             if (owner.type in helperTypes) continue
-            val keep = owner.type == "Lcom/instagram/direct/messagethread/messageactions/model/MessageActionsViewModel;" ||
+            val keep = owner.type == FRAGMENT_ACTIVITY || owner.type == "Lcom/instagram/direct/messagethread/messageactions/model/MessageActionsViewModel;" ||
                 owner.methods.any { method -> method.code().any { instruction ->
                     (instruction as? ReferenceInstruction)?.reference.let { ref ->
                         ref is MethodReference && ref.definingClass in helperTypes ||
@@ -138,7 +143,10 @@ class MessageGesturesHookTest {
                 else -> null
             }
         } } }.filter { dependency -> kept.none { it.type == dependency } }.toSet()
-        kept += FixtureDex.classes(bundle, dependencies).values
+        val messageTypes = kept.filter { it.type in helperTypes }.flatMap { owner -> owner.methods
+            .filter { it.code().any { ins -> reference(ins) == "double_tap" } }
+            .flatMap { it.parameterTypes.map(Any::toString) } }.filter { it.startsWith("LX/") }
+        kept += FixtureDex.classes(bundle, (dependencies + messageTypes).filter { type -> kept.none { it.type == type } }.toSet()).values
         return kept
     }
 

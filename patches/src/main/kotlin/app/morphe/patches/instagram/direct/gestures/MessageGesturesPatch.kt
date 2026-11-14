@@ -22,6 +22,7 @@ import app.morphe.patches.instagram.misc.extension.instagramExtensionPatch
 import app.morphe.patches.instagram.misc.extension.localRegisterCount
 import app.morphe.patches.instagram.misc.extension.requireStatusMethod
 import app.morphe.patches.instagram.misc.settings.settingsPatch
+import app.morphe.patches.instagram.media.taptoplay.FRAGMENT_ACTIVITY
 import app.morphe.patches.shared.compat.AppCompatibilities
 import app.morphe.util.RegisterLiveness
 import app.morphe.util.ControlFlow
@@ -71,6 +72,9 @@ internal class MessageGestureSite(
     val eligible: MethodReference,
     val controller: FieldReference,
     val blocked: MethodReference,
+    val messageType: MethodReference,
+    val typeName: FieldReference,
+    val touch: Method,
     val factory: Method,
     val actionWrites: List<Int>,
     val reactionWrite: Int,
@@ -114,15 +118,22 @@ internal fun BytecodePatchContext.findMessageGestures(): MessageGestureSite {
     val blocked = guards.singleOrNull { it.definingClass != data } ?: refuse("no unique controller guard")
     val controller = code.mapNotNull { it.field() }.filter { it.type == blocked.definingClass }.distinctBy { it.toString() }.singleOrNull()
         ?: refuse("no controller for menu availability")
-    for (type in listOf(tap.definingClass, data, blocked.definingClass)) {
+    val messageType = classDefBy(data).methods.singleOrNull { method ->
+        method.parameterTypes.isEmpty() && method.returnType in helper.types() &&
+            classDefByOrNull(method.returnType)?.methods?.any { it.name == "<clinit>" && it.code().any { ins -> ins.string() == "text" } } == true
+    } ?: refuse("no unique native message type reader")
+    val typeName = classDefBy(messageType.returnType).fields.singleOrNull {
+        !AccessFlags.STATIC.isSet(it.accessFlags) && it.type == "Ljava/lang/String;"
+    } ?: refuse("no unique native message type name")
+    for (type in listOf(tap.definingClass, data, blocked.definingClass, messageType.returnType)) {
         if (!AccessFlags.PUBLIC.isSet(classDefBy(type).accessFlags)) refuse("native bridge type $type is not public")
     }
-    for (field in listOf(provider, controller)) {
+    for (field in listOf(provider, controller, typeName)) {
         val declaration = classDefBy(field.definingClass).fields.singleOrNull { it.name == field.name && it.type == field.type }
             ?: refuse("native bridge field $field is absent")
         if (!AccessFlags.PUBLIC.isSet(declaration.accessFlags)) refuse("native bridge field $field is not public")
     }
-    for (call in listOf(eligible, blocked)) {
+    for (call in listOf(eligible, blocked, messageType)) {
         val declaration = classDefBy(call.definingClass).methods.singleOrNull {
             it.name == call.name && it.types() == call.types() && it.returnType == call.returnType
         } ?: refuse("native bridge method ${call.text()} is absent")
@@ -146,6 +157,9 @@ internal fun BytecodePatchContext.findMessageGestures(): MessageGestureSite {
     } ?: refuse("reaction tray availability is not set once by factory")
     val extension = classDefBy(GESTURES)
     if (extension.methods.none { it.name == "openNative" && it.types() == listOf("Ljava/lang/Object;") && it.returnType == "Z" }) refuse("native bridge absent")
+    val touch = classDefBy(FRAGMENT_ACTIVITY).methods.singleOrNull {
+        it.name == "dispatchTouchEvent" && it.types() == listOf("Landroid/view/MotionEvent;") && it.returnType == "Z" && it.implementation != null
+    } ?: refuse("no native activity touch dispatcher")
     val actionWrites = listOf(writes[0], writes[1], writes[4])
     val liveness = RegisterLiveness.of(factory)
     val scratch = (actionWrites + reactionWrite).associateWith { at ->
@@ -153,7 +167,7 @@ internal fun BytecodePatchContext.findMessageGestures(): MessageGestureSite {
         (0 until minOf(16, factory.localRegisterCount())).firstOrNull { it !in live }
             ?: refuse("no free low register at native menu field write $at")
     }
-    return MessageGestureSite(tap, hold, provider, data, eligible, controller, blocked, factory,
+    return MessageGestureSite(tap, hold, provider, data, eligible, controller, blocked, messageType, typeName, touch, factory,
         actionWrites, reactionWrite, scratch)
 }
 
@@ -202,13 +216,20 @@ internal fun BytecodePatchContext.applyMessageGestures(site: MessageGestureSite)
     val old = extension.methods.single { it.name == "openNative" }
     extension.methods.remove(old)
     extension.methods.add(ImmutableMethod(old.definingClass, old.name, old.parameters, old.returnType,
-        old.accessFlags, old.annotations, old.hiddenApiRestrictions, ImmutableMethodImplementation(2, emptyList(), null, null))
+        old.accessFlags, old.annotations, old.hiddenApiRestrictions, ImmutableMethodImplementation(3, emptyList(), null, null))
         .toMutable().apply { addInstructions(0, """
             check-cast p0, ${site.tap.definingClass}
             iget-object v0, p0, ${site.provider}
             invoke-interface { v0 }, $FUNCTION->invoke()Ljava/lang/Object;
             move-result-object v0
             check-cast v0, ${site.data}
+            invoke-interface { v0 }, ${site.messageType.text()}
+            move-result-object v1
+            if-eqz v1, :unavailable
+            iget-object v1, v1, ${site.typeName}
+            invoke-static { v1 }, $GESTURES->intercepts(Ljava/lang/String;)Z
+            move-result v1
+            if-eqz v1, :unavailable
             invoke-interface { v0 }, ${site.eligible.text()}
             move-result v0
             if-eqz v0, :unavailable
@@ -216,8 +237,11 @@ internal fun BytecodePatchContext.applyMessageGestures(site: MessageGestureSite)
             invoke-virtual { v0 }, ${site.blocked.text()}
             move-result v0
             if-nez v0, :unavailable
-            const/4 v0, 0x0
-            invoke-virtual { p0, v0, v0 }, ${site.hold.text()}
+            invoke-static {}, $GESTURES->x()F
+            move-result v0
+            invoke-static {}, $GESTURES->y()F
+            move-result v1
+            invoke-virtual { p0, v0, v1 }, ${site.hold.text()}
             const/4 v0, 0x1
             return v0
             :unavailable
@@ -232,6 +256,8 @@ internal fun BytecodePatchContext.applyMessageGestures(site: MessageGestureSite)
             return-void
         """, ExternalLabel("native_tap", getInstruction(0)))
     }
+    mutable(site.touch).addInstructions(0,
+        "invoke-static/range { p1 .. p1 }, $GESTURES->observe(Landroid/view/MotionEvent;)V")
     val factory = mutable(site.factory)
     val hooks = site.actionWrites.map { it to "actions($LIST)$LIST" } + (site.reactionWrite to "reactions(Z)Z")
     for ((at, method) in hooks.sortedByDescending { it.first }) {
@@ -246,6 +272,9 @@ internal fun BytecodePatchContext.applyMessageGestures(site: MessageGestureSite)
             invoke-static/range { v$register .. v$register }, $GESTURES->$method
             move-result$objectResult v$scratch
         """)
+    }
+    factory.code().indices.filter { factory.code()[it].opcode == Opcode.RETURN_OBJECT }.asReversed().forEach { at ->
+        factory.addInstructionsAtControlFlowLabel(at, "invoke-static {}, $GESTURES->requireVisible()V")
     }
 }
 
