@@ -91,8 +91,8 @@ final class DownloadsCategory {
                                 + "text exactly as the account has it.")));
                 downloads.addPreference(toggle(context, Settings.PROFILE_EXTRAS_BUTTON, L10n.t("Profile extras button"),
                         L10n.t("Puts a button next to the three dots on profiles that opens HushGram's profile actions. "
-                                + "Needs Save profile picture, View profile picture or Copy username and bio on. "
-                                + "The rows in the three-dot menu stay too.")));
+                                + "Shows the enabled picture, saved-profile and copy actions here only. "
+                                + "Instagram's original menu keeps its own actions.")));
             }
             if (build.contains(PatchFamily.VOICE_MESSAGE)) {
                 downloads.addPreference(toggle(context, Settings.DOWNLOAD_VOICE_MESSAGES, L10n.t("Download voice messages"),

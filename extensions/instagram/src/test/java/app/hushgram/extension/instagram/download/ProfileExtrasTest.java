@@ -257,6 +257,8 @@ public class ProfileExtrasTest {
         assertEquals(2, items.size());
         assertEquals("Save profile picture", items.getItem(0).getTitle().toString());
         assertEquals("Copy bio", items.getItem(1).getTitle().toString());
+        assertNotNull("profile actions have leading icons", items.getItem(0).getIcon());
+        assertNotNull("copy actions have leading icons", items.getItem(1).getIcon());
         Shadows.shadowOf(menu).getOnMenuItemClickListener().onMenuItemClick(items.getItem(1));
         assertEquals(Collections.singletonList("bio"), ran);
     }

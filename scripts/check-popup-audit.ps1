@@ -31,6 +31,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Native hook checks failed; stopped before the 
 Invoke-GradleBuild -ProjectDir $repo -Tasks @(':extensions:instagram:testDebugUnitTest',
     '--tests', '*ChatPopupMenuTest', '--tests', '*StyledPopupNativeTest',
     '--tests', '*SavedProfilesSettingsTest', '--tests', '*ChatPagerTest',
+    '--tests', '*ProfileExtrasTest', '--tests', '*ProfilePictureTest',
     '--tests', '*MessageGesturesTest', '--tests', '*MessageActionsTest', '--tests', '*PlusMenuTest',
     '--max-workers=1', '--offline')
 if ($LASTEXITCODE -ne 0) { throw 'Popup/UI checks failed; stopped before the MPP build.' }
