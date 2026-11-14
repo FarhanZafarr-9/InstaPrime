@@ -83,6 +83,7 @@ public class StyledPopupMenu extends PopupMenu {
         int maxWidth = Math.max(1, available);
         int gutter = Math.min(dp(8), Math.max(0, (maxWidth - 1) / 2));
         int maxRowWidth = Math.max(1, maxWidth - gutter * 2);
+        int contentPadding = dp(12), iconSize = dp(24), iconGap = dp(12), checkWidth = dp(24);
         window.setListSelector(new ColorDrawable(Color.TRANSPARENT));
         BaseAdapter adapter = new BaseAdapter() {
             @Override public int getCount() { return items.size(); }
@@ -116,7 +117,7 @@ public class StyledPopupMenu extends PopupMenu {
                         new int[]{(text & 0x00FFFFFF) | 0x61000000, text}));
                 row.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
                 row.setMinHeight(dp(48));
-                row.setPaddingRelative(dp(12), dp(6), dp(12), dp(6));
+                row.setPaddingRelative(contentPadding, dp(6), contentPadding, dp(6));
                 row.setEnabled(item.isEnabled());
                 row.setBackground(null);
                 row.setForeground(null);
@@ -131,16 +132,16 @@ public class StyledPopupMenu extends PopupMenu {
                 });
                 if (item.isCheckable()) {
                     row.setCheckMarkTintList(null);
-                    row.setCheckMarkDrawable(new CheckMark(colors.accent, dp(24)));
+                    row.setCheckMarkDrawable(new CheckMark(colors.accent, checkWidth));
                     row.setChecked(item.isChecked());
                 }
                 Drawable icon = item.getIcon();
                 if (icon != null) {
                     icon = icon.mutate();
                     icon.setTint(text);
-                    icon.setBounds(0, 0, dp(24), dp(24));
+                    icon.setBounds(0, 0, iconSize, iconSize);
                     row.setCompoundDrawablesRelative(icon, null, null, null);
-                    row.setCompoundDrawablePadding(dp(12));
+                    row.setCompoundDrawablePadding(iconGap);
                 }
                 container.setBackground(optionBackground(colors, context.getResources().getDisplayMetrics().density, false));
                 container.setPadding(0, 0, 0, dp(2));
@@ -157,7 +158,9 @@ public class StyledPopupMenu extends PopupMenu {
             label.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
             int natural = (int) Math.ceil(android.text.Layout.getDesiredWidth(label.getText(), label.getPaint()))
-                    + label.getCompoundPaddingLeft() + label.getCompoundPaddingRight()
+                    + contentPadding * 2
+                    + (items.get(i).getIcon() != null ? iconSize + iconGap : 0)
+                    + (items.get(i).isCheckable() ? checkWidth : 0)
                     + option.getPaddingLeft() + option.getPaddingRight();
             width = Math.max(width, Math.min(maxRowWidth, natural));
         }

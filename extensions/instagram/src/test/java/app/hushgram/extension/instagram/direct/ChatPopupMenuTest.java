@@ -78,10 +78,16 @@ public class ChatPopupMenuTest {
             popup.show();
             int shortWidth = popup.windowForTests().getWidth();
             popup.dismiss();
-            popup.getMenu().getItem(0).setIcon(new GradientDrawable());
+            GradientDrawable icon = new GradientDrawable();
+            int size = Math.round(24 * anchor.getResources().getDisplayMetrics().density);
+            icon.setSize(size, size);
+            icon.setColor(Color.WHITE);
+            popup.getMenu().getItem(0).setIcon(icon);
+            assertNotNull(popup.getMenu().getItem(0).getIcon());
             popup.show();
             int iconWidth = popup.windowForTests().getWidth();
-            assertTrue("the icon and its spacing count toward width", iconWidth > shortWidth);
+            assertTrue("the icon and its spacing count toward width: plain=" + shortWidth + ", icon=" + iconWidth,
+                    iconWidth > shortWidth);
             popup.dismiss();
             popup.getMenu().getItem(0).setCheckable(true);
             popup.show();
