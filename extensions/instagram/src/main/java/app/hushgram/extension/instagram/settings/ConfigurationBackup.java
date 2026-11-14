@@ -60,7 +60,7 @@ import app.hushgram.extension.shared.settings.preference.AbstractPreferenceFragm
 public final class ConfigurationBackup {
     /** Room for a full Saved profiles list beside the settings. */
     public static final int MAX_BYTES = 1024 * 1024;
-    public static final int MAX_ENTRIES = 512;
+    public static final int MAX_ENTRIES = 1024;
     static final String PROFILES = "profiles";
     public static final long UNDO_WINDOW_MS = 10_000;
     /** The ordinary text bound. Selection and blocked-word lists have the larger bound below. */
@@ -71,11 +71,12 @@ public final class ConfigurationBackup {
      */
     public static final int MAX_WORDS_TEXT = 4096;
     /**
-     * The settings' own 2,048 values, and room for every saved profile's fields, a few more than
-     * this build writes. The only array is the profiles.
+     * Room for every bounded settings entry, root metadata and saved profile fields.
+     * The only array is the profiles.
      */
     private static final SettingsJson.Limits LIMITS = new SettingsJson.Limits(4,
-            2048 + 8 * SavedProfiles.MAX_PROFILES, MAX_WORDS_TEXT, SavedProfiles.MAX_PROFILES, MAX_BYTES);
+            4 * MAX_ENTRIES + 16 + 8 * SavedProfiles.MAX_PROFILES,
+            MAX_WORDS_TEXT, SavedProfiles.MAX_PROFILES, MAX_BYTES);
     /**
      * Guards the Undo state below. It's a lock of its own, never the class's: an import holds the class
      * lock from its validation through its disk commit, and the page reads whether Undo is on offer, and
@@ -220,6 +221,10 @@ public final class ConfigurationBackup {
         }
         if (PatchFamily.favoritesFeedInBuild()) settings.put(Settings.FAVORITES_TAB_TARGET.key, Settings.FAVORITES_TAB_TARGET);
         if (PatchFamily.MESSAGE_BOX.inBuild()) settings.put(Settings.HIDDEN_MESSAGE_BOX_BUTTONS.key, Settings.HIDDEN_MESSAGE_BOX_BUTTONS);
+        if (PatchFamily.MESSAGE_ACTIONS.inBuild()) {
+            settings.put(Settings.HIDE_MESSAGE_ACTIONS.key, Settings.HIDE_MESSAGE_ACTIONS);
+            settings.put(Settings.MORE_MESSAGE_ACTIONS.key, Settings.MORE_MESSAGE_ACTIONS);
+        }
         if (PatchFamily.PROFILE_TABS.inBuild()) {
             settings.put(Settings.HIDDEN_OWN_PROFILE_TABS.key, Settings.HIDDEN_OWN_PROFILE_TABS);
             settings.put(Settings.HIDDEN_PROFILE_TABS.key, Settings.HIDDEN_PROFILE_TABS);
@@ -516,7 +521,8 @@ public final class ConfigurationBackup {
         int longest = setting == Settings.REELS_BLOCKED_WORDS || setting == Settings.REELS_KEPT_LANGUAGES
                 || setting == Settings.STORY_PRIORITY_ACCOUNTS || setting == Settings.FRIENDS_TAB_PICKS
                 || setting == Settings.CALL_BLOCK_ACCOUNTS || setting == Settings.HIDDEN_SETTINGS_ROWS
-                || setting == Settings.MUTED_NOTIFICATION_CHANNELS ? MAX_WORDS_TEXT : MAX_TEXT;
+                || setting == Settings.MUTED_NOTIFICATION_CHANNELS
+                || setting == Settings.HIDE_MESSAGE_ACTIONS || setting == Settings.MORE_MESSAGE_ACTIONS ? MAX_WORDS_TEXT : MAX_TEXT;
         if (!(value instanceof String) || ((String) value).length() > longest) return null;
         if (fallback instanceof Enum) {
             if (!"enum".equals(declared)) return null;
@@ -582,6 +588,11 @@ public final class ConfigurationBackup {
         }
         // The message box buttons left off, as the names of Instagram's enum with commas between, in the order the dialog lists them.
         if (setting == Settings.HIDDEN_MESSAGE_BOX_BUTTONS) return text.equals(MessageBox.join(MessageBox.parse(text)));
+        if (setting == Settings.HIDE_MESSAGE_ACTIONS || setting == Settings.MORE_MESSAGE_ACTIONS) {
+            java.util.Set<String> actions = app.hushgram.extension.instagram.direct.MessageActions.parse(text);
+            if (setting == Settings.MORE_MESSAGE_ACTIONS && actions.contains("MORE")) return false;
+            return text.equals(app.hushgram.extension.instagram.direct.MessageActions.join(actions));
+        }
         // The rows of Instagram's settings left off, as the names of Instagram's row ids with commas between, in name order.
         if (setting == Settings.HIDDEN_SETTINGS_ROWS) return text.equals(SettingsRows.join(SettingsRows.parse(text)));
         // The notification channels muted, as Instagram's channel ids with commas between, in id order.

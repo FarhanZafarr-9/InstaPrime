@@ -328,13 +328,13 @@ public class ConfigurationBackupTest {
         }
     }
 
-    @Test public void byteAndEntryBoundsRejectOversizeAndAcceptExactly512Entries() throws Exception {
+    @Test public void byteAndEntryBoundsRejectOversizeAndAcceptTheExactEntryLimit() throws Exception {
         StringBuilder entries = new StringBuilder();
-        for (int i = 0; i < 512; i++) {
+        for (int i = 0; i < ConfigurationBackup.MAX_ENTRIES; i++) {
             if (i != 0) entries.append(',');
             entries.append(entry("future_" + i, "boolean", false));
         }
-        assertEquals(512, ConfigurationBackup.restore(file(entries.toString())).skipped);
+        assertEquals(ConfigurationBackup.MAX_ENTRIES, ConfigurationBackup.restore(file(entries.toString())).skipped);
         rejected(file(entries + "," + entry("extra", "boolean", true)));
         rejected(new byte[ConfigurationBackup.MAX_BYTES + 1]);
         assertEquals(ConfigurationBackup.MAX_BYTES, ConfigurationBackup.read(
