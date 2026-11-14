@@ -7,6 +7,7 @@
         "extensions/instagram/src/main/java/app/hushgram/extension/instagram/settings/InstaPrimeIcon.java",
         "extensions/instagram/src/main/java/app/hushgram/extension/instagram/settings/SelectionIndicator.java",
         "extensions/instagram/src/main/java/app/hushgram/extension/instagram/settings/SettingsNavigation.java",
+        "extensions/instagram/src/main/java/app/hushgram/extension/instagram/settings/SettingsOverview.java",
         "extensions/instagram/src/main/java/app/hushgram/extension/instagram/settings/SwitchThumb.java"
       ],
       "origin": "original",
