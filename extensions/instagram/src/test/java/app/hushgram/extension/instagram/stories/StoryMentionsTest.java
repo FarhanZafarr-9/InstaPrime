@@ -1201,7 +1201,7 @@ public class StoryMentionsTest {
             glass.getOutline(outline);
             assertEquals(Dim.dp(StoryMentions.GLASS_CORNER_DP), outline.getRadius(), 0.01f);
             int tint = glass.getColor().getDefaultColor();
-            assertEquals("the sheet's own colour", ScreenColors.DEFAULT.dialog & 0x00FFFFFF, tint & 0x00FFFFFF);
+            assertEquals("the sheet's own colour", ScreenColors.forScreen(dialog.getContext()).dialog & 0x00FFFFFF, tint & 0x00FFFFFF);
             boolean blurred = blurring && canBlur;
             assertEquals("see-through only over a blur", blurred ? StoryMentions.GLASS_ALPHA : StoryMentions.CLEAR_ALPHA, tint >>> 24);
             assertEquals(StoryMentions.GLASS_DIM, dialog.getWindow().getAttributes().dimAmount, 0.001f);
@@ -1219,7 +1219,7 @@ public class StoryMentionsTest {
         View row = find(list.getWindow().getDecorView(), view -> "Ana Lima, @ana".contentEquals(String.valueOf(view.getContentDescription())));
         android.graphics.drawable.GradientDrawable card = (android.graphics.drawable.GradientDrawable)
                 ((android.graphics.drawable.RippleDrawable) row.getBackground()).getDrawable(0);
-        assertEquals("the centered list's rows stay solid", ScreenColors.DEFAULT.card, card.getColor().getDefaultColor());
+        assertEquals("the centered list's rows stay solid", ScreenColors.forScreen(list.getContext()).card, card.getColor().getDefaultColor());
     }
 
     /** The gradient [drawable] is, or the one a window wrapped it in (an inset, or a layer under a blur), else null. */

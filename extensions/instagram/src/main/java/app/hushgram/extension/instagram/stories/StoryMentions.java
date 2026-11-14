@@ -1102,7 +1102,7 @@ public final class StoryMentions {
      * #alongTheBottom}); the sheet adds the light catching its top and a thin rim (#525).
      */
     private static View sheet(Context themed, LinearLayout rows, AlertDialog dialog) {
-        ScreenColors colors = ScreenColors.DEFAULT;
+        ScreenColors colors = ScreenColors.forScreen(themed);
         LinearLayout sheet = new LinearLayout(themed);
         sheet.setOrientation(LinearLayout.VERTICAL);
         sheet.setPadding(0, Dim.dp(20), 0, Dim.dp(16));
@@ -1181,7 +1181,7 @@ public final class StoryMentions {
         if (window == null) return;
         GradientDrawable glass = new GradientDrawable();
         glass.setCornerRadius(Dim.dp(GLASS_CORNER_DP));
-        int color = ScreenColors.DEFAULT.dialog;
+        int color = ScreenColors.forScreen(dialog.getContext()).dialog;
         glass.setColor(tint(color, false));
         window.setBackgroundDrawable(glass);
         int screen = dialog.getContext().getResources().getDisplayMetrics().widthPixels;
@@ -1261,7 +1261,7 @@ public final class StoryMentions {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setMinimumHeight(Dim.dp(64));
         row.setPadding(Dim.dp(16), Dim.dp(10), Dim.dp(16), Dim.dp(10));
-        ScreenColors colors = ScreenColors.DEFAULT;
+        ScreenColors colors = ScreenColors.forScreen(themed);
         int secondary = colors.summary;
         GradientDrawable surface = new GradientDrawable();
         surface.setColor(glass ? (colors.card & 0x00FFFFFF) | (ROW_GLASS_ALPHA << 24) : colors.card);
