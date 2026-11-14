@@ -341,6 +341,7 @@ public final class ConfigurationBackup {
         settings.put(Settings.DESCRIPTIONS_BEHIND_INFO.key, Settings.DESCRIPTIONS_BEHIND_INFO);
         settings.put(Settings.SHOW_ENABLE_ALL.key, Settings.SHOW_ENABLE_ALL);
         settings.put(Settings.SETTINGS_BLACK_LOOK.key, Settings.SETTINGS_BLACK_LOOK);
+        settings.put(Settings.THEME_NATIVE_POPUPS.key, Settings.THEME_NATIVE_POPUPS);
         settings.put(Settings.DATE_SETTINGS_EXPORT.key, Settings.DATE_SETTINGS_EXPORT);
         return settings;
     }
