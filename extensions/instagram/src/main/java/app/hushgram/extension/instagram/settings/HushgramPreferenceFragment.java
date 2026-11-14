@@ -489,6 +489,12 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
 
     @Override
     public void onDestroyView() {
+        ListView list = listView();
+        if (list != null) {
+            list.animate().cancel();
+            list.setAlpha(1f);
+            list.setTranslationX(0f);
+        }
         ScreenColors.shown = null;
         AbstractPreferenceFragment.clearRestartFeedbackPresenter(restartFeedback);
         undoRefresh.removeCallbacks(refreshUndo);
@@ -859,6 +865,20 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             if (list == listView()) list.setSelectionFromTop(position == null ? 0 : position[0],
                     position == null ? 0 : position[1]);
         });
+        if (leaving != page && list != null) {
+            list.animate().cancel();
+            list.setAlpha(1f);
+            list.setTranslationX(0f);
+            if (android.animation.ValueAnimator.areAnimatorsEnabled() && list.isLaidOut()) {
+                boolean back = leaving != null && leaving.parent == page;
+                float direction = back ? -1f : 1f;
+                if (list.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) direction = -direction;
+                list.setAlpha(0.65f);
+                list.setTranslationX(direction * 16 * list.getResources().getDisplayMetrics().density);
+                list.animate().alpha(1f).translationX(0f).setDuration(180)
+                        .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+            }
+        }
     }
 
     /** Search clears first; Back then steps through subpage and category to home. */

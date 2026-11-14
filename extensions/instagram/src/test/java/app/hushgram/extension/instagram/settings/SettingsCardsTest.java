@@ -167,6 +167,26 @@ public class SettingsCardsTest {
         }
     }
 
+    @Test public void rapidPageChangesAndBackLeaveNoAnimationOffset() throws Exception {
+        open(EnumSet.allOf(PatchFamily.class));
+        controller.visible();
+        View view = page.getView();
+        view.measure(View.MeasureSpec.makeMeasureSpec(640, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(960, View.MeasureSpec.EXACTLY));
+        view.layout(0, 0, 640, 960);
+        SettingsNavigation.Node feed = category("Feed");
+        tap(feed.opener);
+        tap(feed.children.get(0).opener);
+        assertTrue(page.closeCategory());
+        assertTrue(page.closeCategory());
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper())
+                .idleFor(1, java.util.concurrent.TimeUnit.SECONDS);
+        ListView list = page.getView().findViewById(android.R.id.list);
+        assertEquals("", page.currentPage());
+        assertEquals(1f, list.getAlpha(), 0.001f);
+        assertEquals(0f, list.getTranslationX(), 0.001f);
+    }
+
     private View render(Preference preference) {
         View row = preference.getView(null, new FrameLayout(controller.get()));
         int width = Math.round(320 * row.getResources().getDisplayMetrics().density);
