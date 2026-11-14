@@ -50,6 +50,8 @@ final class MessagesCategory {
                 || build.contains(PatchFamily.KINDNESS_REMINDER)
                 || build.contains(PatchFamily.MESSAGE_BOX)
                 || build.contains(PatchFamily.PLUS_MENU)
+                || build.contains(PatchFamily.MESSAGE_ACTIONS)
+                || build.contains(PatchFamily.MESSAGE_GESTURES)
                 || build.contains(PatchFamily.GLASS_CHAT)
                 || build.contains(PatchFamily.FULL_SCREEN_BARS)) {
             PreferenceCategory messages = category(screen, L10n.t("Messages"), SettingsIcons.CHATS,
@@ -217,6 +219,16 @@ final class MessagesCategory {
             }
             if (build.contains(PatchFamily.MESSAGE_BOX)) {
                 messages.addPreference(page.messageBoxRow(context));
+            }
+            if (build.contains(PatchFamily.MESSAGE_GESTURES)) {
+                messages.addPreference(toggle(context, Settings.MESSAGE_TAP_ACTIONS, L10n.t("Tap a message for actions"),
+                        L10n.t("One tap opens the message's actions. Double tap keeps its existing behavior.")));
+                messages.addPreference(toggle(context, Settings.MESSAGE_TAP_REACTIONS, L10n.t("Tap a message for reactions"),
+                        L10n.t("One tap opens reactions. Enable both tap options to show actions and reactions together.")));
+            }
+            if (build.contains(PatchFamily.MESSAGE_ACTIONS)) {
+                messages.addPreference(page.messageActionsRow(context, false));
+                messages.addPreference(page.messageActionsRow(context, true));
             }
             if (build.contains(PatchFamily.PLUS_MENU)) {
                 messages.addPreference(toggle(context, Settings.HIDE_PLUS_SAVED, L10n.t("Hide Saved in the plus menu"),

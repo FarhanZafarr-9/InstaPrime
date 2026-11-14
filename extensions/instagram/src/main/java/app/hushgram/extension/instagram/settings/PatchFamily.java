@@ -118,6 +118,8 @@ public enum PatchFamily {
     MESSAGE_BOX(FamilyNames.MESSAGE_BOX, "messageBox", null),
     PLUS_MENU(FamilyNames.PLUS_MENU, "plusMenu", null, Settings.HIDE_PLUS_SAVED, Settings.HIDE_PLUS_AI_IMAGES,
             Settings.HIDE_PLUS_DRAW, Settings.HIDE_PLUS_META_AI, Settings.HIDE_PLUS_LOCATION, Settings.MOVE_TO_PLUS_MENU),
+    MESSAGE_ACTIONS(FamilyNames.MESSAGE_ACTIONS, "messageActions", null),
+    MESSAGE_GESTURES(FamilyNames.MESSAGE_GESTURES, "messageGestures", null, Settings.MESSAGE_TAP_ACTIONS, Settings.MESSAGE_TAP_REACTIONS),
     GLASS_CHAT(FamilyNames.GLASS_CHAT, "glassChat", null, Settings.GLASS_CHAT, Settings.GLASS_STORY_REPLY_BOX),
     ASK_BEFORE_LIKE(FamilyNames.ASK_BEFORE_LIKE, "askBeforeLike", null, Settings.ASK_BEFORE_LIKE),
     ASK_BEFORE_REFRESH(FamilyNames.ASK_BEFORE_REFRESH, "askBeforeRefresh", null, Settings.ASK_BEFORE_REFRESH),
@@ -740,6 +742,8 @@ public enum PatchFamily {
                 return Collections.singletonList(Settings.EMOJI_FONT);
             case MESSAGE_BOX:
                 return Collections.singletonList(Settings.HIDDEN_MESSAGE_BOX_BUTTONS);
+            case MESSAGE_ACTIONS:
+                return Arrays.asList(Settings.HIDE_MESSAGE_ACTIONS, Settings.MORE_MESSAGE_ACTIONS);
             case NOTIFICATION_GROUPS:
                 return Collections.singletonList(Settings.MUTED_NOTIFICATION_CHANNELS);
             case PROFILE_TABS:

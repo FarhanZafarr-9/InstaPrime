@@ -252,6 +252,11 @@ final class SettingsNavigation {
         } else if (icon.equals(SettingsIcons.CHATS) && id.endsWith("::inbox")) {
             bands(node, keys(Settings.HIDE_NOTES_ROW.key, Settings.SPLIT_NOTES_ROW.key, Settings.HIDE_NOTES_MAP.key),
                     keys(Settings.HIDE_INBOX_SEARCH.key, Settings.HIDE_INBOX_SUGGESTIONS.key));
+        } else if (icon.equals(SettingsIcons.CHATS) && id.endsWith("::controls")) {
+            bands(node, keys(Settings.MESSAGE_TAP_ACTIONS.key, Settings.MESSAGE_TAP_REACTIONS.key,
+                            Settings.HIDE_MESSAGE_ACTIONS.key, Settings.MORE_MESSAGE_ACTIONS.key),
+                    keys(Settings.KEEP_IN_CHAT.key, Settings.HIDE_KINDNESS_REMINDER.key, Settings.GLASS_CHAT.key,
+                            Settings.HIDE_BLEND_BUTTON.key));
         } else if (icon.equals(SettingsIcons.PERSON) && id.endsWith("::relationships")) {
             bands(node, keys(Settings.SHOW_FRIENDSHIP_STATUS.key, Settings.FRIENDSHIP_STATUS_CHIP.key, Settings.FOLLOW_LABEL_PLACE.key),
                     keys(Settings.ASK_BEFORE_FOLLOW.key, Settings.MARK_FOLLOWING_LIST.key, Settings.FOLLOW_MARK_ON_PICTURE.key,
@@ -494,6 +499,7 @@ final class SettingsNavigation {
                     Settings.HIDE_INBOX_SEARCH.key, Settings.HIDE_INBOX_SUGGESTIONS.key, Settings.HIDE_INSTANTS.key,
                     Settings.FULL_SCREEN_MESSAGES.key, HushgramPreferenceFragment.PINNED_CHATS_ROW));
             split(node, "controls", L10n.t("Chat appearance and behavior"), keys(Settings.KEEP_IN_CHAT.key, Settings.HIDE_KINDNESS_REMINDER.key, Settings.GLASS_CHAT.key,
+                    Settings.MESSAGE_TAP_ACTIONS.key, Settings.MESSAGE_TAP_REACTIONS.key, Settings.HIDE_MESSAGE_ACTIONS.key, Settings.MORE_MESSAGE_ACTIONS.key,
                     Settings.ASK_BEFORE_CALL.key, Settings.HIDE_CALL_BUTTONS.key, Settings.HIDE_VIDEO_CALL_BUTTON.key,
                     Settings.HIDE_AUDIO_CALL_BUTTON.key, Settings.HIDE_BLEND_BUTTON.key));
             split(node, "security", L10n.t("App and chat locks"), keys(Settings.LOCK_SAVED.key, Settings.LOCK_EACH_CHAT.key, Settings.LOCK_MESSAGES.key, Settings.LOCK_APP.key, Settings.DOUBLE_TAP_HIDDEN_CHATS.key, Settings.LOCK_AGAIN.key, Settings.UNLOCK_WITH.key, HushgramPreferenceFragment.CHANGE_PIN_ROW, HushgramPreferenceFragment.LOCKED_CHATS_ROW, HushgramPreferenceFragment.HIDDEN_CHATS_ROW));
