@@ -83,6 +83,8 @@ val chatPlusMenuPatch = bytecodePatch(
         requireStatusMethod("plusMenu")
         val site = findPlusMenu()
         val empty = findEmptyPlusMenu()
+        val button = plusButtonFields(site)
+        readPlusButton(button)
         handPlusMenu(site)
         hideEmptyPlusMenu(empty)
         removeEmptyComposerItem(site, empty)
@@ -154,6 +156,9 @@ internal fun BytecodePatchContext.handPlusMenu(site: PlusMenuSite) {
         """
             move-object/from16 v${site.scratch}, v${site.map}
             invoke-static { v${site.list}, v${site.scratch} }, $MENU_HOOK
+            invoke-static/range {p0 .. p0}, $PLUS_MENU->button(Ljava/lang/Object;)Landroid/view/View;
+            move-result-object v${site.scratch}
+            invoke-static {v${site.scratch}, v${site.list}}, $PLUS_MENU->bind(Landroid/view/View;Ljava/util/List;)V
         """,
     )
 }

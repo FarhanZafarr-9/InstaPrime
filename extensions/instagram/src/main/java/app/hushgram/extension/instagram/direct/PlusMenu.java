@@ -5,6 +5,10 @@
 package app.hushgram.extension.instagram.direct;
 
 import androidx.annotation.Nullable;
+import android.view.View;
+import android.view.ViewTreeObserver;
+import java.lang.ref.WeakReference;
+import java.util.WeakHashMap;
 
 import java.util.HashSet;
 import java.util.ArrayList;
@@ -55,6 +59,60 @@ public final class PlusMenu {
     static volatile Boolean inBuildForTests;
 
     private PlusMenu() {
+    }
+
+    private static final Map<View, ButtonBinding> buttons = new WeakHashMap<>();
+
+    /** Filled by the patch with the composer's verified button field chain. */
+    public static View button(Object builder) { return null; }
+
+    /** The native plus view is separate from the MORE item in the composer's list. */
+    public static void bind(@Nullable View view, @Nullable List<?> overflow) {
+        if (view == null || overflow == null) return;
+        ButtonBinding binding = buttons.get(view);
+        if (binding == null) {
+            binding = new ButtonBinding(view);
+            buttons.put(view, binding);
+            view.addOnAttachStateChangeListener(binding);
+            view.getViewTreeObserver().addOnPreDrawListener(binding);
+        }
+        binding.overflow = new WeakReference<>(overflow);
+        binding.onPreDraw();
+    }
+
+    private static final class ButtonBinding implements ViewTreeObserver.OnPreDrawListener,
+            View.OnAttachStateChangeListener {
+        final WeakReference<View> button;
+        WeakReference<List<?>> overflow = new WeakReference<>(null);
+        boolean hidden;
+        int nativeVisibility;
+
+        ButtonBinding(View view) { button = new WeakReference<>(view); }
+
+        @Override public boolean onPreDraw() {
+            View view = button.get();
+            if (view == null) return true;
+            if (empty(overflow.get())) {
+                if (!hidden || view.getVisibility() != View.GONE) nativeVisibility = view.getVisibility();
+                hidden = true;
+                view.setVisibility(View.GONE);
+            } else if (hidden) {
+                hidden = false;
+                if (view.getVisibility() == View.GONE) view.setVisibility(nativeVisibility);
+            }
+            return true;
+        }
+
+        @Override public void onViewAttachedToWindow(View view) {
+            ViewTreeObserver observer = view.getViewTreeObserver();
+            observer.removeOnPreDrawListener(this);
+            observer.addOnPreDrawListener(this);
+            onPreDraw();
+        }
+
+        @Override public void onViewDetachedFromWindow(View view) {
+            if (view.getViewTreeObserver().isAlive()) view.getViewTreeObserver().removeOnPreDrawListener(this);
+        }
     }
 
     static boolean inBuild() {
@@ -116,7 +174,9 @@ public final class PlusMenu {
     /** Native composer availability asks this about this button's own filtered overflow list. */
     public static boolean empty(@Nullable List<?> menu) {
         try {
-            return Utils.settingsReady() && !HushgramPause.isPaused() && menu != null && menu.isEmpty();
+            return Utils.settingsReady() && !HushgramPause.isPaused() &&
+                    (Settings.HIDE_PLUS_BUTTON.get() ||
+                    (Settings.HIDE_EMPTY_PLUS_MENU.get() && menu != null && menu.isEmpty()));
         } catch (Throwable failure) {
             return false;
         }
