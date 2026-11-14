@@ -70,6 +70,7 @@ val settingsPatch = bytecodePatch(
         // The two binding variants and the returned view must be proved before startup is edited.
         val navigation = navigationEntryTargets()
         val snackbars = nativeSnackbarSites()
+        val popupPlan = nativePopupPlan()
         // Before each return of the application's onCreate, after Instagram's own startup, which
         // is when the shortcut is published and the activity callbacks that open the screen are
         // registered. On the return's own label, so a branch onto a return runs it too.
@@ -111,5 +112,6 @@ val settingsPatch = bytecodePatch(
         hookLogoLongPress()
         hookMergedLogoLongPress()
         styleNativeSnackbars(snackbars)
+        applyNativePopupPlan(popupPlan)
     }
 }

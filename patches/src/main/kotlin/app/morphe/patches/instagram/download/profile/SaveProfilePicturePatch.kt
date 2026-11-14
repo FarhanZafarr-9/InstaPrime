@@ -465,14 +465,7 @@ internal fun BytecodePatchContext.applyProfileMenus(menus: ProfileMenus) {
     """)
     // From the end, so an earlier site's index still holds when a later one's code goes in.
     val popup = menus.popup
-    // Style the populated native window; its adapter and action callbacks stay native.
-    val populate = mutableClassDefBy(popup.populates.definingClass).methods.single {
-        it.name == popup.populates.name && it.parameters() == listOf(LIST)
-    }
-    populate.code().indices.filter { populate.code()[it].opcode == Opcode.RETURN_VOID }.asReversed().forEach { at ->
-        populate.addInstructionsAtControlFlowLabel(at,
-            "invoke-static/range { p0 .. p0 }, $EXTENSION_PACKAGE/settings/StyledPopupMenu;->styleNative(Landroid/widget/PopupWindow;)V")
-    }
+    // The settings patch styles all native renderer variants, including the composer's list.
     val places = menus.sites.map { it.index to it }.plus(popup.index to null).sortedByDescending { it.first }
     for ((index, site) in places) {
         if (site == null) {
