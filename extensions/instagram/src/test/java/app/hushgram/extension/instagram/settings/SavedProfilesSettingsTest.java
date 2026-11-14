@@ -129,6 +129,15 @@ public class SavedProfilesSettingsTest {
         }
     }
 
+    @Test public void sharedSnackbarThemeControlDoesNotRequireAnOptionalPatch() {
+        PatchFamily.inBuildForTests = EnumSet.noneOf(PatchFamily.class);
+        try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {
+            HushgramPreferenceFragment page = DownloadSettingsTest.pageIn(controller);
+            assertNotNull(page.findPreference(Settings.THEME_NATIVE_POPUPS.key));
+            assertTrue(ConfigurationBackup.eligible().containsKey(Settings.THEME_NATIVE_POPUPS.key));
+        }
+    }
+
     @Test public void theRowNamesTheNewestThreeAndSaysHowToSaveWhenEmpty() {
         assertEquals("Nothing saved yet. With Saved profiles on, tap Save profile in the menu on someone's profile "
                         + "and it shows up here.",
