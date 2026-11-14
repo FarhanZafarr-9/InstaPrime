@@ -107,7 +107,7 @@ public class SavedProfilesSettingsTest {
             assertTrue("it opens the page", list.isSelectable());
             for (Preference row : Arrays.asList(toggle, list)) {
                 assertEquals(String.valueOf(row.getTitle()), "Profiles",
-                        String.valueOf(StoryTimeSettingsTest.sectionOf(page.getPreferenceScreen(), row).getTitle()));
+                        String.valueOf(row.getParent().getTitle()));
             }
         }
         PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.VOICE_MESSAGE);

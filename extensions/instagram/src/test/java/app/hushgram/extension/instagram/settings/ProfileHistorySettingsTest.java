@@ -85,7 +85,7 @@ public class ProfileHistorySettingsTest {
             assertTrue(((HushgramPreferenceFragment.Row) clear).actsOnTap());
             for (Preference row : Arrays.asList(toggle, list, clear)) {
                 assertEquals(String.valueOf(row.getTitle()), "Profiles",
-                        String.valueOf(StoryTimeSettingsTest.sectionOf(page.getPreferenceScreen(), row).getTitle()));
+                        String.valueOf(row.getParent().getTitle()));
             }
         }
         PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.VOICE_MESSAGE);

@@ -67,7 +67,7 @@ public class StoryButtonsRoomSettingsTest {
     }
     @Test public void theSwitchSitsUnderStoriesAfterTheReplyBoxAndStartsOn() throws Exception {
         open(EnumSet.of(PatchFamily.STORY_REPLY_BOX, PatchFamily.STORY_BUTTONS_ROOM, PatchFamily.STORY_TIME));
-        Preference row = page.getPreferenceScreen().findPreference(Settings.KEEP_STORY_BUTTONS_BELOW.key);
+        Preference row = page.findPreference(Settings.KEEP_STORY_BUTTONS_BELOW.key);
         assertNotNull(row);
         assertEquals("Keep story buttons below the story", row.getTitle().toString());
         assertEquals("With a large font or display size, the reply box and buttons at the bottom of a story sit "
@@ -98,7 +98,7 @@ public class StoryButtonsRoomSettingsTest {
     }
     @Test public void missingPatchHasNeitherRowNorBackupKey() throws Exception {
         open(EnumSet.of(PatchFamily.STORY_REPLY_BOX));
-        assertNull(page.getPreferenceScreen().findPreference(Settings.KEEP_STORY_BUTTONS_BELOW.key));
+        assertNull(page.findPreference(Settings.KEEP_STORY_BUTTONS_BELOW.key));
         assertFalse(ConfigurationBackup.eligible().containsKey(Settings.KEEP_STORY_BUTTONS_BELOW.key));
     }
 }
