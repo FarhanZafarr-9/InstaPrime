@@ -101,6 +101,9 @@ public class StyledPopupMenu extends PopupMenu {
                 container.setContentDescription(item.getTitle());
                 container.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
                 CheckedTextView row = new CheckedTextView(context);
+                row.setCheckMarkDrawable(null);
+                row.setMinWidth(0);
+                row.setMinimumWidth(0);
                 row.setId(android.R.id.text1);
                 row.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
                 row.setText(item.getTitle());
@@ -150,9 +153,13 @@ public class StyledPopupMenu extends PopupMenu {
         android.widget.FrameLayout measuringParent = new android.widget.FrameLayout(context);
         for (int i = 0; i < adapter.getCount(); i++) {
             View option = adapter.getView(i, null, measuringParent);
-            option.measure(View.MeasureSpec.makeMeasureSpec(maxRowWidth, View.MeasureSpec.AT_MOST),
+            CheckedTextView label = option.findViewById(android.R.id.text1);
+            label.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-            width = Math.max(width, option.getMeasuredWidth());
+            int natural = (int) Math.ceil(android.text.Layout.getDesiredWidth(label.getText(), label.getPaint()))
+                    + label.getCompoundPaddingLeft() + label.getCompoundPaddingRight()
+                    + option.getPaddingLeft() + option.getPaddingRight();
+            width = Math.max(width, Math.min(maxRowWidth, natural));
         }
         width = Math.max(1, Math.min(maxWidth, width + gutter * 2));
         window.setWidth(width);

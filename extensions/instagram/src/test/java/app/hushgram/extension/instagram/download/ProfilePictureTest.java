@@ -450,12 +450,14 @@ public class ProfilePictureTest {
         assertTrue(counted().get(0).contains(ProfilePicture.COPY_NOT_ADDED + " 2"));
     }
 
-    /** As built, with no patch, the row's adder adds nothing and every read answers nothing. */
-    @Test public void unpatchedTheMenuIsInstagrams() {
+    /** Public native-menu hooks stay empty; the extra profile menu owns these actions. */
+    @Test public void nativeProfileMenuDoesNotReceiveExtras() {
         ProfilePicture.offer(sheet, user, context);
+        List<Object> items = new ArrayList<>();
+        ProfilePicture.offerPopup(items, user, context);
+        assertTrue(items.isEmpty());
         assertFalse(ProfilePicture.addRow(sheet, context, view -> { }, "label"));
-        assertEquals(Collections.singletonList(FamilyNames.PROFILE_PICTURE
-                + ": invoked 1, 0 found, 0 missing. Counted: no profile picture 1"), counted());
+        assertTrue("native-menu hooks no longer read accounts or report extra actions", counted().isEmpty());
     }
 
     private static final class FakeNative implements ProfilePicture.Native {
