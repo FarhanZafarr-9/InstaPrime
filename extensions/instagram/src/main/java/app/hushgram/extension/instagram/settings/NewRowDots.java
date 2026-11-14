@@ -8,6 +8,7 @@ package app.hushgram.extension.instagram.settings;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.drawable.GradientDrawable;
 import android.preference.Preference;
 import android.preference.PreferenceCategory;
 import android.view.View;
@@ -182,6 +183,12 @@ final class NewRowDots {
 
     /** Paints [row]'s dot, or takes the old one off, as the page that is showing says. */
     static void paint(View row, Preference preference, int accent) {
+        TextView title = row.findViewById(android.R.id.title);
+        if (title != null) paint(row, freshRow(preference), accent);
+    }
+
+    /** The same for a [title] that isn't under Android's title id, like a category chip's name. */
+    static void paintTitle(TextView title, Preference preference, int accent) {
         boolean fresh = false;
         try {
             NewRowDots dots = current;
@@ -189,7 +196,21 @@ final class NewRowDots {
         } catch (RuntimeException failed) {
             // No dot.
         }
-        paint(row, fresh, accent);
+        if (fresh) {
+            int size = Math.round(8 * title.getResources().getDisplayMetrics().density);
+            GradientDrawable dot = new GradientDrawable();
+            dot.setShape(GradientDrawable.OVAL);
+            dot.setColor(accent);
+            dot.setBounds(0, 0, size, size);
+            title.setCompoundDrawablesRelative(null, null, dot, null);
+            title.setCompoundDrawablePadding(size);
+            title.setTag(TAG);
+            title.setContentDescription(title.getText() + ", " + L10n.t("New"));
+        } else if (TAG.equals(title.getTag())) {
+            title.setCompoundDrawablesRelative(null, null, null, null);
+            title.setTag(null);
+            title.setContentDescription(null);
+        }
     }
 
     /** The badge belongs to the icon; title actions remain independent. */

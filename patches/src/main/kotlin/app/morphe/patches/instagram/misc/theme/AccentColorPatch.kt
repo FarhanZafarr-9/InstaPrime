@@ -103,13 +103,17 @@ val accentColorPatch = bytecodePatch(
         findThemeOverrides()
         findThemeUtil()
         val palettes = findPaletteStores()
+        requirePaletteSurfaces()
         swapAccentColors()
         swapTextViewColors()
         applyAccentTheme(attributes)
         swapComposePalettes(palettes)
         tintInboxRowPresses()
         tintInboxRowBackgrounds()
+        swapComposeSurfaces()
         tintHeaderIcons()
+        tintTabIcons()
+        dropLikedHeartOutline()
         enableStatus("accentColor")
     }
 }

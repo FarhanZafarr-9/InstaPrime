@@ -342,9 +342,15 @@ public final class ScreenColors {
         return -1;
     }
 
+    /** A card's outer corners, and the small ones where two of its rows meet (#650). */
+    static final int CARD_RADIUS_DP = 20;
+    static final int JOIN_RADIUS_DP = 4;
+
     /**
-     * Group boundaries follow the visible rows, including a filtered search result. The card's
-     * height is the row's: its text wraps at any font size and the row grows to fit.
+     * Group boundaries follow the visible rows, including a filtered search result. A card's rows
+     * sit a hair apart with small corners where they meet and round ones at its top and bottom, on
+     * the main page as on a category's (#650). The card's height is the row's: its text wraps at any
+     * font size and the row grows to fit.
      */
     void paintSurface(View row, Preference preference, boolean first, boolean last) {
         boolean overview = preference.getParent() instanceof PreferenceScreen;
@@ -386,6 +392,10 @@ public final class ScreenColors {
     }
 
     /** A section title. */
+    void paintGroupLabel(View row) {
+        paintHeading(row);
+    }
+
     void paintHeading(View row) {
         TextView title = row.findViewById(android.R.id.title);
         if (title != null) {

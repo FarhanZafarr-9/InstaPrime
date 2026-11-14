@@ -85,7 +85,11 @@ public class TabBarAndBatterySettingsTest {
         Settings.GLASS_TAB_BAR_LIQUID.resetToDefault();
         Settings.GLASS_TAB_BAR_KEEP_SIZE.resetToDefault();
         Settings.GLASS_TAB_BAR_REFRACT.resetToDefault();
+        Settings.GLASS_TAB_BAR_BLUR.resetToDefault();
         Settings.GLASS_TAB_BAR_HAPTIC_STYLE.resetToDefault();
+        Settings.GLASS_TAB_BAR_HAPTIC_STRENGTH.resetToDefault();
+        Settings.GLASS_TAB_BAR_TAP_SOUND.resetToDefault();
+        Settings.GLASS_TAB_BAR_TAP_SOUND_VOLUME.resetToDefault();
         Settings.GLASS_TAB_BAR_OPACITY.resetToDefault();
         Settings.GLASS_TAB_BAR_REFRACT_STRENGTH.resetToDefault();
         Settings.GLASS_TAB_BAR_HEIGHT.resetToDefault();
@@ -95,8 +99,10 @@ public class TabBarAndBatterySettingsTest {
         Settings.GLASS_TAB_BAR_REELS_HIDE.resetToDefault();
         Settings.GLASS_TAB_BAR_FLOAT.resetToDefault();
         Settings.SAVED_ON_PROFILE.resetToDefault();
+        Settings.SAVED_FAST_SCROLL.resetToDefault();
         Settings.STOP_HEARTBEAT.resetToDefault();
         Settings.STOP_UPLOAD_ALARM.resetToDefault();
+        Settings.STOP_BACKGROUND_FETCH.resetToDefault();
         BaseSettings.PAUSED.save(false);
         PauseForTests.resume();
     }
@@ -116,8 +122,9 @@ public class TabBarAndBatterySettingsTest {
     @Test public void withoutThePatchesNoneOfTheirRowsShow() throws Exception {
         open();
         for (String key : List.of(Settings.GLASS_TAB_BAR.key, Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key, Settings.GLASS_TAB_BAR_OPACITY.key, Settings.GLASS_TAB_BAR_HEIGHT.key,
-                Settings.GLASS_TAB_BAR_CORNERS.key, Settings.GLASS_TAB_BAR_LIFT.key, Settings.GLASS_TAB_BAR_BLUR_RADIUS.key, Settings.GLASS_TAB_BAR_REELS_HIDE.key, Settings.SAVED_ON_PROFILE.key, Settings.STOP_HEARTBEAT.key,
-                Settings.STOP_UPLOAD_ALARM.key)) {
+                Settings.GLASS_TAB_BAR_CORNERS.key, Settings.GLASS_TAB_BAR_LIFT.key, Settings.GLASS_TAB_BAR_BLUR_RADIUS.key, Settings.GLASS_TAB_BAR_REELS_HIDE.key, Settings.SAVED_ON_PROFILE.key, Settings.SAVED_FAST_SCROLL.key, Settings.STOP_HEARTBEAT.key,
+                Settings.STOP_UPLOAD_ALARM.key, Settings.STOP_BACKGROUND_FETCH.key, Settings.GLASS_TAB_BAR_HAPTIC_STRENGTH.key,
+                Settings.GLASS_TAB_BAR_TAP_SOUND.key, Settings.GLASS_TAB_BAR_TAP_SOUND_VOLUME.key)) {
             assertNull(key, row(key));
         }
         assertFalse(ConfigurationBackup.eligible().containsKey(Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key));
@@ -132,12 +139,12 @@ public class TabBarAndBatterySettingsTest {
         assertTrue(Settings.GLASS_TAB_BAR.rebootApp);
         assertEquals(Arrays.asList(Settings.GLASS_TAB_BAR, Settings.GLASS_TAB_BAR_BLUR, Settings.GLASS_TAB_BAR_FLOAT,
                 Settings.GLASS_TAB_BAR_HAPTICS, Settings.GLASS_TAB_BAR_HIDE_ON_SCROLL, Settings.GLASS_TAB_BAR_SLIDE,
-                Settings.GLASS_TAB_BAR_LIQUID, Settings.GLASS_TAB_BAR_KEEP_SIZE, Settings.GLASS_TAB_BAR_REFRACT,
-                Settings.GLASS_TAB_BAR_REELS_BEHIND),
+                Settings.GLASS_TAB_BAR_LIQUID, Settings.GLASS_TAB_BAR_KEEP_SIZE, Settings.GLASS_TAB_BAR_SHRINK_ON_SCROLL,
+                Settings.GLASS_TAB_BAR_REFRACT, Settings.GLASS_TAB_BAR_REELS_BEHIND, Settings.GLASS_TAB_BAR_TAP_SOUND),
                 PatchFamily.GLASS_TAB_BAR.switches);
         for (String key : List.of(Settings.GLASS_TAB_BAR_BLUR.key, Settings.GLASS_TAB_BAR_HAPTICS.key, Settings.GLASS_TAB_BAR_FLOAT.key,
                 Settings.GLASS_TAB_BAR_HIDE_ON_SCROLL.key, Settings.GLASS_TAB_BAR_SLIDE.key, Settings.GLASS_TAB_BAR_LIQUID.key,
-                Settings.GLASS_TAB_BAR_KEEP_SIZE.key, Settings.GLASS_TAB_BAR_REFRACT.key)) {
+                Settings.GLASS_TAB_BAR_KEEP_SIZE.key, Settings.GLASS_TAB_BAR_SHRINK_ON_SCROLL.key, Settings.GLASS_TAB_BAR_REFRACT.key)) {
             assertNotNull(key, row(key));
         }
 
@@ -154,6 +161,57 @@ public class TabBarAndBatterySettingsTest {
         assertEquals(HapticStyle.SOFT, Settings.GLASS_TAB_BAR_HAPTIC_STYLE.savedValue());
         assertEquals("Soft tick", String.valueOf(tick.getSummary()));
         assertTrue(ConfigurationBackup.eligible().containsKey(Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key));
+    }
+
+    /**
+     * #640: right after the tick choice come Haptic strength (25% to 200% in 25% notches), the tap sound switch
+     * and its volume (10% to 100%), each starting where the bar has always been, changing it at once, backed up,
+     * and the sliders naming the switch they wait on.
+     */
+    @Test public void hapticStrengthAndTheTapSoundFollowTheTickChoice() throws Exception {
+        open(PatchFamily.GLASS_TAB_BAR);
+        PreferenceGroup section = sectionOf(page.getPreferenceScreen(), row(Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key));
+        List<String> keys = new ArrayList<>();
+        for (int i = 0; i < section.getPreferenceCount(); i++) keys.add(section.getPreference(i).getKey());
+        int style = keys.indexOf(Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key);
+        assertEquals(Arrays.asList(Settings.GLASS_TAB_BAR_HAPTIC_STRENGTH.key, Settings.GLASS_TAB_BAR_TAP_SOUND.key,
+                Settings.GLASS_TAB_BAR_TAP_SOUND_VOLUME.key), keys.subList(style + 1, style + 4));
+
+        HushgramPreferenceFragment.SliderRow strength = (HushgramPreferenceFragment.SliderRow) row(Settings.GLASS_TAB_BAR_HAPTIC_STRENGTH.key);
+        HushgramPreferenceFragment.SliderRow volume = (HushgramPreferenceFragment.SliderRow) row(Settings.GLASS_TAB_BAR_TAP_SOUND_VOLUME.key);
+        SwitchPreference sound = (SwitchPreference) row(Settings.GLASS_TAB_BAR_TAP_SOUND.key);
+        assertEquals("Haptic strength", String.valueOf(strength.getTitle()));
+        assertEquals("Tap sound volume", String.valueOf(volume.getTitle()));
+        assertEquals("Tap sound on the tab bar", String.valueOf(sound.getTitle()));
+        assertFalse(sound.isChecked());
+        assertEquals("Turn on Glass tab bar to use this slider.", String.valueOf(strength.getSummary()));
+
+        ((SwitchPreference) row(Settings.GLASS_TAB_BAR.key)).setChecked(true);
+        ShadowLooper.idleMainLooper();
+        assertEquals("100% (standard)", String.valueOf(strength.getSummary()));
+        assertEquals("Turn on Tap sound on the tab bar to use this slider.", String.valueOf(volume.getSummary()));
+        assertEquals("25% to 200% in 25% notches", 7, sliderOf(strength).getMax());
+        assertEquals(3, sliderOf(strength).getProgress());
+        strength.choose(200);
+        ShadowLooper.idleMainLooper();
+        assertEquals(200, (int) Settings.GLASS_TAB_BAR_HAPTIC_STRENGTH.savedValue());
+        assertEquals("200%", String.valueOf(strength.getSummary()));
+
+        sound.setChecked(true);
+        ShadowLooper.idleMainLooper();
+        assertTrue(Settings.GLASS_TAB_BAR_TAP_SOUND.savedValue());
+        assertEquals("70% (standard)", String.valueOf(volume.getSummary()));
+        assertEquals("10% to 100% in 10% notches", 9, sliderOf(volume).getMax());
+        volume.choose(40);
+        ShadowLooper.idleMainLooper();
+        assertEquals(40, (int) Settings.GLASS_TAB_BAR_TAP_SOUND_VOLUME.savedValue());
+
+        for (Setting<?> live : List.of(Settings.GLASS_TAB_BAR_HAPTIC_STRENGTH, Settings.GLASS_TAB_BAR_TAP_SOUND,
+                Settings.GLASS_TAB_BAR_TAP_SOUND_VOLUME)) {
+            assertFalse(live.key + " shows on the bar's next tick", live.rebootApp);
+            assertFalse(live.key, AbstractPreferenceFragment.restartPending.contains(live.key));
+            assertTrue(live.key, ConfigurationBackup.eligible().containsKey(live.key));
+        }
     }
 
     /** Tint intensity (#391) is a slider in steps of 5%, from see-through to past solid, starting on today's tint. */
@@ -535,14 +593,15 @@ public class TabBarAndBatterySettingsTest {
 
     /**
      * Bend light at the edges (#369) is a switch right after the liquid look, off to start, offered
-     * while the liquid look is on, backed up, and read as the bar is built, so it asks for a restart.
+     * while the pill is blurred, liquid or not (#391), backed up, and read as the bar is built, so it
+     * asks for a restart.
      */
-    @Test public void bendLightAtTheEdgesSitsUnderTheLiquidLookAndStartsOff() throws Exception {
+    @Test public void bendLightAtTheEdgesSitsUnderTheBlurAndStartsOff() throws Exception {
         open(PatchFamily.GLASS_TAB_BAR);
         SwitchPreference refract = (SwitchPreference) row(Settings.GLASS_TAB_BAR_REFRACT.key);
         assertNotNull(refract);
         assertEquals("Bend light at the edges", String.valueOf(refract.getTitle()));
-        assertEquals("The liquid pill's rim bends what's behind it like real glass, so what passes under the edge "
+        assertEquals("The pill's rim bends what's behind it like real glass, so what passes under the edge "
                 + "shows upside down. Android 13 and newer. Restart Instagram after changing it. Can slow down older phones.",
                 String.valueOf(refract.getSummary()));
         assertFalse(refract.isChecked());
@@ -560,10 +619,15 @@ public class TabBarAndBatterySettingsTest {
         assertEquals("right after Liquid glass look", liquidAt + 1, refractAt);
         assertTrue(ConfigurationBackup.eligible().containsKey(Settings.GLASS_TAB_BAR_REFRACT.key));
 
-        assertFalse("no liquid look, no rim", Settings.GLASS_TAB_BAR_REFRACT.isAvailable());
+        assertFalse("no glass bar, no rim", Settings.GLASS_TAB_BAR_REFRACT.isAvailable());
         Settings.GLASS_TAB_BAR.save(true);
-        Settings.GLASS_TAB_BAR_LIQUID.save(true);
-        assertTrue(Settings.GLASS_TAB_BAR_REFRACT.isAvailable());
+        assertFalse(Settings.GLASS_TAB_BAR_LIQUID.savedValue());
+        assertTrue("the standard pill bends too (#391)", Settings.GLASS_TAB_BAR_REFRACT.isAvailable());
+        Settings.GLASS_TAB_BAR_REFRACT.save(true);
+        assertTrue("and so is its slider", Settings.GLASS_TAB_BAR_REFRACT_STRENGTH.isAvailable());
+        Settings.GLASS_TAB_BAR_BLUR.save(false);
+        assertFalse("no blur, nothing to bend", Settings.GLASS_TAB_BAR_REFRACT.isAvailable());
+        assertFalse(Settings.GLASS_TAB_BAR_REFRACT_STRENGTH.isAvailable());
     }
 
     /**
@@ -653,16 +717,35 @@ public class TabBarAndBatterySettingsTest {
         assertTrue(Settings.SAVED_ON_PROFILE.rebootApp);
     }
 
-    @Test public void batteryHoldsBothAlarmSwitchesAndBothStartOff() throws Exception {
+    /** The fast scroll sits right under the bookmark, starts off, and works without a restart (#644). */
+    @Test public void fastScrollInSavedStartsOffUnderTheBookmark() throws Exception {
+        open(PatchFamily.SAVED_ON_PROFILE);
+        SwitchPreference saved = (SwitchPreference) row(Settings.SAVED_ON_PROFILE.key);
+        SwitchPreference fast = (SwitchPreference) row(Settings.SAVED_FAST_SCROLL.key);
+        assertNotNull(fast);
+        assertEquals("Fast scroll in Saved", String.valueOf(fast.getTitle()));
+        assertSame(sectionOf(page.getPreferenceScreen(), saved), sectionOf(page.getPreferenceScreen(), fast));
+        assertEquals(saved.getOrder() + 1, fast.getOrder());
+        assertFalse(fast.isChecked());
+        assertFalse(Settings.SAVED_FAST_SCROLL.rebootApp);
+    }
+
+    @Test public void batteryHoldsAllThreeWakeUpSwitchesAndAllStartOff() throws Exception {
         open(PatchFamily.STOP_HEARTBEAT);
         SwitchPreference heartbeat = (SwitchPreference) row(Settings.STOP_HEARTBEAT.key);
         SwitchPreference upload = (SwitchPreference) row(Settings.STOP_UPLOAD_ALARM.key);
+        SwitchPreference fetch = (SwitchPreference) row(Settings.STOP_BACKGROUND_FETCH.key);
         assertNotNull(heartbeat);
         assertNotNull(upload);
+        assertNotNull(fetch);
         assertEquals("Battery", String.valueOf(sectionOf(page.getPreferenceScreen(), heartbeat).getTitle()));
         assertSame(sectionOf(page.getPreferenceScreen(), heartbeat), sectionOf(page.getPreferenceScreen(), upload));
+        assertSame(sectionOf(page.getPreferenceScreen(), heartbeat), sectionOf(page.getPreferenceScreen(), fetch));
+        assertEquals("Stop background feed refresh", String.valueOf(fetch.getTitle()));
         assertFalse(heartbeat.isChecked());
         assertFalse(upload.isChecked());
-        assertEquals(Arrays.asList(Settings.STOP_HEARTBEAT, Settings.STOP_UPLOAD_ALARM), PatchFamily.STOP_HEARTBEAT.switches);
+        assertFalse(fetch.isChecked());
+        assertEquals(Arrays.asList(Settings.STOP_HEARTBEAT, Settings.STOP_UPLOAD_ALARM, Settings.STOP_BACKGROUND_FETCH),
+                PatchFamily.STOP_HEARTBEAT.switches);
     }
 }

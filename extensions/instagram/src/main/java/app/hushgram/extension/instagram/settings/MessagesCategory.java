@@ -6,6 +6,8 @@
  */
 package app.hushgram.extension.instagram.settings;
 
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.callBlockAccountsRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.callBlockModeRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.category;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.changePinRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.lockDelayRow;
@@ -26,7 +28,8 @@ final class MessagesCategory {
     private MessagesCategory() { }
 
     static void add(HushgramPreferenceFragment page, PreferenceScreen screen, Context context, Set<PatchFamily> build) {
-        if (build.contains(PatchFamily.NOTES_ROW) || build.contains(PatchFamily.INBOX_SEARCH)
+        if (build.contains(PatchFamily.NOTES_ROW) || build.contains(PatchFamily.SPLIT_NOTES_ROW)
+                || build.contains(PatchFamily.INBOX_SEARCH)
                 || build.contains(PatchFamily.INBOX_SUGGESTIONS) || build.contains(PatchFamily.INSTANTS)
                 || build.contains(PatchFamily.THREAD_SEEN) || build.contains(PatchFamily.TYPING)
                 || build.contains(PatchFamily.DM_MEDIA_SEEN)
@@ -43,6 +46,8 @@ final class MessagesCategory {
                 || build.contains(PatchFamily.CHAT_HISTORY)
                 || build.contains(PatchFamily.PREVIEW_CHATS)
                 || build.contains(PatchFamily.ASK_BEFORE_CALL)
+                || build.contains(PatchFamily.CALL_BLOCKER)
+                || build.contains(PatchFamily.KINDNESS_REMINDER)
                 || build.contains(PatchFamily.MESSAGE_BOX)
                 || build.contains(PatchFamily.PLUS_MENU)
                 || build.contains(PatchFamily.GLASS_CHAT)
@@ -55,6 +60,11 @@ final class MessagesCategory {
                                 + "Your chats, search and requests stay.")));
                 messages.addPreference(toggle(context, Settings.HIDE_NOTES_MAP, L10n.t("Hide the Map bubble"),
                         L10n.t("Takes only the Map bubble out of the row of notes. Your notes stay.")));
+            }
+            if (build.contains(PatchFamily.SPLIT_NOTES_ROW)) {
+                messages.addPreference(toggle(context, Settings.SPLIT_NOTES_ROW, L10n.t("Split the notes row"),
+                        L10n.t("Splits the row of notes into three stacks, Instants, Notes and Stories, the layout "
+                                + "Instagram is trying out. Restart Instagram to see the change.")));
             }
             if (build.contains(PatchFamily.INBOX_SEARCH)) {
                 messages.addPreference(toggle(context, Settings.HIDE_INBOX_SEARCH,
@@ -197,6 +207,14 @@ final class MessagesCategory {
                         L10n.t("Hides the Blend and create Blend buttons from the chat header. "
                                 + "Reopen the chat after changing this option.")));
             }
+            if (build.contains(PatchFamily.CALL_BLOCKER)) {
+                messages.addPreference(callBlockModeRow(context));
+                messages.addPreference(callBlockAccountsRow(context));
+            }
+            if (build.contains(PatchFamily.KINDNESS_REMINDER)) {
+                messages.addPreference(toggle(context, Settings.HIDE_KINDNESS_REMINDER, L10n.t("Hide the Community Standards reminder"),
+                        L10n.t("Takes the banner reminding you to be respectful off the bottom of a chat.")));
+            }
             if (build.contains(PatchFamily.MESSAGE_BOX)) {
                 messages.addPreference(page.messageBoxRow(context));
             }
@@ -216,8 +234,8 @@ final class MessagesCategory {
             }
             if (build.contains(PatchFamily.GLASS_CHAT)) {
                 messages.addPreference(toggle(context, Settings.GLASS_CHAT, L10n.t("Glass in chats"),
-                        L10n.t("Gives a chat's top bar frosted glass and puts the back, call and video buttons on round "
-                                + "glass circles. It shows the next time you open a chat. Needs Android 12 or newer for the blur.")));
+                        L10n.t("Gives a chat's top bar and message bar frosted glass and puts the back, call and video buttons "
+                                + "on round glass circles. It shows the next time you open a chat. Needs Android 12 or newer for the blur.")));
             }
             if (build.contains(PatchFamily.FULL_SCREEN_BARS)) {
                 messages.addPreference(toggle(context, Settings.FULL_SCREEN_MESSAGES, L10n.t("Full screen Messages"),
@@ -231,6 +249,12 @@ final class MessagesCategory {
                 messages.addPreference(lockToggle(context, Settings.LOCK_APP, L10n.t("Lock all of Instagram"),
                         L10n.t("All of Instagram stays covered until your fingerprint, face or screen lock says it's "
                                 + "you, your messages too.")));
+                messages.addPreference(lockToggle(context, Settings.LOCK_SAVED, L10n.t("Lock Saved"),
+                        L10n.t("Saved and everything in it stay covered until your fingerprint, face or screen lock "
+                                + "says it's you.")));
+                messages.addPreference(lockToggle(context, Settings.LOCK_EACH_CHAT, L10n.t("Ask for each chat"),
+                        L10n.t("Every chat you open asks again, and so does your inbox when you go back to it. Off, "
+                                + "one unlock opens everything until you leave Instagram.")));
                 messages.addPreference(lockDelayRow(context));
                 messages.addPreference(unlockWithRow(context));
                 messages.addPreference(changePinRow(context));
@@ -238,9 +262,9 @@ final class MessagesCategory {
                 messages.addPreference(page.hiddenChatsRow(context));
                 messages.addPreference(toggle(context, Settings.DOUBLE_TAP_HIDDEN_CHATS,
                         L10n.t("Double-tap Messages for hidden chats"),
-                        L10n.t("Two quick taps on the Messages button, on the tab bar or at the top of Home, open "
-                                + "your hidden chats. While a lock is on, it asks for it first. One tap opens Messages "
-                                + "as usual.")));
+                        L10n.t("Two quick taps on the Messages button, on the tab bar or at the top of Home, show "
+                                + "your hidden chats in your inbox after your screen lock or PIN. Two more taps hide them "
+                                + "again. Long press a chat to hide or unhide it. One tap opens Messages as usual.")));
                 messages.addPreference(page.pinnedChatsRow(context));
             }
         }

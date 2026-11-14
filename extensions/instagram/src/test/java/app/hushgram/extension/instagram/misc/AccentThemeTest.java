@@ -56,6 +56,7 @@ public class AccentThemeTest {
         Settings.ACCENT_BADGES.resetToDefault();
         Settings.ACCENT_ICONS.resetToDefault();
         Settings.ACCENT_RINGS.resetToDefault();
+        Settings.ACCENT_RINGS_SOLID.resetToDefault();
         Settings.ACCENT_BACKGROUNDS.resetToDefault();
         BaseSettings.PAUSED.save(false);
         PauseForTests.resume();
@@ -253,7 +254,7 @@ public class AccentThemeTest {
         List<String> asked = new ArrayList<>();
         Ids ids = (name, type) -> {
             if (type.equals("style") && name.equals(AccentTheme.paletteStyle(AccentHue.TEAL))) return android.R.style.TextAppearance;
-            if (type.equals("style") && name.startsWith("HushGramAccentRings_")) {
+            if (type.equals("style") && (name.startsWith("HushGramAccentRings_") || name.startsWith("HushGramAccentRingsSolid_"))) {
                 asked.add(name);
                 return android.R.style.TextAppearance_Small;
             }
@@ -269,6 +270,19 @@ public class AccentThemeTest {
         assertEquals(List.of("HushGramAccentRings_TEAL"), asked);
         assertEquals(List.of(FamilyNames.ACCENT_COLOR + ": invoked 1, 0 found, 0 missing. Counted: " + AccentTheme.NO_BLUE + " 1, "
                 + AccentTheme.RINGS + " 1"), HookStatus.report());
+
+        // Solid story rings swaps in the style with every stop at the fill (#519).
+        assertEquals("HushGramAccentRingsSolid_TEAL", AccentTheme.solidRingStyle(AccentHue.TEAL));
+        Settings.ACCENT_RINGS_SOLID.save(true);
+        asked.clear();
+        AccentTheme.apply(context, "igds_color_link");
+        assertEquals(List.of("HushGramAccentRingsSolid_TEAL"), asked);
+        Settings.ACCENT_RINGS.save(false);
+        asked.clear();
+        AccentTheme.apply(context, "igds_color_link");
+        assertEquals("solid alone does nothing with the rings off", List.of(), asked);
+        Settings.ACCENT_RINGS.save(true);
+        Settings.ACCENT_RINGS_SOLID.save(false);
 
         HookStatus.clear();
         Context bare = themed(THEMED + ".norings", (name, type) -> type.equals("style")
@@ -369,6 +383,43 @@ public class AccentThemeTest {
     }
 
     /**
+     * A tab's icon told Reels' white takes the picked color's shade for a dark screen, and told the
+     * dark text color Instagram resets to after Reels takes its shade for a light one, alpha kept, with
+     * both switches on (#663). Either switch off or paused leaves the color as told, and a missing
+     * unselected color stays missing.
+     */
+    @Test
+    public void tabIconsTakeThePickedShadeForTheColorTheyreTold() {
+        int white = 0xffffffff;
+        int dark = 0xff0c1014;
+        int faded = 0x99ffffff;
+        assertEquals("off", white, AccentTheme.tabIcons(white));
+        Settings.ACCENT_COLOR.save(true);
+        Settings.ACCENT_HUE.save(AccentHue.TEAL);
+        assertEquals("icons off", white, AccentTheme.tabIcons(white));
+        Settings.ACCENT_ICONS.save(true);
+
+        int onDark = 0xff000000 | AccentColor.swap(0xff85a1ff, AccentHue.TEAL);
+        int onLight = 0xff000000 | AccentColor.swap(0xff3143e3, AccentHue.TEAL);
+        assertFalse("the two shades differ", onDark == onLight);
+        assertEquals("white on the black Reels bar", onDark, AccentTheme.tabIcons(white));
+        assertEquals("the text color after Reels", onLight, AccentTheme.tabIcons(dark));
+        assertEquals("alpha kept", (faded & 0xff000000) | (onDark & 0xffffff), AccentTheme.tabIcons(faded));
+        assertEquals("boxed", Integer.valueOf(onLight), AccentTheme.tabIcons(Integer.valueOf(dark)));
+        assertNull("no unselected color", AccentTheme.tabIcons((Integer) null));
+        assertEquals("already the shade, not counted", onDark, AccentTheme.tabIcons(onDark));
+
+        BaseSettings.PAUSED.save(true);
+        PauseForTests.pause(HushgramPause.Reason.SWITCH);
+        assertEquals("paused", white, AccentTheme.tabIcons(white));
+        assertEquals("paused, boxed", Integer.valueOf(dark), AccentTheme.tabIcons(Integer.valueOf(dark)));
+        BaseSettings.PAUSED.save(false);
+        PauseForTests.resume();
+        String report = HookStatus.report().toString();
+        assertTrue(report, report.contains(AccentTheme.TAB_ICONS + " 4"));
+    }
+
+    /**
      * Home's older header bakes the primary text color into each icon, so each one gets the theme's
      * icon color laid over it with both switches on (#8), and none with either off, paused, or no icon
      * attribute.
@@ -463,7 +514,7 @@ public class AccentThemeTest {
         assertFalse(AccentTheme.readsLight(0xff0c1014));
         // A theme styled twice keeps its shade: the dark one still reads as a dark theme's.
         for (AccentHue hue : AccentHue.values()) {
-            if (hue == AccentHue.BLUE || hue == AccentHue.WALLPAPER) continue;
+            if (hue == AccentHue.BLUE || hue == AccentHue.WALLPAPER || hue == AccentHue.CUSTOM) continue;
             assertTrue(hue.name(), AccentTheme.readsLight(hue.linkOnDark));
             assertFalse(hue.name(), AccentTheme.readsLight(hue.linkOnLight));
         }

@@ -123,11 +123,11 @@ public class SettingsCardsTest {
     @Test public void homeGroupsStandardNavigationRowsUnderPlainHeadings() throws Exception {
         Settings.CATEGORY_PAGES.save(false);
         open(EnumSet.allOf(PatchFamily.class));
-        assertEquals(23, model().categories.size());
+        assertEquals(24, model().categories.size());
         PreferenceScreen screen = page.getPreferenceScreen();
         String[] headings = {"Privacy and alerts", "Content", "People and chats", "App experience",
                 "App tools", "Support and diagnostics"};
-        int[] sizes = {3, 4, 3, 4, 5, 4};
+        int[] sizes = {3, 5, 3, 4, 5, 4};
         int index = 0;
         while (!(screen.getPreference(index) instanceof PreferenceCategory)) index++;
         for (int group = 0; group < headings.length; group++) {
@@ -200,7 +200,9 @@ public class SettingsCardsTest {
             assertNotNull(page.getPreferenceScreen().findPreference(leaf.opener.getKey()));
             assertNull(page.getPreferenceScreen().findPreference(leaf.rows.get(0).getKey()));
             tap(leaf.opener);
-            if (!leaf.toggles().isEmpty()) assertNotNull(page.getPreferenceScreen().findPreference(HushgramPreferenceFragment.ENABLE_ALL_KEY));
+            long available = leaf.toggles().stream().filter(Preference::isEnabled).count();
+            assertEquals(available >= 5,
+                    page.getPreferenceScreen().findPreference(HushgramPreferenceFragment.ENABLE_ALL_KEY) != null);
             assertEquals(leaf.id, page.currentPage());
             assertSame(leaf.rows.get(0), page.getPreferenceScreen().findPreference(leaf.rows.get(0).getKey()));
             assertTrue(page.closeCategory());

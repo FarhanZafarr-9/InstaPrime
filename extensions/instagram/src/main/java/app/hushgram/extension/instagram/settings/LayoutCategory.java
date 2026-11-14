@@ -6,6 +6,7 @@
  */
 package app.hushgram.extension.instagram.settings;
 
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.accentCustomRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.accentHueRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.appIconRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.category;
@@ -64,6 +65,7 @@ final class LayoutCategory {
                         L10n.t("Turns Instagram's blue, on Follow buttons, links and the like, into the color you "
                                 + "pick below. Restart Instagram to see the change.")));
                 layout.addPreference(accentHueRow(context));
+                layout.addPreference(accentCustomRow(context));
                 layout.addPreference(toggle(context, Settings.ACCENT_BADGES, L10n.t("Badges in the accent color"),
                         L10n.t("The red dots and counts for new messages and notifications take the color you "
                                 + "picked. Restart Instagram to see the change.")));
@@ -73,6 +75,9 @@ final class LayoutCategory {
                 layout.addPreference(toggle(context, Settings.ACCENT_RINGS, L10n.t("Story rings in the accent color"),
                         L10n.t("Story rings take the color you picked instead of Instagram's gradient. A few other "
                                 + "gradients share those colors and change with them. Restart Instagram to see the change.")));
+                layout.addPreference(toggle(context, Settings.ACCENT_RINGS_SOLID, L10n.t("Solid story rings"),
+                        L10n.t("Story rings are one solid shade of the color you picked instead of running light to dark. "
+                                + "Restart Instagram to see the change.")));
                 layout.addPreference(toggle(context, Settings.ACCENT_BACKGROUNDS, L10n.t("Backgrounds in the accent color"),
                         L10n.t("Screens, panels, cards and menus take a dark or light shade of the color you picked. "
                                 + "Story and reel viewers keep their own background. Wins over Pure black dark mode. "
@@ -92,6 +97,9 @@ final class LayoutCategory {
                 layout.addPreference(toggle(context, Settings.LAUNCH_SCREEN, L10n.t("HushGram launch screen"),
                         L10n.t("Shows HushGram's logo instead of Instagram's on the screen you see while Instagram "
                                 + "starts, on Android 13 and newer. It shows from the next start.")));
+                layout.addPreference(toggle(context, Settings.LAUNCH_SCREEN_ACCENT, L10n.t("Launch screen in the accent color"),
+                        L10n.t("Fills that screen with the accent color, or Instagram's blue while Accent color is "
+                                + "off. A custom color shows as the closest one in the list. It shows from the next start.")));
             }
             if (build.contains(PatchFamily.HEADER_TEXT)) {
                 layout.addPreference(mark(headerTextRow(context), SettingsIcons.WRITING));

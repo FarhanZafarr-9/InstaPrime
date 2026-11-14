@@ -92,7 +92,7 @@ final class SettingsNavigation {
         takeOverviewGroup(context, remaining, "privacy", L10n.t("Privacy and alerts"),
                 SettingsIcons.PRIVACY, SettingsIcons.AI, SettingsIcons.NOTIFICATIONS);
         takeOverviewGroup(context, remaining, "content", L10n.t("Content"),
-                SettingsIcons.FEED, SettingsIcons.EXPLORE, SettingsIcons.REELS, SettingsIcons.STORIES);
+                SettingsIcons.FEED, SettingsIcons.EXPLORE, SettingsIcons.REELS, SettingsIcons.STORIES, SettingsIcons.UPDATES);
         takeOverviewGroup(context, remaining, "people", L10n.t("People and chats"),
                 SettingsIcons.CHATS, SettingsIcons.COMMENTS, SettingsIcons.PERSON);
         takeOverviewGroup(context, remaining, "experience", L10n.t("App experience"),
@@ -107,7 +107,8 @@ final class SettingsNavigation {
         List<Node> group = new ArrayList<>();
         for (String icon : icons) {
             for (Node node : remaining) {
-                if (icon.equals(node.icon)) group.add(node);
+                if (icon.equals(node.icon) && (!icon.equals(SettingsIcons.UPDATES)
+                        || ViewingHistoryCategory.KEY.equals(node.id))) group.add(node);
             }
         }
         remaining.removeAll(group);
