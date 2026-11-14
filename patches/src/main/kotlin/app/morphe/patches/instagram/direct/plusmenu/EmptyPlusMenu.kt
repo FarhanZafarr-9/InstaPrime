@@ -1,6 +1,7 @@
 package app.morphe.patches.instagram.direct.plusmenu
 
 import app.morphe.patcher.patch.BytecodePatchContext
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patches.instagram.misc.extension.classesHolding
 import app.morphe.patches.instagram.misc.extension.classesAccessing
@@ -8,6 +9,7 @@ import app.morphe.patches.instagram.misc.extension.localRegisterCount
 import app.morphe.util.RegisterLiveness
 import app.morphe.util.addInstructionsAtControlFlowLabel
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
@@ -76,4 +78,36 @@ internal fun BytecodePatchContext.hideEmptyPlusMenu(site: EmptyPlusSite) {
         :native_more
         nop
     """)
+}
+
+internal fun BytecodePatchContext.removeEmptyComposerItem(builder: PlusMenuSite, site: EmptyPlusSite) {
+    val type = site.field.substringBefore("->")
+    val item = mutableClassDefBy(type)
+    item.accessFlags = item.accessFlags or AccessFlags.PUBLIC.value
+    item.fields.single { "$type->${it.name}:${it.type}" == site.field }.apply {
+        accessFlags = (accessFlags and (AccessFlags.PRIVATE.value or AccessFlags.PROTECTED.value).inv()) or AccessFlags.PUBLIC.value
+    }
+    mutableClassDefBy(PLUS_MENU).methods.single { it.name == "emptyMore" }.addInstructions(0, """
+        instance-of p1, p0, $type
+        if-eqz p1, :not_more
+        check-cast p0, $type
+        iget-object p0, p0, ${site.field}
+        invoke-static {p0}, $PLUS_MENU->empty(Ljava/util/List;)Z
+        move-result p1
+        return p1
+        :not_more
+        const/4 p1, 0x0
+        return p1
+    """)
+    val method = mutableClassDefBy(builder.type).methods.single {
+        it.name == builder.name && it.parameterTypes.map(Any::toString) == builder.parameters
+    }
+    val code = method.implementation!!.instructions.toList()
+    code.indices.filter { code[it].opcode == Opcode.RETURN_OBJECT }.asReversed().forEach { at ->
+        val register = (code[at] as OneRegisterInstruction).registerA
+        method.addInstructionsAtControlFlowLabel(at, """
+            invoke-static/range {v$register .. v$register}, $PLUS_MENU->composer(Ljava/util/List;)Ljava/util/List;
+            move-result-object v$register
+        """)
+    }
 }

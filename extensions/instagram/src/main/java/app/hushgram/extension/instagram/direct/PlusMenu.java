@@ -7,6 +7,7 @@ package app.hushgram.extension.instagram.direct;
 import androidx.annotation.Nullable;
 
 import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -120,6 +121,21 @@ public final class PlusMenu {
             return false;
         }
     }
+
+    /** Remove the empty MORE item itself, rather than only disabling its availability check. */
+    public static List<?> composer(List<?> items) {
+        if (!Utils.settingsReady() || HushgramPause.isPaused() || items == null) return items;
+        try {
+            List<Object> kept = new ArrayList<>(items.size());
+            for (Object item : items) if (!emptyMore(item, null)) kept.add(item);
+            return kept.size() == items.size() ? items : kept;
+        } catch (Throwable failure) {
+            return items;
+        }
+    }
+
+    // Filled by the patch using the verified MORE type and its own overflow field.
+    private static boolean emptyMore(Object item, Object scratch) { return false; }
 
     private static void takeOut(List<Object> rows, @Nullable Object item) {
         if (item == null) return;

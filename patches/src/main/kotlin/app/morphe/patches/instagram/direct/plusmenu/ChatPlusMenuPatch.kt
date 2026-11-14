@@ -85,6 +85,7 @@ val chatPlusMenuPatch = bytecodePatch(
         val empty = findEmptyPlusMenu()
         handPlusMenu(site)
         hideEmptyPlusMenu(empty)
+        removeEmptyComposerItem(site, empty)
         enableStatus("plusMenu")
     }
 }
