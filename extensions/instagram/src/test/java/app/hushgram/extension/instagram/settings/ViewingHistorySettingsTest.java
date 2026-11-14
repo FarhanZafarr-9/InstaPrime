@@ -47,6 +47,11 @@ import app.hushgram.extension.shared.Utils;
 @Config(sdk = 30)
 @SuppressWarnings("deprecation")
 public class ViewingHistorySettingsTest {
+    private static String categoryTitle(HushgramPreferenceFragment page, Preference row) throws Exception {
+        java.lang.reflect.Field field = HushgramPreferenceFragment.class.getDeclaredField("navigation");
+        field.setAccessible(true);
+        return ((SettingsNavigation) field.get(page)).destination(row).category.getTitle().toString();
+    }
     @Rule public final SettingsContextRule settingsContext = new SettingsContextRule();
 
     @After public void restore() {
@@ -84,13 +89,13 @@ public class ViewingHistorySettingsTest {
             // The reporter asked for it out of Ads and privacy, as a category of its own.
             for (Preference row : Arrays.asList(toggle, list, clear)) {
                 assertEquals(String.valueOf(row.getTitle()), "Viewing history",
-                        String.valueOf(StoryTimeSettingsTest.sectionOf(page.getPreferenceScreen(), row).getTitle()));
+                        categoryTitle(page, row));
             }
             page.searchSettings("Ads and privacy");
             assertNotNull("a search for where it used to be still finds it",
-                    page.getPreferenceScreen().findPreference(Settings.VIEWING_HISTORY.key));
+                    page.getPreferenceScreen().findPreference("hushgram_search_result_" + Settings.VIEWING_HISTORY.key));
             page.searchSettings("Spoof location");
-            assertNull(page.getPreferenceScreen().findPreference(Settings.VIEWING_HISTORY.key));
+            assertNull(page.getPreferenceScreen().findPreference("hushgram_search_result_" + Settings.VIEWING_HISTORY.key));
         }
         PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.VOICE_MESSAGE);
         try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {

@@ -87,7 +87,7 @@ final class ViewingHistoryPage {
 
     private ViewingHistoryPage(Context context, Preference row) {
         origin = row;
-        dialog = new Dialog(context, android.R.style.Theme_Material_NoActionBar);
+        dialog = SettingsPageStyle.dialog(context, palette);
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(palette.background);
@@ -117,7 +117,7 @@ final class ViewingHistoryPage {
         search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
         // The settings' own field, outlined on its surface and blue while it has focus, in place of
         // the bare underline it had.
-        ScreenColors.styleField(search);
+        ScreenColors.styleSearchField(search);
         // A magnifier at its start, as the settings search has. A compound drawable isn't read, and
         // the hint already names the field.
         Drawable glass = SettingsIcons.icon(context, SettingsIcons.SEARCH, palette.summary);
@@ -344,7 +344,7 @@ final class ViewingHistoryPage {
             // follow it to the front, so both make way.
             Activity activity = SettingsScreenRow.activityOf(context);
             if (activity != null) SettingsEntry.closeForLink(activity);
-            dialog.dismiss();
+            SettingsPageStyle.dismissForLink(dialog);
         } catch (ActivityNotFoundException | SecurityException failure) {
             Utils.showToastShort(L10n.t("Couldn't open that one."));
         }
@@ -459,6 +459,7 @@ final class ViewingHistoryPage {
 
         @Override public View getView(int position, View reused, ViewGroup parent) {
             LinearLayout row = reused instanceof LinearLayout ? (LinearLayout) reused : make();
+            SettingsPageStyle.row(row, palette, position == 0, position == getCount() - 1);
             ViewingHistory.Row seen = shown.get(position);
             String label = HushgramPreferenceFragment.viewingKindLabel(seen.kind);
             String ago = DateUtils.getRelativeTimeSpanString(seen.time, System.currentTimeMillis(),

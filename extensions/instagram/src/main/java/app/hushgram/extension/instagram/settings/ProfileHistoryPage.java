@@ -74,7 +74,7 @@ final class ProfileHistoryPage {
     private List<ProfileHistory.Past> all = Collections.emptyList();
 
     private ProfileHistoryPage(Context context, Preference row) {
-        dialog = new Dialog(context, android.R.style.Theme_Material_NoActionBar);
+        dialog = SettingsPageStyle.dialog(context, palette);
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(palette.background);
@@ -102,7 +102,7 @@ final class ProfileHistoryPage {
         search.setSingleLine(true);
         search.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-        ScreenColors.styleField(search);
+        ScreenColors.styleSearchField(search);
         Drawable glass = SettingsIcons.icon(context, SettingsIcons.SEARCH, palette.summary);
         glass.setBounds(0, 0, Dim.dp(20), Dim.dp(20));
         search.setCompoundDrawablesRelative(glass, null, null, null);
@@ -251,7 +251,7 @@ final class ProfileHistoryPage {
             // The profile opens on the screen under this page, and the settings make way for it.
             Activity activity = SettingsScreenRow.activityOf(context);
             if (activity != null) SettingsEntry.closeForLink(activity);
-            dialog.dismiss();
+            SettingsPageStyle.dismissForLink(dialog);
         } catch (ActivityNotFoundException | SecurityException failure) {
             Utils.showToastShort(L10n.t("Couldn't open that one."));
         }
@@ -325,6 +325,7 @@ final class ProfileHistoryPage {
 
         @Override public View getView(int position, View reused, ViewGroup parent) {
             LinearLayout row = reused instanceof LinearLayout ? (LinearLayout) reused : make();
+            SettingsPageStyle.row(row, palette, position == 0, position == getCount() - 1);
             ProfileHistory.Past change = shown.get(position);
             String what = HushgramPreferenceFragment.profileChangeLabel(change, System.currentTimeMillis());
             // An old bio shows under its line, a few lines of it at most.
