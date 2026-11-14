@@ -4,6 +4,8 @@
  */
 package app.hushgram.extension.instagram.download;
 
+import app.hushgram.extension.instagram.settings.StyledPopupMenu;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Resources;
@@ -174,7 +176,7 @@ public final class ReelDownloadButton {
         }
 
         @Override public void choose(View anchor, Runnable video, Runnable photo) {
-            PopupMenu menu = new PopupMenu(anchor.getContext(), anchor);
+            PopupMenu menu = new StyledPopupMenu(anchor.getContext(), anchor);
             menu.getMenu().add(0, 0, 0, StoryDownload.label(StoryDownload.Choice.VIDEO));
             menu.getMenu().add(0, 1, 1, StoryDownload.label(StoryDownload.Choice.PHOTO));
             menu.setOnMenuItemClickListener(item -> {
@@ -203,7 +205,7 @@ public final class ReelDownloadButton {
         }
 
         @Override public void pick(View anchor, List<CharSequence> labels, List<Runnable> runs) {
-            PopupMenu menu = new PopupMenu(anchor.getContext(), anchor);
+            PopupMenu menu = new StyledPopupMenu(anchor.getContext(), anchor);
             for (int i = 0; i < labels.size(); i++) menu.getMenu().add(0, i, i, labels.get(i));
             menu.setOnMenuItemClickListener(item -> {
                 runs.get(item.getItemId()).run();

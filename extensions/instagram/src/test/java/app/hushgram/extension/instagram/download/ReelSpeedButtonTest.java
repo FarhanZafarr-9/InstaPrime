@@ -200,6 +200,7 @@ public class ReelSpeedButtonTest {
 
     @After
     public void tearDown() {
+        app.hushgram.extension.instagram.settings.StyledPopupMenu.resetForTests();
         ReelDownloadButton.bridge = originalBridge;
         ReelNotInterestedButton.bridge = originalNotInterested;
         ReelBlockButton.bridge = originalBlock;
@@ -298,7 +299,7 @@ public class ReelSpeedButtonTest {
         speed.playing = 1.5f;
         View icon = iconOnPage();
         assertNull(bridge.click.invoke(icon));
-        PopupMenu popup = ShadowPopupMenu.getLatestPopupMenu();
+        PopupMenu popup = app.hushgram.extension.instagram.settings.StyledPopupMenu.latestForTests();
         assertNotNull("Instagram's own kind of menu opens by the icon", popup);
         Menu items = popup.getMenu();
         assertEquals(7, items.size());
@@ -314,7 +315,7 @@ public class ReelSpeedButtonTest {
 
         speed.takes = false;
         assertNull(bridge.click.invoke(icon));
-        PopupMenu again = ShadowPopupMenu.getLatestPopupMenu();
+        PopupMenu again = app.hushgram.extension.instagram.settings.StyledPopupMenu.latestForTests();
         assertTrue("now 2.5x is checked", again.getMenu().getItem(5).isChecked());
         Shadows.shadowOf(again).getOnMenuItemClickListener().onMenuItemClick(again.getMenu().getItem(0));
         ShadowLooper.idleMainLooper();

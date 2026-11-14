@@ -4,6 +4,8 @@
  */
 package app.hushgram.extension.instagram.download;
 
+import app.hushgram.extension.instagram.settings.StyledPopupMenu;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -87,7 +89,7 @@ public final class ReelSpeedButton {
     }
 
     static Menus menus = (anchor, playing, chosen) -> {
-        PopupMenu menu = new PopupMenu(anchor.getContext(), anchor);
+        PopupMenu menu = new StyledPopupMenu(anchor.getContext(), anchor);
         Menu items = menu.getMenu();
         for (int i = 0; i < SPEEDS.length; i++) {
             items.add(0, i, i, label(SPEEDS[i])).setChecked(same(SPEEDS[i], playing));
