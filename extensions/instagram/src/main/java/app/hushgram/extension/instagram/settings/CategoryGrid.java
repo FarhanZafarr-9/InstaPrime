@@ -127,10 +127,9 @@ final class CategoryGrid extends Preference {
         tile.setFocusable(true);
         GradientDrawable surface = new GradientDrawable();
         boolean open = section.expanded;
-        // The open section's tile reads as selected: an accent outline over a faint accent fill.
+        // The open section's tile reads as selected through its accent fill.
         surface.setColor(open ? blend(colors.card, colors.accent) : colors.card);
         surface.setCornerRadius(Math.round(12 * density));
-        surface.setStroke(Math.round((open ? 2 : 1) * density), open ? colors.accent : colors.outline);
         tile.setBackground(new RippleDrawable(ScreenColors.interactionRipple(colors.heading), surface, null));
 
         ImageView icon = new ImageView(context);
