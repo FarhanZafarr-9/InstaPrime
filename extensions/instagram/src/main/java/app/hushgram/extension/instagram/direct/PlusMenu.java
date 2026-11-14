@@ -112,6 +112,15 @@ public final class PlusMenu {
         }
     }
 
+    /** Native composer availability asks this about this button's own filtered overflow list. */
+    public static boolean empty(@Nullable List<?> menu) {
+        try {
+            return Utils.settingsReady() && !HushgramPause.isPaused() && menu != null && menu.isEmpty();
+        } catch (Throwable failure) {
+            return false;
+        }
+    }
+
     private static void takeOut(List<Object> rows, @Nullable Object item) {
         if (item == null) return;
         for (Iterator<Object> it = rows.iterator(); it.hasNext(); ) {

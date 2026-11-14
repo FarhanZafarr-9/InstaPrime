@@ -86,6 +86,18 @@ public class PlusMenuTest {
         return kinds;
     }
 
+    @Test public void emptyMoreIsHiddenPerMenuAndRespectsPause() {
+        assertFalse(PlusMenu.empty(menu));
+        assertFalse(PlusMenu.empty(null));
+        menu.clear();
+        assertTrue(PlusMenu.empty(menu));
+        menu.add(new Object());
+        assertFalse(PlusMenu.empty(menu));
+        BaseSettings.PAUSED.save(true);
+        PauseForTests.pause(HushgramPause.Reason.SWITCH);
+        assertFalse(PlusMenu.empty(Collections.emptyList()));
+    }
+
     @Test public void metaAiAndLocationFiltersAreIndependentAndLeaveAiImagesAlone() {
         menu.add(byButton.get(Kind.META_AI_DISCOVERY));
         menu.add(byButton.get(Kind.META_AI_INVOCATION));
