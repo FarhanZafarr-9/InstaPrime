@@ -289,7 +289,7 @@ public final class SavedProfilesPage {
     }
 
     private boolean options(View anchor, SavedProfiles.Profile profile) {
-        PopupMenu menu = new PopupMenu(anchor.getContext(), anchor);
+        PopupMenu menu = new StyledPopupMenu(anchor.getContext(), anchor);
         fill(menu.getMenu());
         menu.setOnMenuItemClickListener(item -> pick(item.getItemId(), profile));
         menu.show();
@@ -339,7 +339,7 @@ public final class SavedProfilesPage {
     }
 
     private boolean folderOptions(View anchor, String name) {
-        PopupMenu menu = new PopupMenu(anchor.getContext(), anchor);
+        PopupMenu menu = new StyledPopupMenu(anchor.getContext(), anchor);
         fillFolder(menu.getMenu());
         menu.setOnMenuItemClickListener(item -> pickForFolder(item.getItemId(), name));
         menu.show();
@@ -407,6 +407,7 @@ public final class SavedProfilesPage {
                 .setNegativeButton(L10n.t(context, "Cancel"), null)
                 .create();
         question.show();
+        ScreenColors.dialog(question);
         return question;
     }
 
@@ -435,6 +436,7 @@ public final class SavedProfilesPage {
                 .setNegativeButton(L10n.t(context, "Cancel"), null)
                 .create();
         question.show();
+        ScreenColors.dialog(question);
         Window window = question.getWindow();
         if (window != null) {
             window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
