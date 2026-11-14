@@ -54,8 +54,8 @@ public class StyledPopupNativeTest {
     @Test public void popupBackgroundPriorityIsAccentThenInjectedBlackThenNativeTheme() {
         try (var host = Robolectric.buildActivity(Activity.class).setup()) {
             ScreenColors colors = ScreenColors.forScreen(host.get());
-            assertEquals(Color.BLACK, StyledPopupMenu.popupSurface(host.get(), colors, true, false));
-            assertEquals(colors.dialog, StyledPopupMenu.popupSurface(host.get(), colors, true, true));
+            assertEquals(ScreenColors.BLACK.popupSurface(), StyledPopupMenu.popupSurface(host.get(), colors, true, false));
+            assertEquals(colors.popupSurface(), StyledPopupMenu.popupSurface(host.get(), colors, true, true));
             android.content.res.TypedArray nativeTheme = host.get().obtainStyledAttributes(new int[]{android.R.attr.colorBackgroundFloating});
             try { assertEquals(nativeTheme.getColor(0, colors.dialog), StyledPopupMenu.popupSurface(host.get(), colors, false, false)); }
             finally { nativeTheme.recycle(); }

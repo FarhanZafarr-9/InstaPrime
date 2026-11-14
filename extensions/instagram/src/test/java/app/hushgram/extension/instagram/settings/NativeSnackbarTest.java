@@ -47,13 +47,13 @@ public class NativeSnackbarTest {
             int[] actions = {0}; undo.setOnClickListener(v -> actions[0]++);
             surface.addView(undo);
             NativeSnackbar.style(surface, true, false);
-            assertEquals(Color.BLACK, fill.getColor().getDefaultColor());
+            assertEquals(ScreenColors.BLACK.snackbarSurface(), fill.getColor().getDefaultColor());
             assertSame(original, surface.getBackground());
             Rect after = new Rect(); original.getPadding(after); assertEquals(padding, after);
             assertEquals("Chat pinned", message.getText().toString());
             undo.performClick(); assertEquals(1, actions[0]);
             NativeSnackbar.style(surface, true, true);
-            assertEquals(ScreenColors.forScreen(host.get()).dialog, fill.getColor().getDefaultColor());
+            assertEquals(ScreenColors.forScreen(host.get()).snackbarSurface(), fill.getColor().getDefaultColor());
             assertEquals(8 * surface.getResources().getDisplayMetrics().density, fill.getCornerRadius(), 0.01f);
             undo.performClick(); assertEquals(2, actions[0]);
             assertEquals(2, surface.getChildCount());
