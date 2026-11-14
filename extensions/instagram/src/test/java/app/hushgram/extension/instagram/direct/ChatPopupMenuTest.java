@@ -84,7 +84,10 @@ public class ChatPopupMenuTest {
             ChatPopupMenu popup = new ChatPopupMenu(activity.get(), anchor);
             popup.getMenu().add(1, 4, 0, "Hold Seen in this chat").setCheckable(true).setChecked(true);
             int[] picked = {-1}, dismissed = {0};
-            popup.setOnMenuItemClickListener(item -> { picked[0] = item.getItemId(); return true; });
+            popup.setOnMenuItemClickListener(item -> {
+                assertFalse("the menu must be gone before its action opens another sheet", popup.windowForTests().isShowing());
+                picked[0] = item.getItemId(); return true;
+            });
             popup.setOnDismissListener(menu -> dismissed[0]++);
             popup.show();
             assertTrue(popup.windowForTests().isShowing());

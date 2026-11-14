@@ -173,8 +173,8 @@ public class StyledPopupMenu extends PopupMenu {
         window.setHeight(Math.min(contentHeight, Math.max(dp(60), room - dp(12))));
         window.setOnItemClickListener((parent, view, position, id) -> {
             if (!items.get(position).isEnabled()) return;
-            try { getMenu().performIdentifierAction(items.get(position).getItemId(), 0); }
-            finally { dismiss(); }
+            dismiss();
+            getMenu().performIdentifierAction(items.get(position).getItemId(), 0);
         });
         // A recycled or closing chat has no window to attach a popup to.
         if (anchor.getWindowToken() == null) return;
@@ -266,7 +266,12 @@ public class StyledPopupMenu extends PopupMenu {
         ScreenColors colors = style.colors;
         if (view instanceof android.widget.ListView) {
             android.widget.ListView list = (android.widget.ListView) view;
-            if (list.getDivider() != null) list.setDivider(null);
+            if (list.getDivider() != null && (!(list.getDivider() instanceof ColorDrawable)
+                    || ((ColorDrawable) list.getDivider()).getColor() != Color.TRANSPARENT)) {
+                int height = list.getDividerHeight();
+                list.setDivider(new ColorDrawable(Color.TRANSPARENT));
+                list.setDividerHeight(height);
+            }
             if (!(list.getSelector() instanceof ColorDrawable) || ((ColorDrawable) list.getSelector()).getColor() != Color.TRANSPARENT)
                 list.setSelector(new ColorDrawable(Color.TRANSPARENT));
             for (int i = 0; i < list.getChildCount(); i++) style.option(list.getChildAt(i));

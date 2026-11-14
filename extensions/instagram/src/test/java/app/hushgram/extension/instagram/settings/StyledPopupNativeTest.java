@@ -95,6 +95,8 @@ public class StyledPopupNativeTest {
                 @Override public boolean hasStableIds() { return true; }
             };
             list.setAdapter(original);
+            list.setDivider(new android.graphics.drawable.ColorDrawable(Color.RED));
+            list.setDividerHeight(3);
             host.get().setContentView(list);
             host.visible();
             list.measure(View.MeasureSpec.makeMeasureSpec(320, View.MeasureSpec.EXACTLY),
@@ -103,6 +105,7 @@ public class StyledPopupNativeTest {
             long[] picked = {-1}; list.setOnItemClickListener((parent, view, position, id) -> picked[0] = id);
             PopupWindow popup = new PopupWindow(list, 320, 400);
             StyledPopupMenu.styleNative(popup);
+            assertEquals("styling preserves native menu height", 3, list.getDividerHeight());
             assertNull("a native list's background is left as supplied", list.getBackground());
             assertEquals(2, list.getAdapter().getCount());
             assertEquals("Reply", list.getAdapter().getItem(0));
