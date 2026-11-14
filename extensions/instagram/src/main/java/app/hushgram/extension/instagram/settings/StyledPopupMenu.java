@@ -80,7 +80,7 @@ public class StyledPopupMenu extends PopupMenu {
         Rect frame = new Rect();
         anchor.getWindowVisibleDisplayFrame(frame);
         int available = frame.width() > 0 ? frame.width() : context.getResources().getDisplayMetrics().widthPixels;
-        int maxWidth = Math.max(1, Math.min(dp(240), available - dp(24)));
+        int maxWidth = Math.max(1, available);
         int gutter = Math.min(dp(8), Math.max(0, (maxWidth - 1) / 2));
         int maxRowWidth = Math.max(1, maxWidth - gutter * 2);
         window.setListSelector(new ColorDrawable(Color.TRANSPARENT));

@@ -30,7 +30,7 @@ import static org.junit.Assert.*;
 @Config(sdk = {28, 37}, qualifiers = "w320dp-h640dp-xhdpi")
 public class ChatPopupMenuTest {
     @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
-    public void longProfileOptionsStayCompactAndHighlightedRowsDoNotReachTheWalls() {
+    public void longProfileOptionsUseAvailableSpaceAndHighlightedRowsDoNotReachTheWalls() {
         try (ActivityController<Activity> activity = Robolectric.buildActivity(Activity.class).setup().visible()) {
             Button anchor = new Button(activity.get());
             activity.get().setContentView(anchor);
@@ -40,7 +40,11 @@ public class ChatPopupMenuTest {
             ListView list = popup.windowForTests().getListView();
             int width = popup.windowForTests().getWidth();
             float density = list.getResources().getDisplayMetrics().density;
-            assertTrue(width <= Math.round(240 * density));
+            android.graphics.Rect frame = new android.graphics.Rect();
+            anchor.getWindowVisibleDisplayFrame(frame);
+            int available = frame.width() > 0 ? frame.width() : list.getResources().getDisplayMetrics().widthPixels;
+            assertTrue(width <= available);
+            assertTrue("long options are not restricted to the former 240dp cap", width > Math.round(240 * density));
             int height = Math.round(160 * density);
             list.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
@@ -69,6 +73,15 @@ public class ChatPopupMenuTest {
             popup.getMenu().add("Reply");
             popup.show();
             int shortWidth = popup.windowForTests().getWidth();
+            popup.dismiss();
+            popup.getMenu().getItem(0).setIcon(new GradientDrawable());
+            popup.show();
+            int iconWidth = popup.windowForTests().getWidth();
+            assertTrue("the icon and its spacing count toward width", iconWidth > shortWidth);
+            popup.dismiss();
+            popup.getMenu().getItem(0).setCheckable(true);
+            popup.show();
+            assertTrue("the checkmark slot also counts toward width", popup.windowForTests().getWidth() > iconWidth);
             popup.dismiss();
             popup.getMenu().clear();
             popup.getMenu().add("A much longer message action label");
