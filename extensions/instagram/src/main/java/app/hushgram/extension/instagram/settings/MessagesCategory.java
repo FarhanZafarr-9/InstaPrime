@@ -222,9 +222,9 @@ final class MessagesCategory {
             }
             if (build.contains(PatchFamily.MESSAGE_GESTURES)) {
                 messages.addPreference(toggle(context, Settings.MESSAGE_TAP_ACTIONS, L10n.t("Tap a message for actions"),
-                        L10n.t("One tap opens the message's actions. Double tap keeps its existing behavior.")));
+                        L10n.t("One tap on a text message opens its actions. Shared media keeps its normal tap behavior.")));
                 messages.addPreference(toggle(context, Settings.MESSAGE_TAP_REACTIONS, L10n.t("Tap a message for reactions"),
-                        L10n.t("One tap opens reactions. Enable both tap options to show actions and reactions together.")));
+                        L10n.t("One tap on a text message opens available reactions. Enable both tap options to show actions and reactions together.")));
             }
             if (build.contains(PatchFamily.MESSAGE_ACTIONS)) {
                 messages.addPreference(page.messageActionsRow(context, false));

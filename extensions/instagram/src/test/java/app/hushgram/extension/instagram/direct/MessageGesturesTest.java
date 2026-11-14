@@ -62,6 +62,42 @@ public class MessageGesturesTest {
         assertEquals(0, calls.get());
     }
 
+    @Test public void sharedMediaDoesNotTakeTheTextMessageTapShortcut() {
+        assertTrue(MessageGestures.intercepts("text"));
+        assertFalse(MessageGestures.intercepts("clip"));
+        assertFalse(MessageGestures.intercepts("media_share"));
+        assertFalse(MessageGestures.intercepts(null));
+    }
+
+    @Test public void reactionsWithoutAvailabilityDoNotOpenAnEmptyBackdrop() {
+        Settings.MESSAGE_TAP_REACTIONS.save(true);
+        AtomicBoolean launched = new AtomicBoolean();
+        MessageGestures.bridgeForTests = delegate -> {
+            MessageGestures.actions(actions);
+            MessageGestures.reactions(false);
+            MessageGestures.requireVisible();
+            launched.set(true);
+            return true;
+        };
+        assertTrue(MessageGestures.tap(new Object()));
+        assertFalse(launched.get());
+        assertSame(actions, MessageGestures.actions(actions));
+    }
+
+    @Test public void nativeReactionAnchorUsesTheActualTapPosition() {
+        Settings.MESSAGE_TAP_REACTIONS.save(true);
+        android.view.MotionEvent up = android.view.MotionEvent.obtain(1, 2, android.view.MotionEvent.ACTION_UP, 80, 240, 0);
+        try { MessageGestures.observe(up); } finally { up.recycle(); }
+        MessageGestures.bridgeForTests = delegate -> {
+            assertEquals(80f, MessageGestures.x(), 0f);
+            assertEquals(240f, MessageGestures.y(), 0f);
+            MessageGestures.reactions(true);
+            MessageGestures.requireVisible();
+            return true;
+        };
+        assertTrue(MessageGestures.tap(new Object()));
+    }
+
     @Test public void tapSectionsAreIndependentAndNativeHoldIsUnchanged() {
         for (int mode = 1; mode <= 3; mode++) {
             Settings.MESSAGE_TAP_ACTIONS.save((mode & 1) != 0);
