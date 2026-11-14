@@ -83,6 +83,8 @@ final class LayoutCategory {
                                 + "Story and reel viewers keep their own background. Wins over Pure black dark mode. "
                                 + "Restart Instagram to see the change.")));
             }
+            layout.addPreference(toggle(context, Settings.THEME_NATIVE_POPUPS, L10n.t("Match Instagram popups to app theme"),
+                    L10n.t("Supported profile and message menus use the same background as InstaPrime menus.")));
             // Pure black is set when you patch and stays out of the default selection, so a build
             // without it says where to get it (#267, #359).
             if (!build.contains(PatchFamily.PURE_BLACK)) {

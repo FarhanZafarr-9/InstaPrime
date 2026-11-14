@@ -2092,6 +2092,9 @@ public class Settings extends BaseSettings {
     public static final BooleanSetting ACCENT_BACKGROUNDS =
             new BooleanSetting("hushgram_accent_backgrounds", FALSE, true, parent(ACCENT_COLOR));
 
+    public static final BooleanSetting THEME_NATIVE_POPUPS =
+            new BooleanSetting("instaprime_theme_native_popups", FALSE);
+
     /**
      * HushGram's logo on the screen Android shows while Instagram starts, on Android 13 and newer
      * ({@link app.hushgram.extension.instagram.misc.LaunchScreen}). Android keeps the answer, so a

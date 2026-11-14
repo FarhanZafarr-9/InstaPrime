@@ -514,7 +514,7 @@ final class SettingsNavigation {
         if (icon.equals(SettingsIcons.LAYOUT)) {
             split(node, "accent", L10n.t("Accent colors"), keys(Settings.ACCENT_CUSTOM.key, Settings.ACCENT_COLOR.key, Settings.ACCENT_HUE.key,
                     Settings.ACCENT_BADGES.key, Settings.ACCENT_ICONS.key, Settings.ACCENT_RINGS.key,
-                    Settings.ACCENT_BACKGROUNDS.key, Settings.ACCENT_RINGS_SOLID.key, LayoutCategory.PURE_BLACK_HINT_ROW));
+                    Settings.ACCENT_BACKGROUNDS.key, Settings.ACCENT_RINGS_SOLID.key, Settings.THEME_NATIVE_POPUPS.key, LayoutCategory.PURE_BLACK_HINT_ROW));
             split(node, "fonts", L10n.t("Fonts and emoji"), keys(Settings.FONT.key, Settings.NOTO_EMOJI.key, Settings.EMOJI_FONT.key));
             remainder(node, L10n.t("App layout and branding"));
         }
