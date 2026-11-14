@@ -305,6 +305,7 @@ public final class ChatPager {
             screen = new WeakReference<>(fragment);
             stopWatching();
             if (!wanted()) {
+                removeButton();
                 log("chat opened with both switches off or settings not ready");
                 return;
             }
@@ -465,6 +466,7 @@ public final class ChatPager {
      * laid out, and gives back the one there. Null when the row or Instagram's glyph isn't there.
      */
     static ImageView placeButton(View root) {
+        if (!wanted()) { removeButton(); return null; }
         View found = nearest(root, BUTTON_ROW);
         if (!(found instanceof LinearLayout)) return null;
         LinearLayout row = (LinearLayout) found;
@@ -567,6 +569,7 @@ public final class ChatPager {
     private static boolean menu(View pressed) {
         Object fragment = screen.get();
         if (fragment == null || !wanted()) {
+            if (!wanted()) removeButton();
             log("no menu: chat " + (fragment != null) + ", switches " + wanted());
             return false;
         }

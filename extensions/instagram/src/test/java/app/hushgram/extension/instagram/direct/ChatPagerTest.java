@@ -281,6 +281,19 @@ public class ChatPagerTest {
         assertFalse(screen.name.hasOnLongClickListeners());
     }
 
+    @Test public void reopeningWithNoHeaderActionsRemovesTheOldButton() {
+        screen = new Screen();
+        LinearLayout row = screen.buttonRow();
+        glyphs();
+        Settings.JUMP_IN_CHAT.save(true);
+        ChatPager.opened(screen.fragment);
+        assertNotNull(row.findViewWithTag(ChatPager.BUTTON_TAG));
+        Settings.JUMP_IN_CHAT.save(false);
+        Settings.EXPORT_CHAT.save(false);
+        ChatPager.opened(screen.fragment);
+        assertNull(row.findViewWithTag(ChatPager.BUTTON_TAG));
+    }
+
     /**
      * The name itself takes no touches on 453: the tap that opens the chat's details is on the area
      * around the name and its subtitle. A listener on the name would swallow that tap (#246). The

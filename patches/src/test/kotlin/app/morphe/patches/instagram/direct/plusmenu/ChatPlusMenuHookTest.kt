@@ -128,6 +128,15 @@ class ChatPlusMenuHookTest {
         assertEquals("$label: nothing before the new code moved", own.take(site.at).map { it.opcode }, code.take(site.at).map { it.opcode })
         assertEquals("$label: nothing after it moved", own.drop(site.at).map { it.opcode }, code.drop(hook + 1).map { it.opcode })
         assertTrue("$label: the list and the spare register are low", site.list < 16 && site.scratch < 16)
+
+        context.removeEmptyComposerItem(site, empty)
+        val filtered = context.mutableClassDefBy(site.type).methods.single {
+            it.name == site.name && it.parameterTypes.map(Any::toString) == site.parameters
+        }.code()
+        assertEquals("$label: filter every composer return", filtered.count { it.opcode == Opcode.RETURN_OBJECT },
+            filtered.count { it.reference() == "$PLUS_MENU->composer(Ljava/util/List;)Ljava/util/List;" })
+        val reader = context.mutableClassDefBy(PLUS_MENU).methods.single { it.name == "emptyMore" }.code()
+        assertTrue("$label: uses the actual MORE item's overflow", reader.any { it.reference() == empty.field })
         // The register handed on as the map still holds the builder's Map where the loop exits, not a
         // copy the loop's test has written over since.
         val writer = (site.at - 1 downTo 0).first { own[it].writes(site.map) }
