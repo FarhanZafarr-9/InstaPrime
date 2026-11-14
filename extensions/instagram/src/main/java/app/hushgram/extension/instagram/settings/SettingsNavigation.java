@@ -504,6 +504,7 @@ final class SettingsNavigation {
                     Settings.HIDE_AUDIO_CALL_BUTTON.key, Settings.HIDE_BLEND_BUTTON.key));
             split(node, "security", L10n.t("App and chat locks"), keys(Settings.LOCK_SAVED.key, Settings.LOCK_EACH_CHAT.key, Settings.LOCK_MESSAGES.key, Settings.LOCK_APP.key, Settings.DOUBLE_TAP_HIDDEN_CHATS.key, Settings.LOCK_AGAIN.key, Settings.UNLOCK_WITH.key, HushgramPreferenceFragment.CHANGE_PIN_ROW, HushgramPreferenceFragment.LOCKED_CHATS_ROW, HushgramPreferenceFragment.HIDDEN_CHATS_ROW));
             split(node, "composer", L10n.t("Composer and More menu"), keys(Settings.HIDDEN_MESSAGE_BOX_BUTTONS.key,
+                    Settings.HIDE_PLUS_BUTTON.key, Settings.HIDE_EMPTY_PLUS_MENU.key,
                     Settings.HIDE_PLUS_SAVED.key, Settings.HIDE_PLUS_AI_IMAGES.key, Settings.HIDE_PLUS_DRAW.key,
                     Settings.HIDE_PLUS_META_AI.key, Settings.HIDE_PLUS_LOCATION.key, Settings.MOVE_TO_PLUS_MENU.key));
             split(node, "media-history", L10n.t("Shared media and history"), keys(Settings.SWIPE_CHAT_MEDIA.key, Settings.SWIPE_CHAT_REELS.key,

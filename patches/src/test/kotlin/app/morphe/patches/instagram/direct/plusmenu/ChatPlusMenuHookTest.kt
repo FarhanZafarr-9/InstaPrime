@@ -86,7 +86,9 @@ class ChatPlusMenuHookTest {
         val kept = mutableListOf<ClassDef>()
         FixtureDex.forEach(bundle) { dex ->
             for (candidate in dex.classes) {
-                val keep = candidate.type in enums || candidate.methods.any { method ->
+                val buttonController = candidate.methods.any { method -> method.name == "<init>" &&
+                    method.parameterTypes.take(2).map(Any::toString) == listOf("Landroid/app/Activity;", "Landroid/view/View;") }
+                val keep = buttonController || candidate.type in enums || candidate.methods.any { method ->
                     method.code().any { ((it as? ReferenceInstruction)?.reference as? FieldReference)?.definingClass in enums }
                 }
                 if (keep) kept += ImmutableClassDef.of(candidate)
@@ -108,6 +110,13 @@ class ChatPlusMenuHookTest {
             it.reference() == "$PLUS_MENU->empty(Ljava/util/List;)Z"
         })
         val site = context.findPlusMenu()
+        val buttonFields = context.plusButtonFields(site)
+        assertEquals("$label: controller, plus controller, plus icon", 3, buttonFields.size)
+        context.readPlusButton(buttonFields)
+        val buttonReader = context.mutableClassDefBy(PLUS_MENU).methods.single { it.name == "button" }.code()
+        for (field in buttonFields) assertTrue("$label: reads verified field $field", buttonReader.any {
+            it.reference() == field.toString()
+        })
         val holder = kept.single { it.type == site.type }
         val own = holder.methods.single {
             it.name == site.name && it.parameterTypes.map(CharSequence::toString) == site.parameters
@@ -118,15 +127,15 @@ class ChatPlusMenuHookTest {
             it.name == site.name && it.parameterTypes.map(CharSequence::toString) == site.parameters
         }
         val code = patched.code()
-        assertEquals("$label: two more instructions", own.size + 2, code.size)
+        assertEquals("$label: filter and actual button binding", own.size + 5, code.size)
         val hook = code.indexOfFirst { it.reference() == MENU_HOOK }
         assertEquals("$label: one hook", 1, code.count { it.reference() == MENU_HOOK })
         assertEquals("$label: the hook is where the loop exits", site.at + 1, hook)
         assertEquals("$label: the map moves first", Opcode.MOVE_OBJECT_FROM16, code[site.at].opcode)
         assertEquals("$label: into the spare register", site.scratch, (code[site.at] as OneRegisterInstruction).registerA)
-        assertEquals("$label: the original instruction follows", own[site.at].opcode, code[hook + 1].opcode)
+        assertEquals("$label: the original instruction follows", own[site.at].opcode, code[hook + 4].opcode)
         assertEquals("$label: nothing before the new code moved", own.take(site.at).map { it.opcode }, code.take(site.at).map { it.opcode })
-        assertEquals("$label: nothing after it moved", own.drop(site.at).map { it.opcode }, code.drop(hook + 1).map { it.opcode })
+        assertEquals("$label: nothing after it moved", own.drop(site.at).map { it.opcode }, code.drop(hook + 4).map { it.opcode })
         assertTrue("$label: the list and the spare register are low", site.list < 16 && site.scratch < 16)
 
         context.removeEmptyComposerItem(site, empty)

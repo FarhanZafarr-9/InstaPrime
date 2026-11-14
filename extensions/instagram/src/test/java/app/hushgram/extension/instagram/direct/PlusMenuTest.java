@@ -70,6 +70,8 @@ public class PlusMenuTest {
     }
 
     private static void resetSwitches() {
+        Settings.HIDE_PLUS_BUTTON.resetToDefault();
+        Settings.HIDE_EMPTY_PLUS_MENU.resetToDefault();
         Settings.HIDE_PLUS_SAVED.resetToDefault();
         Settings.HIDE_PLUS_AI_IMAGES.resetToDefault();
         Settings.HIDE_PLUS_DRAW.resetToDefault();
@@ -84,6 +86,35 @@ public class PlusMenuTest {
             for (Map.Entry<Kind, Object> entry : byButton.entrySet()) if (entry.getValue() == row) kinds.add(entry.getKey());
         }
         return kinds;
+    }
+
+    @Test public void plusVisibilityControlsRestoreTheNativeView() {
+        android.view.View button = new android.view.View(org.robolectric.RuntimeEnvironment.getApplication());
+        menu.clear();
+        PlusMenu.bind(button, menu);
+        assertEquals(android.view.View.GONE, button.getVisibility());
+        menu.add(new Object());
+        PlusMenu.bind(button, menu);
+        assertEquals(android.view.View.VISIBLE, button.getVisibility());
+        Settings.HIDE_PLUS_BUTTON.save(true);
+        PlusMenu.bind(button, menu);
+        assertEquals(android.view.View.GONE, button.getVisibility());
+        BaseSettings.PAUSED.save(true);
+        PauseForTests.pause(HushgramPause.Reason.SWITCH);
+        PlusMenu.bind(button, menu);
+        assertEquals(android.view.View.VISIBLE, button.getVisibility());
+    }
+
+    @Test public void emptyPlusCanBeKeptAndNativeHiddenButtonStaysHidden() {
+        Settings.HIDE_EMPTY_PLUS_MENU.save(false);
+        assertFalse(PlusMenu.empty(Collections.emptyList()));
+        android.view.View button = new android.view.View(org.robolectric.RuntimeEnvironment.getApplication());
+        button.setVisibility(android.view.View.INVISIBLE);
+        Settings.HIDE_PLUS_BUTTON.save(true);
+        PlusMenu.bind(button, menu);
+        Settings.HIDE_PLUS_BUTTON.save(false);
+        PlusMenu.bind(button, menu);
+        assertEquals(android.view.View.INVISIBLE, button.getVisibility());
     }
 
     @Test public void emptyMoreIsHiddenPerMenuAndRespectsPause() {
