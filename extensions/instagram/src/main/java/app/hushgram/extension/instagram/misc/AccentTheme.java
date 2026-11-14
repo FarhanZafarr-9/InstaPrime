@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.PorterDuff;
+import android.graphics.Color;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
 import android.util.TypedValue;
@@ -150,6 +151,16 @@ public final class AccentTheme {
                 + (dark ? "_background_dark_base" : "_background_light_base");
         int background = id(context.getResources(), name, "color", context.getPackageName());
         return background == 0 ? fallback : context.getColor(background);
+    }
+
+    /** Native profile windows need the same background role as their theme, including reused activities. */
+    static int profileBackground(Context context) {
+        if (AccentColor.picked() == null || !Settings.ACCENT_BACKGROUNDS.get()) return Color.TRANSPARENT;
+        boolean night = (context.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        int icon = id(context.getResources(), ICON_ATTRIBUTE, "attr", Utils.resourcePackage(context));
+        if (icon != 0) night = dark(context, context.getTheme(), icon);
+        return baseBackground(context, night, Color.TRANSPARENT);
     }
 
     /** What's counted each time the picked color goes onto a theme. */

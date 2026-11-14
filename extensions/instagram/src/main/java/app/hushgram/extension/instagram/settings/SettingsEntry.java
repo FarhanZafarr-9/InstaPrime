@@ -494,6 +494,7 @@ public final class SettingsEntry {
 
         @Override
         public void onActivityResumed(Activity activity) {
+            app.hushgram.extension.instagram.misc.ProfileStatusBar.watch(activity);
             resumed = new WeakReference<>(activity);
             SaveLeftovers.showInterrupted(activity);
             sayWhyPaused();
@@ -548,6 +549,7 @@ public final class SettingsEntry {
 
         @Override
         public void onActivityDestroyed(Activity activity) {
+            app.hushgram.extension.instagram.misc.ProfileStatusBar.release(activity);
             // The screen can land on an activity just before it clears itself for the next one.
             // If its host goes away before the person closed it, ask again.
             WeakReference<Activity> shownOver = host;
