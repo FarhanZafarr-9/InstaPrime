@@ -118,6 +118,17 @@ public class SavedProfilesSettingsTest {
         }
     }
 
+    @Test public void popupThemeControlExistsWithoutAnyLayoutPatch() {
+        PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.PROFILE_PICTURE);
+        try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {
+            HushgramPreferenceFragment page = DownloadSettingsTest.pageIn(controller);
+            Preference row = page.findPreference(Settings.THEME_NATIVE_POPUPS.key);
+            assertNotNull("the popup hook must expose its theme control without an accent/layout patch", row);
+            assertEquals("Match Instagram popups to app theme", String.valueOf(row.getTitle()));
+            assertTrue(ConfigurationBackup.eligible().containsKey(Settings.THEME_NATIVE_POPUPS.key));
+        }
+    }
+
     @Test public void theRowNamesTheNewestThreeAndSaysHowToSaveWhenEmpty() {
         assertEquals("Nothing saved yet. With Saved profiles on, tap Save profile in the menu on someone's profile "
                         + "and it shows up here.",

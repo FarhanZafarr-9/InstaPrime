@@ -36,7 +36,8 @@ final class LayoutCategory {
         if (build.contains(PatchFamily.BOTTOM_SPACE) || build.contains(PatchFamily.PHONE_LAYOUT) || build.contains(PatchFamily.EMOJI_STYLE)
                 || build.contains(PatchFamily.ACCENT_COLOR) || build.contains(PatchFamily.LAUNCH_SCREEN)
                 || build.contains(PatchFamily.HEADER_TEXT) || build.contains(PatchFamily.FONT) || build.contains(PatchFamily.APP_ICON)
-                || build.contains(PatchFamily.SETTINGS_ROWS) || build.contains(PatchFamily.REFRESH_RATE)) {
+                || build.contains(PatchFamily.SETTINGS_ROWS) || build.contains(PatchFamily.REFRESH_RATE)
+                || build.contains(PatchFamily.PROFILE_PICTURE)) {
             PreferenceCategory layout = category(screen, L10n.t("Layout"), SettingsIcons.LAYOUT,
                     L10n.t("Change how Instagram looks, from its colors to its emoji."));
             if (build.contains(PatchFamily.BOTTOM_SPACE)) {
