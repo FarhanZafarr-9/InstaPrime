@@ -36,10 +36,10 @@ public class StyledPopupNativeTest {
             PopupWindow popup = new PopupWindow(root, 320, 400);
             StyledPopupMenu.styleNative(popup);
             assertTrue(popup.getBackground() instanceof GradientDrawable);
-            assertTrue(action.getBackground() instanceof RippleDrawable);
+            assertTrue(action.getBackground() instanceof android.graphics.drawable.InsetDrawable);
             assertEquals(17, action.getPaddingLeft());
             assertEquals(0xffcc1111, action.getCurrentTextColor());
-            RippleDrawable ripple = (RippleDrawable) action.getBackground();
+            RippleDrawable ripple = (RippleDrawable) ((android.graphics.drawable.InsetDrawable) action.getBackground()).getDrawable();
             assertEquals(Color.TRANSPARENT, ((GradientDrawable) ripple.getDrawable(0)).getColor().getDefaultColor());
             action.performClick(); assertEquals(1, clicks[0]);
         }
@@ -72,7 +72,7 @@ public class StyledPopupNativeTest {
             assertSame("native adapter identity remains intact", original, list.getAdapter());
             View first = list.getChildAt(0);
             assertNotNull(first);
-            assertTrue(first.getBackground() instanceof RippleDrawable);
+            assertTrue(first.getBackground() instanceof android.graphics.drawable.InsetDrawable);
             list.performItemClick(first, 0, list.getAdapter().getItemId(0));
             assertEquals(40, picked[0]);
             StyledPopupMenu.styleNative(popup);

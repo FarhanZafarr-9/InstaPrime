@@ -29,6 +29,22 @@ import static org.junit.Assert.*;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = {28, 37}, qualifiers = "w320dp-h640dp-xhdpi")
 public class ChatPopupMenuTest {
+    @Test public void shortMenusUseContentWidthInsteadOfTheMaximum() {
+        try (ActivityController<Activity> activity = Robolectric.buildActivity(Activity.class).setup().visible()) {
+            Button anchor = new Button(activity.get());
+            activity.get().setContentView(anchor);
+            ChatPopupMenu popup = new ChatPopupMenu(activity.get(), anchor);
+            popup.getMenu().add("Reply");
+            popup.show();
+            int shortWidth = popup.windowForTests().getWidth();
+            popup.dismiss();
+            popup.getMenu().clear();
+            popup.getMenu().add("A much longer message action label");
+            popup.show();
+            assertTrue(popup.windowForTests().getWidth() > shortWidth);
+        } finally { ChatPopupMenu.resetForTests(); }
+    }
+
     @Test public void choosingARowRunsItsNativeMenuActionAndDismissesOnlyOnce() {
         try (ActivityController<Activity> activity = Robolectric.buildActivity(Activity.class).setup().visible()) {
             Button anchor = new Button(activity.get());
