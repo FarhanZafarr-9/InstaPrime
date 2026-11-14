@@ -124,15 +124,24 @@ final class SettingsPageStyle {
 
     /** Bind every time, so recycled first/last rows follow the filtered list's current edges. */
     static void row(View row, ScreenColors colors, boolean first, boolean last) {
+        row(row, colors, first, last, 18);
+    }
+
+    /** Lists with real side padding give their rows the whole card bounds. */
+    static void card(View row, ScreenColors colors, boolean first, boolean last) {
+        row(row, colors, first, last, 0);
+    }
+
+    private static void row(View row, ScreenColors colors, boolean first, boolean last, int sideDp) {
         float density = row.getResources().getDisplayMetrics().density;
         float top = (first ? 12 : 4) * density, bottom = (last ? 12 : 4) * density;
         GradientDrawable surface = new GradientDrawable();
         surface.setColor(colors.card);
         surface.setCornerRadii(new float[]{top, top, top, top, bottom, bottom, bottom, bottom});
-        int side = Math.round(18 * density), gap = Math.round(density);
+        int side = Math.round(sideDp * density), gap = Math.round(density);
         Drawable fill = new InsetDrawable(surface, side, 0, side, gap);
         Drawable mask = new InsetDrawable(surface.getConstantState().newDrawable().mutate(), side, 0, side, gap);
         row.setBackground(new RippleDrawable(ScreenColors.interactionRipple(colors.heading), fill, mask));
-        row.setPaddingRelative(Math.round(34 * density), Math.round(10 * density), Math.round(22 * density), Math.round(11 * density));
+        row.setPaddingRelative(side + Math.round(16 * density), Math.round(10 * density), side + Math.round(4 * density), Math.round(11 * density));
     }
 }

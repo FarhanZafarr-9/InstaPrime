@@ -189,6 +189,16 @@ public class SavedProfilesSettingsTest {
             ImageButton cross = (ImageButton) amy.getChildAt(2);
             assertEquals("Remove @amy from saved", String.valueOf(cross.getContentDescription()));
             assertFalse("a tap on the rest of the row still reaches the list", cross.isFocusable());
+            assertEquals(android.graphics.Color.TRANSPARENT,
+                    ((android.graphics.drawable.ColorDrawable) page.list.getSelector()).getColor());
+            assertTrue("real side gutters clip row feedback", page.list.getClipToPadding());
+            assertTrue(page.list.getPaddingLeft() > 0);
+            android.graphics.drawable.RippleDrawable feedback = (android.graphics.drawable.RippleDrawable) amy.getBackground();
+            android.graphics.drawable.InsetDrawable mask = (android.graphics.drawable.InsetDrawable)
+                    feedback.findDrawableByLayerId(android.R.id.mask);
+            mask.setBounds(0, 0, 300, 100);
+            assertEquals("ripple covers the whole card, regardless of text padding", 0, mask.getDrawable().getBounds().left);
+            assertEquals(300, mask.getDrawable().getBounds().right);
 
             page.search.setText("@AMY");
             assertEquals("a search goes by the username, in any case, with or without the at", 1, page.list.getAdapter().getCount());

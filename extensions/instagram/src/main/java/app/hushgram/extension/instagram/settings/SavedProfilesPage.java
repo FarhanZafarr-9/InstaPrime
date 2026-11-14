@@ -146,9 +146,10 @@ public final class SavedProfilesPage {
         list = new ListView(context);
         list.setDivider(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         list.setDividerHeight(Dim.dp(3));
-        list.setPadding(0, Dim.dp(4), 0, Dim.dp(12));
+        list.setPadding(Dim.dp(18), Dim.dp(4), Dim.dp(18), Dim.dp(12));
+        list.setSelector(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         list.setCacheColorHint(Color.TRANSPARENT);
-        list.setClipToPadding(false);
+        list.setClipToPadding(true);
         rows = new Rows(context, palette, this::remove);
         list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> go(context, link(rows.get(position))));
@@ -574,7 +575,7 @@ public final class SavedProfilesPage {
 
         @Override public View getView(int position, View reused, ViewGroup parent) {
             LinearLayout row = reused instanceof LinearLayout ? (LinearLayout) reused : make();
-            SettingsPageStyle.row(row, palette, position == 0, position == getCount() - 1);
+            SettingsPageStyle.card(row, palette, position == 0, position == getCount() - 1);
             SavedProfiles.Profile profile = shown.get(position);
             LinearLayout words = (LinearLayout) row.getChildAt(1);
             ((TextView) words.getChildAt(0)).setText("@" + profile.username);
