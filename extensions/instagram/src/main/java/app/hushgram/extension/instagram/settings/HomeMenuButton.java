@@ -110,7 +110,7 @@ public final class HomeMenuButton {
     static void press(View view) {
         try {
             if (!Utils.settingsReady() || HushgramPause.isPaused()) return;
-            PopupMenu menu = new PopupMenu(view.getContext(), view);
+            PopupMenu menu = new StyledPopupMenu(view.getContext(), view);
             fill(menu.getMenu());
             Context context = view.getContext();
             menu.setOnMenuItemClickListener(item -> pick(item, context));

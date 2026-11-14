@@ -96,7 +96,7 @@ public class HomeMenuButtonTest {
         ImageView button = placed();
         assertEquals(1, end.indexOfChild(button));
         assertEquals(6, button.getPaddingStart());
-        assertEquals("HushGram menu", String.valueOf(button.getContentDescription()));
+        assertEquals(app.hushgram.extension.shared.L10n.t("HushGram menu"), String.valueOf(button.getContentDescription()));
         assertTrue(button.isClickable());
         assertTrue(button.getDrawable() instanceof HomeMenuButton.Lines);
         HomeMenuButton.place(header);
@@ -126,7 +126,7 @@ public class HomeMenuButtonTest {
         assertEquals("Ghost mode", String.valueOf(menu.getItem(1).getTitle()));
         assertTrue(menu.getItem(1).isCheckable());
         assertFalse(menu.getItem(1).isChecked());
-        assertEquals("HushGram settings", String.valueOf(menu.getItem(2).getTitle()));
+        assertEquals(app.hushgram.extension.shared.L10n.t("HushGram settings"), String.valueOf(menu.getItem(2).getTitle()));
 
         Settings.READ_WITHOUT_SEEN_RECEIPT.save(true);
         Settings.HIDE_TYPING.save(true);
