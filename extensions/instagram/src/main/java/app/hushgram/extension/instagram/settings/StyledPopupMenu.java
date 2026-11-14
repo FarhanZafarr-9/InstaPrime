@@ -206,8 +206,8 @@ public class StyledPopupMenu extends PopupMenu {
     }
 
     static int popupSurface(Context context, ScreenColors colors, boolean black, boolean accent) {
-        if (accent) return colors.dialog;
-        if (black) return Color.BLACK;
+        if (accent) return colors.popupSurface();
+        if (black) return ScreenColors.BLACK.popupSurface();
         return themeColor(context, android.R.attr.colorBackgroundFloating, colors.dialog);
     }
 
@@ -249,8 +249,8 @@ public class StyledPopupMenu extends PopupMenu {
             ScreenColors colors = accent ? ScreenColors.forScreen(content.getContext())
                     : black ? ScreenColors.BLACK : ScreenColors.forScreen(content.getContext());
             Integer tint = null;
-            if (accent) tint = colors.dialog;
-            else if (black) tint = Color.BLACK;
+            if (accent) tint = colors.popupSurface();
+            else if (black) tint = ScreenColors.BLACK.popupSurface();
             NativeStyle style = nativeStyles.get(content);
             if (style == null) {
                 style = new NativeStyle(content);

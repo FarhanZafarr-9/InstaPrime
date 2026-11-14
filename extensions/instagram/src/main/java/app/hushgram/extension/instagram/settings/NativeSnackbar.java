@@ -29,8 +29,8 @@ public final class NativeSnackbar {
     static void style(View surface, boolean black, boolean accent) {
         ScreenColors colors = ScreenColors.forScreen(surface.getContext());
         Integer fill = null;
-        if (accent) fill = colors.dialog;
-        else if (black) fill = Color.BLACK;
+        if (accent) fill = colors.snackbarSurface();
+        else if (black) fill = ScreenColors.BLACK.snackbarSurface();
         Drawable background = surface.getBackground();
         if (background != null) {
             shape(background.mutate(), 8 * surface.getResources().getDisplayMetrics().density, fill);

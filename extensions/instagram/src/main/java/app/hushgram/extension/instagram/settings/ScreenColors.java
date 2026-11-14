@@ -100,6 +100,10 @@ public final class ScreenColors {
         return choiceTone(25);
     }
 
+    /** Raised surfaces remain distinguishable from the page, including the pure-black page. */
+    public int popupSurface() { return mix(dialog, Color.WHITE, 7); }
+    public int snackbarSurface() { return mix(dialog, Color.WHITE, 9); }
+
     private int choiceTone(int strength) {
         return mix(iconSurface, accent, strength);
     }
