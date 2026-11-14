@@ -418,7 +418,7 @@ public class MessagesLockTest {
         MessagesLock.check(activity);
         ShadowLooper.idleMainLooper();
 
-        assertEquals("Set a phone screen lock so HushGram can lock Saved.", ShadowToast.getTextOfLatestToast());
+        assertEquals("Set a phone screen lock so InstaPrime can lock Saved.", ShadowToast.getTextOfLatestToast());
     }
 
     /**

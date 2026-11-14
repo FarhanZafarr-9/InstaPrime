@@ -65,7 +65,7 @@ public class CallBlockerSettingsTest {
     }
 
     private Preference row(String key) {
-        return page.getPreferenceScreen().findPreference(key);
+        return page.findPreference(key);
     }
 
     @Test public void notBuiltNoRows() {
