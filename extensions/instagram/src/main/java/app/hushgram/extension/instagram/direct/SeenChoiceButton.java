@@ -4,6 +4,8 @@
  */
 package app.hushgram.extension.instagram.direct;
 
+import app.hushgram.extension.instagram.settings.StyledPopupMenu;
+
 import android.graphics.drawable.Drawable;
 import android.view.Menu;
 import android.view.View;
@@ -121,7 +123,7 @@ public final class SeenChoiceButton {
             return;
         }
         SeenChoices.Choice now = ThreadSeen.choiceOf(account, thread);
-        PopupMenu popup = new ChatPopupMenu(anchor.getContext(), anchor);
+        PopupMenu popup = new StyledPopupMenu(anchor.getContext(), anchor);
         Menu menu = popup.getMenu();
         menu.add(GROUP, 0, 0, L10n.t("Use the HushGram setting"));
         menu.add(GROUP, 1, 1, L10n.t("Hold Seen in this chat"));

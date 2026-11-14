@@ -4,6 +4,8 @@
  */
 package app.hushgram.extension.instagram.direct;
 
+import app.hushgram.extension.instagram.settings.StyledPopupMenu;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
@@ -618,7 +620,7 @@ public final class ChatPager {
     /** The menu as a popup under what was pressed, each line with Instagram's glyph for it (#453). */
     private static void popup(final Activity activity, View pressed, final View root, final String name, List<String> labels,
                               List<Integer> actions) {
-        PopupMenu popup = new ChatPopupMenu(activity, pressed, BUTTON_TAG.equals(pressed.getTag()) ? Gravity.END : Gravity.NO_GRAVITY);
+        PopupMenu popup = new StyledPopupMenu(activity, pressed, BUTTON_TAG.equals(pressed.getTag()) ? Gravity.END : Gravity.NO_GRAVITY);
         Menu items = popup.getMenu();
         int color = FeedDownloadButton.iconColor(activity);
         for (int i = 0; i < labels.size(); i++) {
@@ -658,6 +660,7 @@ public final class ChatPager {
         }, now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH));
         dialog.getDatePicker().setMaxDate(now.getTimeInMillis());
         dialog.show();
+        ScreenColors.dialog(dialog);
     }
 
     /** [exportName] is the chat's name when the whole chat is to be saved as text, null for a jump. */
