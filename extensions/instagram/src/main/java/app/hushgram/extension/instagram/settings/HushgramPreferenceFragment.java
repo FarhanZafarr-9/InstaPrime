@@ -867,18 +867,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                     position == null ? 0 : position[1]);
         });
         if (leaving != page && list != null) {
-            list.animate().cancel();
-            list.setAlpha(1f);
-            list.setTranslationX(0f);
-            if (android.animation.ValueAnimator.areAnimatorsEnabled() && list.isLaidOut()) {
-                boolean back = leaving != null && leaving.parent == page;
-                float direction = back ? -1f : 1f;
-                if (list.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) direction = -direction;
-                list.setAlpha(0.65f);
-                list.setTranslationX(direction * 16 * list.getResources().getDisplayMetrics().density);
-                list.animate().alpha(1f).translationX(0f).setDuration(180)
-                        .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
-            }
+            SettingsPageStyle.transition(list, leaving != null && leaving.parent == page);
         }
     }
 
@@ -2874,7 +2863,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             field.setSaveEnabled(false);
             field.setSingleLine(true);
             field.setTextSize(16);
-            ScreenColors.styleField(field);
+            ScreenColors.styleSearchField(field);
             // The whole search row owns the surface, including its clear action.
             field.setBackground(null);
             field.setPaddingRelative(0, Math.round(10 * density), 0, Math.round(10 * density));
@@ -2962,9 +2951,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             android.graphics.drawable.StateListDrawable states = new android.graphics.drawable.StateListDrawable();
             for (boolean focused : new boolean[]{true, false}) {
                 android.graphics.drawable.GradientDrawable surface = new android.graphics.drawable.GradientDrawable();
-                surface.setColor(colors.card);
+                surface.setColor(focused ? colors.choiceSelected() : colors.card);
                 surface.setCornerRadius(Math.round(12 * density));
-                surface.setStroke(Math.round(2 * density), focused ? colors.heading : Color.TRANSPARENT);
                 states.addState(focused ? new int[]{android.R.attr.state_focused} : new int[]{},
                         new android.graphics.drawable.InsetDrawable(surface, inset, gap, inset, gap));
             }

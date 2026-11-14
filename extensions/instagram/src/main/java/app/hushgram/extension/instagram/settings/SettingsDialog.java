@@ -130,19 +130,7 @@ public final class SettingsDialog extends DialogFragment {
             int background = ScreenColors.forScreen(getActivity()).background;
             window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(background));
             window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                // Edge-to-edge draws the tinted root behind the transparent status bar.
-                window.setDecorFitsSystemWindows(false);
-                window.setStatusBarColor(Color.TRANSPARENT);
-            } else {
-                window.setStatusBarColor(background);
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                window.setStatusBarContrastEnforced(false);
-                window.setNavigationBarContrastEnforced(false);
-            }
+            SettingsPageStyle.window(window, ScreenColors.forScreen(getActivity()));
             window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
         return dialog;
@@ -324,9 +312,7 @@ public final class SettingsDialog extends DialogFragment {
         Window window = dialog == null ? null : dialog.getWindow();
         if (window != null) {
             window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(palette.background));
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                window.setStatusBarColor(palette.background);
-            }
+            SettingsPageStyle.window(window, palette);
         }
         if (heading != null) {
             heading.setTextColor(palette.title);
@@ -366,7 +352,10 @@ public final class SettingsDialog extends DialogFragment {
         TextView bar = heading;
         if (bar == null) return;
         CharSequence text = title == null ? "InstaPrime" : title;
-        if (!TextUtils.equals(text, bar.getText())) bar.setText(text);
+        if (!TextUtils.equals(text, bar.getText())) {
+            bar.setText(text);
+            SettingsPageStyle.transition(bar, false);
+        }
         if (!TextUtils.equals(headingIcon, icon)) setHeadingIcon(bar, icon);
     }
 
