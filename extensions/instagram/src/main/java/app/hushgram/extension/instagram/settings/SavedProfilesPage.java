@@ -93,7 +93,7 @@ public final class SavedProfilesPage {
 
     private SavedProfilesPage(Context context, @Nullable Preference row) {
         origin = row;
-        dialog = new Dialog(context, android.R.style.Theme_Material_NoActionBar);
+        dialog = SettingsPageStyle.dialog(context, palette);
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(palette.background);
@@ -118,7 +118,7 @@ public final class SavedProfilesPage {
         search.setSingleLine(true);
         search.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-        ScreenColors.styleField(search);
+        ScreenColors.styleSearchField(search);
         Drawable glass = SettingsIcons.icon(context, SettingsIcons.SEARCH, palette.summary);
         glass.setBounds(0, 0, Dim.dp(20), Dim.dp(20));
         search.setCompoundDrawablesRelative(glass, null, null, null);
@@ -253,7 +253,6 @@ public final class SavedProfilesPage {
         GradientDrawable shape = new GradientDrawable();
         shape.setCornerRadius(Dim.dp(18));
         shape.setColor(shown ? palette.accent : palette.card);
-        if (!shown) shape.setStroke(Dim.dp(1), palette.outline);
         chip.setBackground(new RippleDrawable(ColorStateList.valueOf(ScreenColors.half(palette.heading)), shape, null));
         chip.setPaddingRelative(Dim.dp(16), 0, Dim.dp(16), 0);
         chip.setSelected(shown);
@@ -486,7 +485,7 @@ public final class SavedProfilesPage {
             // The profile opens on the screen under this page, and the settings make way for it.
             Activity activity = SettingsScreenRow.activityOf(context);
             if (activity != null) SettingsEntry.closeForLink(activity);
-            dialog.dismiss();
+            SettingsPageStyle.dismissForLink(dialog);
         } catch (ActivityNotFoundException | SecurityException failure) {
             Utils.showToastShort(L10n.t("Couldn't open that one."));
         }
@@ -571,6 +570,7 @@ public final class SavedProfilesPage {
 
         @Override public View getView(int position, View reused, ViewGroup parent) {
             LinearLayout row = reused instanceof LinearLayout ? (LinearLayout) reused : make();
+            SettingsPageStyle.row(row, palette, position == 0, position == getCount() - 1);
             SavedProfiles.Profile profile = shown.get(position);
             LinearLayout words = (LinearLayout) row.getChildAt(1);
             ((TextView) words.getChildAt(0)).setText("@" + profile.username);
