@@ -111,6 +111,34 @@ public class SettingsCardsTest {
         ShadowLooper.idleMainLooper();
     }
 
+    @Test public void fullCatalogHasFocusedPagesAndEverySettingAppearsOnce() throws Exception {
+        open(EnumSet.allOf(PatchFamily.class));
+        Set<Preference> placed = Collections.newSetFromMap(new IdentityHashMap<>());
+        Set<String> categoryIds = new java.util.HashSet<>();
+        java.util.List<String> sizes = new java.util.ArrayList<>();
+        for (SettingsNavigation.Node category : model().categories) {
+            assertTrue("Duplicate category: " + category.title, categoryIds.add(category.id));
+            java.util.List<SettingsNavigation.Node> pages = category.children.isEmpty()
+                    ? java.util.List.of(category) : category.children;
+            for (SettingsNavigation.Node leaf : pages) {
+                sizes.add(category.title + " / " + leaf.title + ": " + leaf.rows.size());
+                assertTrue(category.title + " / " + leaf.title + " is crowded: " + leaf.rows.size(),
+                        leaf.rows.size() <= (leaf.parent == null ? 16 : 12));
+                for (Preference row : leaf.rows) assertTrue("Duplicate row: " + row.getKey(), placed.add(row));
+            }
+        }
+        System.out.println("Settings page sizes: " + sizes);
+        for (SettingsNavigation.Node category : model().categories) {
+            for (SettingsNavigation.Node child : category.children) {
+                assertTrue(category.title + " / " + child.title + " is crowded: " + child.rows.size(),
+                        child.rows.size() <= 12);
+            }
+        }
+        assertTrue(model().destination(page.findPreference(Settings.PROFILE_HISTORY.key)).id.endsWith("::profile-history"));
+        assertTrue(model().destination(page.findPreference(Settings.CALL_BLOCK_MODE.key)).id.endsWith("::calls"));
+        assertTrue(model().destination(page.findPreference(Settings.UPLOAD_VIDEO_RESOLUTION.key)).id.endsWith("::uploads"));
+    }
+
     private View render(Preference preference) {
         View row = preference.getView(null, new FrameLayout(controller.get()));
         int width = Math.round(320 * row.getResources().getDisplayMetrics().density);

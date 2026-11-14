@@ -147,7 +147,7 @@ final class SettingsNavigation {
     private void register(Context context, Node node, Consumer<Node> open, Consumer<Node> overview) {
         if (node.icon.equals(SettingsIcons.LAYOUT) && node.id.endsWith("::appearance")) {
             groupPage(context, node, L10n.t("App layout"), L10n.t("Branding"), keys(
-                    Settings.LAUNCH_SCREEN.key, Settings.HEADER_TEXT.key, Settings.APP_ICON.key,
+                    Settings.LAUNCH_SCREEN_ACCENT.key, Settings.LAUNCH_SCREEN.key, Settings.HEADER_TEXT.key, Settings.APP_ICON.key,
                     HushgramPreferenceFragment.HEADER_PICTURE_KEY, HushgramPreferenceFragment.REMOVE_HEADER_PICTURE_KEY,
                     HushgramPreferenceFragment.CUSTOM_ICON_KEY));
         }
@@ -210,14 +210,28 @@ final class SettingsNavigation {
 
     private static void subdivide(Node node, String icon) {
         if (icon.equals(SettingsIcons.FEED)) {
-            split(node, "content", L10n.t("Content and suggestions"), keys(Settings.HIDE_SUGGESTED_ACCOUNTS.key, Settings.HIDE_SUGGESTED_POSTS.key, Settings.HIDE_THREADS_POSTS.key, Settings.HIDE_FEED_SURVEYS.key, Settings.HIDE_FEED_SHOPPING.key, Settings.HIDE_FEED_INTEREST.key, Settings.HIDE_CAUGHT_UP_CARD.key, Settings.HIDE_FEED_VIDEOS.key, Settings.HIDE_FEED_PHOTOS.key, Settings.HIDE_FEED_CAROUSELS.key, Settings.HIDE_FEED_LIKED.key, Settings.HIDE_HOME_FEED.key, HushgramPreferenceFragment.HIDDEN_ACCOUNTS_ROW));
+            split(node, "filters", L10n.t("Post and account filters"), keys(Settings.HIDE_FEED_VIDEOS.key,
+                    Settings.HIDE_FEED_PHOTOS.key, Settings.HIDE_FEED_CAROUSELS.key, Settings.HIDE_FEED_LIKED.key,
+                    Settings.HIDE_HOME_FEED.key, Settings.HIDE_FEED_PROFESSIONAL.key, Settings.HIDDEN_IN_FAVORITES.key,
+                    HushgramPreferenceFragment.HIDDEN_ACCOUNTS_ROW));
+            split(node, "carousels", L10n.t("Carousels"), keys(Settings.PEEK_CAROUSEL_PAGES.key,
+                    Settings.CAROUSEL_ARROWS.key, Settings.CAROUSEL_DOTS_PILL.key, Settings.CAROUSEL_PILL_LOOK.key,
+                    Settings.CAROUSEL_HIDE_NUMBER.key));
+            split(node, "video-controls", L10n.t("Seeking and replay"), keys(Settings.HOLD_FEED_VIDEO_FAST.key,
+                    Settings.FEED_DOUBLE_TAP_SKIP.key, Settings.FEED_DOUBLE_TAP_SKIP_SECONDS.key,
+                    Settings.FEED_SEEK_BAR_ON_EDGE.key, Settings.SEEK_BAR_SHAPE.key, Settings.SEEK_PREVIEW.key,
+                    Settings.WATCH_AGAIN_IN_FEED.key, Settings.HIDE_WATCH_MORE_REELS.key));
+            split(node, "post-actions", L10n.t("Post buttons and labels"), keys(Settings.HIDE_FEED_FOLLOW.key,
+                    Settings.HIDE_FEED_SUBSCRIBE.key, Settings.HIDE_EDITS_LABEL.key, Settings.SAVE_IN_POST_MENU.key,
+                    Settings.HIDE_FEED_SAVE_BUTTON.key, Settings.HIDE_FEED_LIKE_BUTTON.key));
+            split(node, "content", L10n.t("Content and suggestions"), keys(Settings.HIDE_FEED_STORY_ROWS.key, Settings.HIDE_CHANNEL_JOIN_BAR.key, Settings.HIDE_SUGGESTED_ACCOUNTS.key, Settings.HIDE_SUGGESTED_POSTS.key, Settings.HIDE_THREADS_POSTS.key, Settings.HIDE_FEED_SURVEYS.key, Settings.HIDE_FEED_SHOPPING.key, Settings.HIDE_FEED_INTEREST.key, Settings.HIDE_CAUGHT_UP_CARD.key, Settings.HIDE_FEED_VIDEOS.key, Settings.HIDE_FEED_PHOTOS.key, Settings.HIDE_FEED_CAROUSELS.key, Settings.HIDE_FEED_LIKED.key, Settings.HIDE_HOME_FEED.key, HushgramPreferenceFragment.HIDDEN_ACCOUNTS_ROW));
             split(node, "home", L10n.t("Home and Following"), keys(Settings.START_ON_FOLLOWING.key, Settings.ONLY_FOLLOWING.key,
                     Settings.LOGO_ON_FOLLOWING.key, Settings.BACK_LEAVES_HOME.key, Settings.KEEP_HOME_PLACE.key,
-                    Settings.FOLLOWING_FALLBACK.key, Settings.FOLLOWING_MIX.key));
+                    Settings.FOLLOWING_FALLBACK.key, Settings.FOLLOWING_MIX.key, Settings.FAVORITES_TAB_BAR.key, Settings.FAVORITES_TAB_TARGET.key));
             split(node, "interaction", L10n.t("Gestures and confirmations"), keys(Settings.STOP_SWIPE_TO_CREATE.key,
-                    Settings.STOP_TAB_SWIPING.key, Settings.ASK_BEFORE_LIKE.key, Settings.ASK_BEFORE_REFRESH.key,
+                    Settings.STOP_TAB_SWIPING.key, Settings.HOME_SWIPE_OPENS.key, Settings.ASK_BEFORE_LIKE.key, Settings.ASK_BEFORE_REFRESH.key,
                     Settings.LONG_PRESS_TO_ZOOM.key, Settings.LONG_PRESS_ZOOM_STAYS_OPEN.key, Settings.LONG_PRESS_FULL_SCREEN.key));
-            split(node, "video", L10n.t("Video and carousels"), keys(Settings.START_FEED_VIDEOS_WITH_SOUND.key,
+            split(node, "video", L10n.t("Video playback"), keys(Settings.START_FEED_VIDEOS_WITH_SOUND.key,
                     Settings.TAP_FEED_VIDEO_TO_PAUSE.key, Settings.FEED_SEEK_BAR.key, Settings.FEED_SEEK_BUTTON.key,
                     Settings.FEED_SEEK_BAR_LOOK.key, Settings.PEEK_CAROUSEL_PAGES.key, Settings.CAROUSEL_ARROWS.key,
                     Settings.CAROUSEL_DOTS_PILL.key, Settings.CAROUSEL_PILL_LOOK.key, Settings.HIDE_FEED_AUDIO_ICON.key));
@@ -228,8 +242,25 @@ final class SettingsNavigation {
             remainder(node, L10n.t("Appearance"));
         }
         if (icon.equals(SettingsIcons.REELS)) {
+            split(node, "words-sounds", L10n.t("Words, languages, and sounds"), keys(Settings.HIDE_CAPTION_WORD_REELS.key,
+                    Settings.HIDE_CAPTION_WORD_HOME.key, Settings.REELS_BLOCKED_WORDS.key,
+                    Settings.HIDE_OTHER_LANGUAGE_REELS.key, Settings.HIDE_OTHER_LANGUAGE_HOME.key,
+                    Settings.REELS_KEPT_LANGUAGES.key, Settings.HIDE_SOUND_REELS.key,
+                    HushgramPreferenceFragment.HIDDEN_SOUNDS_ROW));
+            split(node, "reels-header", L10n.t("Reels header and tabs"), keys(Settings.KEEP_REELS_TOP_BAR.key,
+                    Settings.HIDE_REELS_TOP_BAR.key, Settings.HIDE_REELS_CREATE_BUTTON.key,
+                    Settings.HIDE_SAVED_REELS_CREATE_BUTTON.key, Settings.HIDE_REELS_YOUR_ALGORITHM.key,
+                    Settings.HIDE_REELS_FRIENDS_TAB.key, Settings.SHOW_REELS_FRIENDS_TAB.key, Settings.PICK_FRIENDS_TAB.key));
+            split(node, "likes", L10n.t("Likes and double taps"), keys(Settings.TURN_OFF_DOUBLE_TAP_LIKE.key,
+                    Settings.TURN_OFF_DOUBLE_TAP_LIKE_ON_POSTS.key, Settings.TURN_OFF_DOUBLE_TAP_LIKE_ON_REELS.key,
+                    Settings.TURN_OFF_DOUBLE_TAP_LIKE_ON_COMMENTS.key, Settings.TURN_OFF_DOUBLE_TAP_LIKE_ON_MESSAGES.key,
+                    Settings.CHANGE_LIKE_ANIMATION.key, Settings.LIKE_ANIMATION.key, Settings.GROW_LIKE_HEART.key,
+                    Settings.HEART_COUNT.key));
+            split(node, "skip-speed", L10n.t("Skipping and speed"), keys(Settings.DOUBLE_TAP_SKIP_REELS.key,
+                    Settings.DOUBLE_TAP_SKIP_REELS_SECONDS.key, Settings.HIDE_REEL_2X_POPUP.key,
+                    Settings.SPEED_BUTTON_ON_REELS.key, Settings.SPEED_IN_REEL_MENU.key, Settings.KEEP_REEL_SPEED.key));
             split(node, "content", L10n.t("Content filters"), keys(Settings.HIDE_FEED_REELS.key, Settings.HIDE_REELS_SUGGESTIONS.key,
-                    Settings.HIDE_PAID_PARTNERSHIP_REELS.key, Settings.HIDE_AI_LABELED_REELS.key, Settings.HIDE_CAPTION_WORD_REELS.key,
+                    Settings.HIDE_LIVE_REELS.key, Settings.HIDE_PAID_PARTNERSHIP_REELS.key, Settings.HIDE_AI_LABELED_REELS.key, Settings.HIDE_CAPTION_WORD_REELS.key,
                     Settings.HIDE_CAPTION_WORD_HOME.key, Settings.HIDE_SOUND_REELS.key, Settings.REELS_BLOCKED_WORDS.key,
                     Settings.HIDE_OTHER_LANGUAGE_REELS.key, Settings.HIDE_OTHER_LANGUAGE_HOME.key, Settings.REELS_KEPT_LANGUAGES.key,
                     Settings.HIDE_LOW_VIEW_REELS.key, Settings.MIN_REEL_VIEWS.key, Settings.MIN_REEL_LIKES.key,
@@ -243,20 +274,20 @@ final class SettingsNavigation {
                     Settings.CHANGE_LIKE_ANIMATION.key, Settings.LIKE_ANIMATION.key, Settings.GROW_LIKE_HEART.key,
                     Settings.STOP_REELS_SCROLLING.key, Settings.REEL_SCROLL_FROM_PROFILE.key, Settings.REEL_SCROLL_FROM_SEARCH.key,
                     Settings.REEL_SCROLL_FROM_AUDIO.key, Settings.REEL_CAP.key, Settings.REEL_CAP_COUNT.key,
-                    Settings.REEL_CAP_BREAK.key, Settings.REEL_SWIPE_TO_PROFILE.key, Settings.SCROLL_BREAK.key));
-            split(node, "actions", L10n.t("Downloads and actions"), keys(Settings.DOWNLOAD_REELS.key, Settings.DOWNLOAD_REEL_COVER.key, Settings.DOWNLOAD_REEL_AUDIO.key, Settings.FIND_REEL_ORIGIN.key, Settings.FIND_REEL_ORIGIN_ON_TAP.key, Settings.REEL_NOT_INTERESTED_BUTTON.key, Settings.REEL_BLOCK_BUTTON.key, Settings.DONT_SEND_REEL_WATCH_HISTORY.key));
+                    Settings.REEL_CAP_BREAK.key, Settings.REEL_SWIPE_TO_PROFILE.key, Settings.SCROLL_BREAK.key, Settings.SCROLL_BREAK_LENGTH.key));
+            split(node, "actions", L10n.t("Downloads and actions"), keys(Settings.REEL_DOWNLOAD_BUTTON_ASKS.key, Settings.OPEN_REEL_LINKS_FIRST.key, Settings.DOWNLOAD_REELS.key, Settings.DOWNLOAD_REEL_COVER.key, Settings.DOWNLOAD_REEL_AUDIO.key, Settings.FIND_REEL_ORIGIN.key, Settings.FIND_REEL_ORIGIN_ON_TAP.key, Settings.REEL_NOT_INTERESTED_BUTTON.key, Settings.REEL_BLOCK_BUTTON.key, Settings.DONT_SEND_REEL_WATCH_HISTORY.key));
             split(node, "player", L10n.t("Player layout"), keys(Settings.FULL_SCREEN_REELS.key, Settings.FULL_SCREEN_HIDES.key,
                     Settings.FILL_REEL_SCREEN.key, Settings.FIT_REEL_SCREEN.key, Settings.BLUR_REEL_BARS.key,
                     Settings.PINCH_ZOOM_REELS.key, Settings.KEEP_REELS_TOP_BAR.key, Settings.HIDE_REELS_TOP_BAR.key,
-                    Settings.HIDE_REELS_CREATE_BUTTON.key, Settings.HIDE_REELS_YOUR_ALGORITHM.key,
+                    Settings.HIDE_REELS_CREATE_BUTTON.key, Settings.HIDE_SAVED_REELS_CREATE_BUTTON.key, Settings.REEL_PROFILE_TAB_BAR.key, Settings.HIDE_REELS_YOUR_ALGORITHM.key,
                     Settings.HIDE_REELS_FRIENDS_TAB.key, Settings.SHOW_REELS_FRIENDS_TAB.key, Settings.PICK_FRIENDS_TAB.key));
-            split(node, "buttons", L10n.t("Buttons and controls"), keys(Settings.HIDE_REEL_FOLLOW_BUTTON.key,
+            split(node, "buttons", L10n.t("Buttons and controls"), keys(Settings.HIDE_REEL_LIKE_BUTTON.key, Settings.HIDE_REEL_COMMENT_BUTTON.key, Settings.MUTE_BUTTON_ON_REELS.key, Settings.MUTE_BUTTON_IN_CLEAR_MODE.key, Settings.HIDE_REEL_FOLLOW_BUTTON.key,
                     Settings.HIDE_REEL_SAVE_BUTTON.key, Settings.TEXT_BUTTON_ON_REELS.key, Settings.SPEED_BUTTON_ON_REELS.key,
                     Settings.FULL_SCREEN_BUTTON_ON_REELS.key));
             split(node, "overlays", L10n.t("Overlays and details"), keys(
                     Settings.HIDE_REEL_CHIPS.key, Settings.HIDE_REEL_SEARCH_PILL.key, Settings.HIDE_REEL_PRODUCT_PILLS.key,
                     Settings.HIDE_REEL_POLL_PILLS.key, Settings.HIDE_REEL_SOCIAL_FOOTER.key, Settings.HIDE_REEL_COMMENT_BAR.key,
-                    Settings.HIDE_REEL_COMMENT_BAR_EVERYWHERE.key, Settings.HIDE_REEL_REPLY_BAR.key,
+                    Settings.HIDE_REEL_COMMENT_BAR_EVERYWHERE.key, Settings.KEEP_REEL_COMMENT_BAR_SPACE.key, Settings.HIDE_REEL_REPLY_BAR.key,
                     Settings.SHOW_REEL_POST_TIME.key,
                     Settings.REEL_POST_TIME_SECONDS.key, Settings.REEL_POST_TIME_AGO.key));
             split(node, "clear-mode", L10n.t("Clear mode and burn-in"), keys(Settings.KEEP_REEL_CLEAR_MODE.key,
@@ -266,30 +297,51 @@ final class SettingsNavigation {
             remainder(node, L10n.t("Appearance"));
         }
         if (icon.equals(SettingsIcons.STORIES)) {
+            split(node, "uploads", L10n.t("Upload quality"), keys(Settings.UPLOAD_STORIES_AT_FULL_QUALITY.key,
+                    Settings.UPLOAD_VIDEO_BITRATE.key, Settings.UPLOAD_VIDEO_RESOLUTION.key, Settings.UPLOAD_FRAME_RATE.key,
+                    Settings.UPLOAD_PHOTO_QUALITY.key, Settings.UPLOAD_PHOTO_SIZE.key));
+            split(node, "story-buttons", L10n.t("Buttons and reply box"), keys(Settings.HIDE_STORY_LIKE_BUTTON.key,
+                    Settings.HIDE_STORY_COMMENT_BUTTON.key, Settings.HIDE_STORY_SHARE_BUTTON.key,
+                    Settings.KEEP_STORY_BUTTONS_BELOW.key, Settings.HIDE_STORY_REPLY_BOX.key,
+                    Settings.GLASS_STORY_REPLY_BOX.key, Settings.HIDE_STORY_FOLLOW.key));
             split(node, "suggestions", L10n.t("Suggestions and content"), keys(Settings.HIDE_SUGGESTED_STORIES.key, Settings.HIDE_STORY_REWINDS.key, Settings.HIDE_STORY_RECAPS.key, Settings.STOP_LOADING_STORIES.key, Settings.HIDE_MUSIC_CARD.key, Settings.HIDE_STORY_SUGGESTIONS.key, Settings.HIDE_ADD_YOURS_CARDS.key));
-            split(node, "playback", L10n.t("Playback and gestures"), keys(Settings.STORY_SEEK_BAR.key, Settings.STORY_SEEK_BAR_LOOK.key,
+            split(node, "playback", L10n.t("Playback and gestures"), keys(Settings.STORY_SEEK_BAR_POSITION.key, Settings.STORY_SEEK_BAR.key, Settings.STORY_SEEK_BAR_LOOK.key,
                     Settings.BLOCK_STORY_AUTO_ADVANCE.key, Settings.LOOP_STORIES.key, Settings.START_STORIES_WITH_SOUND.key,
                     Settings.STOP_STORY_SWIPE_REPLY.key, Settings.KEEP_STORIES_PLAYING_ON_ZOOM.key, Settings.SMOOTH_STORY_OPEN.key));
             split(node, "privacy", L10n.t("Privacy and actions"), keys(Settings.VIEW_STORIES_ANONYMOUSLY.key, Settings.MARK_STORIES_SEEN.key, Settings.GRAY_OUT_WATCHED_STORIES.key, Settings.VIEW_LIVE_ANONYMOUSLY.key, Settings.SHOW_STORY_MENTIONS.key, Settings.DOWNLOAD_STORIES.key, Settings.UPLOAD_STORIES_AT_FULL_QUALITY.key));
             split(node, "fonts", L10n.t("Fonts and emoji"), keys(Settings.STORY_FONTS.key, Settings.STORY_EMOJI.key, HushgramPreferenceFragment.STORY_FONTS_ROW));
             split(node, "tray", L10n.t("Story tray"), keys(Settings.HIDE_STORIES_TRAY.key, Settings.KEEP_TRAY_IN_FEED.key,
                     Settings.FILTER_TRAY_BY_BADGE.key, Settings.TRAY_BADGE.key, Settings.STORY_RING.key,
-                    Settings.STORY_RING_SCALE.key, Settings.STORY_RING_COLOR.key, Settings.STORY_PRIORITY.key,
+                    Settings.STORY_RING_SCALE.key, Settings.STORY_RING_COLOR.key, Settings.ACCENT_RINGS_SOLID.key, Settings.STORY_PRIORITY.key,
                     Settings.STORY_PRIORITY_ACCOUNTS.key));
-            split(node, "viewer-controls", L10n.t("Viewer controls"), keys(Settings.STORY_SPEED_BUTTON.key,
+            split(node, "viewer-controls", L10n.t("Viewer controls"), keys(Settings.STORY_SPEED_IN_MENU.key, Settings.STORY_SPEED_BUTTON.key,
                     Settings.HIDE_STORY_REPLY_BOX.key,
                     Settings.HIDE_STORY_FOLLOW.key, Settings.SHOW_STORY_TIME.key, Settings.STORY_TIME_MODE.key,
                     Settings.DOWNLOAD_BUTTON_ON_STORIES.key, Settings.TEXT_BUTTON_ON_STORIES.key, Settings.MARK_LIVE_SEEN.key));
             remainder(node, L10n.t("Viewer appearance"));
         }
         if (icon.equals(SettingsIcons.TAB_BAR)) {
-            split(node, "tabs", L10n.t("Tabs and order"), keys(Settings.HIDE_HOME_TAB.key, Settings.HIDE_REELS_TAB.key, Settings.SHOW_REELS_TAB.key, Settings.HIDE_SEARCH_TAB.key, Settings.HIDE_CREATE_TAB.key, Settings.HIDE_PROFILE_TAB.key, Settings.SHOW_MESSAGES_TAB.key, Settings.HIDE_MESSAGES_TAB.key, Settings.SHOW_ACTIVITY_TAB.key, Settings.TAB_ORDER.key, Settings.START_TAB.key, Settings.TAB_BAR_LAYOUT.key));
-            split(node, "header", L10n.t("Header buttons and titles"), keys(Settings.HIDE_HOME_CREATE_BUTTON.key, Settings.HIDE_HOME_NOTIFICATIONS_BUTTON.key, Settings.SEARCH_BUTTON_ON_HOME.key, Settings.MESSAGES_BUTTON_ON_HOME.key, Settings.HIDE_HOME_MESSAGES_BUTTON.key, Settings.GHOST_BUTTON_ON_HOME.key, Settings.CENTER_HOME_LOGO.key, Settings.CENTER_PROFILE_NAME.key, Settings.CENTER_SCREEN_TITLES.key, Settings.TITLES_AT_START.key));
-            split(node, "behavior", L10n.t("Scrolling and haptics"), keys(Settings.GLASS_TAB_BAR_SLIDE.key, Settings.GLASS_TAB_BAR_HAPTICS.key, Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key, Settings.GLASS_TAB_BAR_HIDE_ON_SCROLL.key, Settings.GLASS_TAB_BAR_REELS_HIDE.key));
+            split(node, "titles", L10n.t("Header titles and alignment"), keys(Settings.CENTER_HOME_LOGO.key,
+                    Settings.CENTER_PROFILE_NAME.key, Settings.CENTER_SCREEN_TITLES.key, Settings.TITLES_AT_START.key));
+            split(node, "tab-layout", L10n.t("Tab order and size"), keys(Settings.TAB_ORDER.key,
+                    Settings.START_TAB.key, Settings.TAB_BAR_LAYOUT.key, Settings.TAB_ICON_SIZE.key));
+            split(node, "glass-shape", L10n.t("Pill size and position"), keys(Settings.GLASS_TAB_BAR_HEIGHT.key,
+                    Settings.GLASS_TAB_BAR_LIFT.key, Settings.GLASS_TAB_BAR_CORNERS.key,
+                    Settings.GLASS_TAB_BAR_KEEP_SIZE.key));
+            split(node, "feedback", L10n.t("Touch feedback and sound"), keys(Settings.GLASS_TAB_BAR_HAPTICS.key,
+                    Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key, Settings.GLASS_TAB_BAR_HAPTIC_STRENGTH.key,
+                    Settings.GLASS_TAB_BAR_TAP_SOUND.key, Settings.GLASS_TAB_BAR_TAP_SOUND_VOLUME.key));
+            split(node, "tabs", L10n.t("Tabs and order"), keys(Settings.HIDE_HOME_TAB.key, Settings.HIDE_REELS_TAB.key, Settings.SHOW_REELS_TAB.key, Settings.HIDE_SEARCH_TAB.key, Settings.HIDE_CREATE_TAB.key, Settings.HIDE_PROFILE_TAB.key, Settings.SHOW_MESSAGES_TAB.key, Settings.HIDE_MESSAGES_TAB.key, Settings.SHOW_ACTIVITY_TAB.key, Settings.TAB_ICON_SIZE.key, Settings.TAB_ORDER.key, Settings.START_TAB.key, Settings.TAB_BAR_LAYOUT.key));
+            split(node, "header", L10n.t("Header buttons and titles"), keys(Settings.HIDE_HOME_CREATE_BUTTON.key, Settings.HIDE_HOME_NOTIFICATIONS_BUTTON.key, Settings.SEARCH_BUTTON_ON_HOME.key, Settings.MESSAGES_BUTTON_ON_HOME.key, Settings.HIDE_HOME_MESSAGES_BUTTON.key, Settings.GHOST_BUTTON_ON_HOME.key, Settings.SETTINGS_BUTTON_ON_HOME.key, Settings.MENU_BUTTON_ON_HOME.key, Settings.HISTORY_BUTTON_ON_HOME.key, Settings.HEART_COUNT.key, Settings.CENTER_HOME_LOGO.key, Settings.CENTER_PROFILE_NAME.key, Settings.CENTER_SCREEN_TITLES.key, Settings.TITLES_AT_START.key));
+            split(node, "behavior", L10n.t("Scrolling and visibility"), keys(Settings.GLASS_TAB_BAR_SHRINK_ON_SCROLL.key, Settings.GLASS_TAB_BAR_SLIDE.key, Settings.GLASS_TAB_BAR_HAPTICS.key, Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key, Settings.GLASS_TAB_BAR_HIDE_ON_SCROLL.key, Settings.GLASS_TAB_BAR_REELS_HIDE.key));
             remainder(node, L10n.t("Glass style"));
         }
         if (icon.equals(SettingsIcons.DOWNLOADS)) {
-            split(node, "media", L10n.t("Media and download actions"), keys(Settings.DOWNLOAD_VIDEOS.key, Settings.DOWNLOAD_FEED_COVER.key, Settings.DOWNLOAD_PHOTOS.key, Settings.POST_DETAILS.key, Settings.DOWNLOAD_CHOOSE_PAGES.key, Settings.FEED_DOWNLOAD_BUTTON.key, Settings.FEED_DOWNLOAD_ALL_PAGES.key, Settings.HOLD_TO_DOWNLOAD.key, Settings.HOLD_FINGERS.key, Settings.HOLD_TIME.key, Settings.DOWNLOAD_VOICE_MESSAGES.key, Settings.OPEN_IN_PLAYER.key, Settings.SEND_DOWNLOADS_TO_APP.key));
+            split(node, "save-actions", L10n.t("Download buttons and gestures"), keys(Settings.FEED_DOWNLOAD_BUTTON.key,
+                    Settings.FEED_DOWNLOAD_ALL_PAGES.key, Settings.DOWNLOAD_CHOOSE_PAGES.key, Settings.HOLD_TO_DOWNLOAD.key,
+                    Settings.HOLD_FINGERS.key, Settings.HOLD_TIME.key, Settings.SEND_DOWNLOADS_TO_APP.key,
+                    Settings.OPEN_IN_PLAYER.key));
+            split(node, "media", L10n.t("Media types"), keys(Settings.DOWNLOAD_VIDEOS.key, Settings.DOWNLOAD_FEED_COVER.key, Settings.DOWNLOAD_PHOTOS.key, Settings.POST_DETAILS.key, Settings.DOWNLOAD_CHOOSE_PAGES.key, Settings.FEED_DOWNLOAD_BUTTON.key, Settings.FEED_DOWNLOAD_ALL_PAGES.key, Settings.HOLD_TO_DOWNLOAD.key, Settings.HOLD_FINGERS.key, Settings.HOLD_TIME.key, Settings.DOWNLOAD_VOICE_MESSAGES.key, Settings.OPEN_IN_PLAYER.key, Settings.SEND_DOWNLOADS_TO_APP.key));
             split(node, "profiles", L10n.t("Profile actions"), keys(Settings.SAVE_PROFILE_PICTURES.key, Settings.VIEW_PROFILE_PICTURES.key, Settings.COPY_PROFILE_TEXT.key, Settings.PROFILE_EXTRAS_BUTTON.key));
             split(node, "folders", L10n.t("Folders and file names"), keys(Settings.SAVE_FOLDER.key,
                     Settings.SAVE_FOLDER_PER_ACCOUNT.key, Settings.SAVE_NAME_BY_POST.key, Settings.SAVE_PHOTO_METADATA.key,
@@ -298,13 +350,19 @@ final class SettingsNavigation {
             remainder(node, L10n.t("Quality and saving"));
         }
         if (icon.equals(SettingsIcons.CHATS)) {
-            split(node, "inbox", L10n.t("Inbox appearance"), keys(Settings.HIDE_NOTES_ROW.key, Settings.HIDE_NOTES_MAP.key,
+            split(node, "presence", L10n.t("Activity and typing"), keys(Settings.HIDE_ACTIVE_STATUS.key,
+                    Settings.SHOW_LAST_ACTIVE.key, Settings.HIDE_TYPING.key, Settings.HIDE_BLEND_VISITS.key,
+                    Settings.HIDE_SCREENSHOTS.key, Settings.ALLOW_SCREENSHOTS.key));
+            split(node, "calls", L10n.t("Calls"), keys(Settings.ASK_BEFORE_CALL.key, Settings.HIDE_CALL_BUTTONS.key,
+                    Settings.HIDE_VIDEO_CALL_BUTTON.key, Settings.HIDE_AUDIO_CALL_BUTTON.key,
+                    Settings.CALL_BLOCK_MODE.key, Settings.CALL_BLOCK_ACCOUNTS.key));
+            split(node, "inbox", L10n.t("Inbox appearance"), keys(Settings.SPLIT_NOTES_ROW.key, Settings.HIDE_NOTES_ROW.key, Settings.HIDE_NOTES_MAP.key,
                     Settings.HIDE_INBOX_SEARCH.key, Settings.HIDE_INBOX_SUGGESTIONS.key, Settings.HIDE_INSTANTS.key,
                     Settings.FULL_SCREEN_MESSAGES.key, HushgramPreferenceFragment.PINNED_CHATS_ROW));
-            split(node, "controls", L10n.t("Chat and call controls"), keys(Settings.KEEP_IN_CHAT.key, Settings.GLASS_CHAT.key,
+            split(node, "controls", L10n.t("Chat appearance and behavior"), keys(Settings.KEEP_IN_CHAT.key, Settings.HIDE_KINDNESS_REMINDER.key, Settings.GLASS_CHAT.key,
                     Settings.ASK_BEFORE_CALL.key, Settings.HIDE_CALL_BUTTONS.key, Settings.HIDE_VIDEO_CALL_BUTTON.key,
                     Settings.HIDE_AUDIO_CALL_BUTTON.key, Settings.HIDE_BLEND_BUTTON.key));
-            split(node, "security", L10n.t("App and chat locks"), keys(Settings.LOCK_MESSAGES.key, Settings.LOCK_APP.key, Settings.DOUBLE_TAP_HIDDEN_CHATS.key, Settings.LOCK_AGAIN.key, Settings.UNLOCK_WITH.key, HushgramPreferenceFragment.CHANGE_PIN_ROW, HushgramPreferenceFragment.LOCKED_CHATS_ROW, HushgramPreferenceFragment.HIDDEN_CHATS_ROW));
+            split(node, "security", L10n.t("App and chat locks"), keys(Settings.LOCK_SAVED.key, Settings.LOCK_EACH_CHAT.key, Settings.LOCK_MESSAGES.key, Settings.LOCK_APP.key, Settings.DOUBLE_TAP_HIDDEN_CHATS.key, Settings.LOCK_AGAIN.key, Settings.UNLOCK_WITH.key, HushgramPreferenceFragment.CHANGE_PIN_ROW, HushgramPreferenceFragment.LOCKED_CHATS_ROW, HushgramPreferenceFragment.HIDDEN_CHATS_ROW));
             split(node, "composer", L10n.t("Composer and More menu"), keys(Settings.HIDDEN_MESSAGE_BOX_BUTTONS.key,
                     Settings.HIDE_PLUS_SAVED.key, Settings.HIDE_PLUS_AI_IMAGES.key, Settings.HIDE_PLUS_DRAW.key,
                     Settings.HIDE_PLUS_META_AI.key, Settings.HIDE_PLUS_LOCATION.key, Settings.MOVE_TO_PLUS_MENU.key));
@@ -314,30 +372,42 @@ final class SettingsNavigation {
             remainder(node, L10n.t("Privacy and receipts"));
         }
         if (icon.equals(SettingsIcons.LAYOUT)) {
-            split(node, "accent", L10n.t("Accent colors"), keys(Settings.ACCENT_COLOR.key, Settings.ACCENT_HUE.key,
+            split(node, "accent", L10n.t("Accent colors"), keys(Settings.ACCENT_CUSTOM.key, Settings.ACCENT_COLOR.key, Settings.ACCENT_HUE.key,
                     Settings.ACCENT_BADGES.key, Settings.ACCENT_ICONS.key, Settings.ACCENT_RINGS.key,
-                    Settings.ACCENT_BACKGROUNDS.key, LayoutCategory.PURE_BLACK_HINT_ROW));
+                    Settings.ACCENT_BACKGROUNDS.key, Settings.ACCENT_RINGS_SOLID.key, LayoutCategory.PURE_BLACK_HINT_ROW));
             split(node, "fonts", L10n.t("Fonts and emoji"), keys(Settings.FONT.key, Settings.NOTO_EMOJI.key, Settings.EMOJI_FONT.key));
             remainder(node, L10n.t("App layout and branding"));
         }
         if (icon.equals(SettingsIcons.PLAYBACK)) {
+            split(node, "background", L10n.t("Background and picture in picture"), keys(Settings.KEEP_PLAYING_IN_BACKGROUND.key,
+                    Settings.REELS_PICTURE_IN_PICTURE.key, Settings.STORIES_PICTURE_IN_PICTURE.key));
             split(node, "quality", L10n.t("Quality and data"), keys(Settings.DEFAULT_PLAYBACK_QUALITY.key,
                     Settings.PLAYBACK_QUALITY.key, Settings.QUALITY_TAB_TARGET.key, Settings.DATA_SAVER.key,
                     Settings.DATA_SAVER_MOBILE_DATA_ONLY.key, Settings.TURN_OFF_HDR_BOOSTS.key));
             remainder(node, L10n.t("Playback behavior"));
         }
         if (icon.equals(SettingsIcons.PRIVACY)) {
+            split(node, "data", L10n.t("Personal data and prompts"), keys(Settings.KEEP_PHOTO_LOCATIONS.key,
+                    Settings.HIDE_PLUS_UPSELL.key));
             split(node, "ads-tracking", L10n.t("Ads and link tracking"), keys(Settings.HIDE_ADS.key,
                     Settings.SKIP_AD_DATA_REMINDER.key, Settings.SANITIZE_SHARING_LINKS.key, Settings.SHARING_DOMAIN.key,
                     Settings.OPEN_LINKS_EXTERNALLY.key));
             remainder(node, L10n.t("Privacy and connection"));
         }
         if (icon.equals(SettingsIcons.PERSON)) {
-            split(node, "relationships", L10n.t("Followers and relationships"), keys(Settings.SHOW_FRIENDSHIP_STATUS.key, Settings.FRIENDSHIP_STATUS_CHIP.key, Settings.FOLLOW_LABEL_PLACE.key, Settings.MARK_FOLLOWING_LIST.key, Settings.FOLLOWING_NOT_BACK_FIRST.key, Settings.TRACK_UNFOLLOWERS.key, HushgramPreferenceFragment.UNFOLLOWERS_ROW, HushgramPreferenceFragment.CLEAR_UNFOLLOWERS));
+            split(node, "profile-history", L10n.t("Profile history"), keys(Settings.PROFILE_HISTORY.key,
+                    HushgramPreferenceFragment.PROFILE_HISTORY_ROW, HushgramPreferenceFragment.CLEAR_PROFILE_HISTORY));
+            split(node, "saved-profiles", L10n.t("Saved profiles"), keys(Settings.SAVED_PROFILES.key,
+                    HushgramPreferenceFragment.SAVED_PROFILES_ROW, Settings.SAVED_PROFILES_TAB_TARGET.key));
+            split(node, "banners", L10n.t("Links and banners"), keys(Settings.HIDE_PROFILE_THREADS_BADGE.key,
+                    Settings.HIDE_PROFILE_FACEBOOK_LINKS.key, Settings.HIDE_PROFILE_WHATSAPP_LINK.key,
+                    Settings.HIDE_PROFILE_SONG.key, Settings.HIDE_PROFILE_INTERESTS.key, Settings.HIDE_PROFILE_CHANNEL_BANNER.key,
+                    Settings.HIDE_OTHER_PROFILE_BANNERS.key));
+            split(node, "relationships", L10n.t("Followers and relationships"), keys(Settings.SHOW_FRIENDSHIP_STATUS.key, Settings.FRIENDSHIP_STATUS_CHIP.key, Settings.FOLLOW_LABEL_PLACE.key, Settings.ASK_BEFORE_FOLLOW.key, Settings.FOLLOW_MARK_ON_PICTURE.key, Settings.MARK_FOLLOWING_LIST.key, Settings.FOLLOWING_NOT_BACK_FIRST.key, Settings.TRACK_UNFOLLOWERS.key, Settings.NOTIFY_UNFOLLOWS.key, HushgramPreferenceFragment.FOLLOWER_HISTORY_ROW, HushgramPreferenceFragment.UNFOLLOWERS_ROW, HushgramPreferenceFragment.CLEAR_UNFOLLOWERS));
             split(node, "suggestions", L10n.t("Suggestions and prompts"), keys(Settings.HIDE_PROFILE_SUGGESTIONS.key, Settings.HIDE_FOLLOW_LIST_SUGGESTIONS.key, Settings.HIDE_PROFILE_COMPLETION.key));
             split(node, "tabs-grid", L10n.t("Tabs and grid"), keys(Settings.HIDDEN_OWN_PROFILE_TABS.key,
                     Settings.HIDDEN_PROFILE_TABS.key, Settings.SAVED_ON_PROFILE.key,
-                    Settings.PROFILE_POSTS_LIST.key, Settings.PROFILE_GRID_JUMP.key));
+                    Settings.SAVED_FAST_SCROLL.key, Settings.PROFILE_POSTS_LIST.key, Settings.PROFILE_GRID_JUMP.key));
             remainder(node, L10n.t("Profile header"));
         }
     }
