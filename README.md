@@ -103,7 +103,7 @@ This checkout integrates upstream HushGram **0.0.20** and subsequent main-branch
 I inherited these compatibility targets from upstream; I have not independently repeated every upstream device test. See the [upstream guide](docs/upstream/README.md#supported-instagram-builds) and [upstream changelog](CHANGELOG.md) for the original feature and compatibility history. The changelog records HushGram's work; my changes are listed above.
 
 <details>
-<summary>Full patch catalog (175 patches)</summary>
+<summary>Full patch catalog (177 patches)</summary>
 
 | Patch | Description | Selection |
 | --- | --- | --- |
@@ -212,7 +212,9 @@ I inherited these compatibility targets from upstream; I have not independently 
 | `Long press to zoom` | Press and hold a photo in a feed to see it twice as big around your finger, and let go to close it. Pinch to zoom still works. Keep the zoom open leaves it up after you let go, to drag and pinch from 1x to 4x until a tap or Back closes it. Long press a post for full screen opens any photo or video on black instead, a video with a slider. While its switch is on, each takes the place of Instagram's own long press. Starts off. Turn it on in HushGram settings > Feed. | Included |
 | `Loop a story` | Plays a story again from the start when it ends, instead of moving on to the next one. Tap or swipe to move on. With it off, Loop this story in a story's menu loops just that one. Starts off. Turn it on in HushGram settings > Stories. | Included |
 | `Mark one-time photos and videos` | Puts a border and Instagram's own view once icon on a one-time photo or video in a chat, so you can tell it before you open it. Only how the chat looks changes. Nothing is saved, replayed, marked seen or sent. Starts off. Turn it on in HushGram settings > Messages. | Included |
+| `Message action layout` | Hide selected message actions or move them into More, preserving Instagram's native availability and handlers. | Included |
 | `Message box buttons` | Lets you take the gallery, sticker and voice message buttons off the message box of a chat, and keep the text box and Send. Starts with every button showing. Pick which to hide in HushGram settings > Messages. | Included |
+| `Message tap menus` | Lets a single tap on a chat message open its native actions, reactions, or both. Starts off. Existing double-tap behavior is preserved. | Included |
 | `Open comments without the keyboard` | Comments open with the keyboard down. A tap in the comment box, or on Reply, still brings it up. Starts off. Turn it on in HushGram settings > Comments. | Included |
 | `Open links in external browser` | Opens web links you tap in your usual browser instead of Instagram's built-in one, without Instagram's click tracker. Ads and Meta's own sites (Instagram, Facebook, Messenger, Threads) still open in the app. On by default. Turn it off in HushGram settings > Ads and privacy. | Included |
 | `Open reel links on that reel` | A reel link opens on the reel it points to, instead of another reel Instagram kept on your phone playing first. Starts on. Turn it off in HushGram settings > Reels. | Included |
