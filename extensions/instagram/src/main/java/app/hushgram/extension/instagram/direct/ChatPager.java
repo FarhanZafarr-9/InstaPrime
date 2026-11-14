@@ -585,9 +585,9 @@ public final class ChatPager {
             final List<String> labels = new ArrayList<>();
             final List<Integer> actions = new ArrayList<>();
             if (jumpWanted()) {
-                labels.add(L10n.t("Jump to the first message"));
+                labels.add(L10n.t("First message"));
                 actions.add(ACTION_FIRST);
-                labels.add(L10n.t("Jump to a date"));
+                labels.add(L10n.t("Jump to date"));
                 actions.add(ACTION_DATE);
             }
             if (exportWanted()) {

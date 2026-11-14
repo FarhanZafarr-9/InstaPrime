@@ -129,7 +129,7 @@ public final class SavedProfilesPage {
         searchSpace.setMarginStart(Dim.dp(18));
         searchSpace.setMarginEnd(Dim.dp(18));
         searchSpace.topMargin = Dim.dp(4);
-        searchSpace.bottomMargin = Dim.dp(4);
+        searchSpace.bottomMargin = Dim.dp(12);
         root.addView(search, searchSpace);
 
         chipRow = new LinearLayout(context);
@@ -144,7 +144,9 @@ public final class SavedProfilesPage {
 
         FrameLayout body = new FrameLayout(context);
         list = new ListView(context);
-        list.setDivider(null);
+        list.setDivider(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        list.setDividerHeight(Dim.dp(3));
+        list.setPadding(0, Dim.dp(4), 0, Dim.dp(12));
         list.setCacheColorHint(Color.TRANSPARENT);
         list.setClipToPadding(false);
         rows = new Rows(context, palette, this::remove);
