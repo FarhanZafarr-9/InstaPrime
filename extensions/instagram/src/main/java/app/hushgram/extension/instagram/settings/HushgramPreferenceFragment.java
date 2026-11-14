@@ -99,6 +99,7 @@ import app.hushgram.extension.instagram.direct.HiddenChats;
 import app.hushgram.extension.instagram.direct.PinnedChats;
 import app.hushgram.extension.instagram.direct.LockDelay;
 import app.hushgram.extension.instagram.direct.MessageBox;
+import app.hushgram.extension.instagram.direct.MessageActions;
 import app.hushgram.extension.instagram.direct.MessagesLock;
 import app.hushgram.extension.instagram.direct.PinLock;
 import app.hushgram.extension.instagram.direct.UnlockWith;
@@ -1048,6 +1049,72 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             return true;
         });
         return row;
+    }
+
+    Row messageActionsRow(Context context, boolean more) {
+        Row row = new Row(context);
+        row.setKey(more ? Settings.MORE_MESSAGE_ACTIONS.key : Settings.HIDE_MESSAGE_ACTIONS.key);
+        row.setPersistent(false);
+        row.setTitle(L10n.t(more ? "Move message actions to More" : "Hide message actions"));
+        row.setSummary(messageActionsSummary(more));
+        row.setOnPreferenceClickListener(tapped -> {
+            pickMessageActions(row, more);
+            return true;
+        });
+        return row;
+    }
+
+    static String messageActionsSummary(boolean more) {
+        Set<String> picked = MessageActions.parse((more ? Settings.MORE_MESSAGE_ACTIONS : Settings.HIDE_MESSAGE_ACTIONS).savedValue());
+        List<String> labels = new ArrayList<>();
+        for (String name : MessageActions.OFFERED) {
+            if (picked.contains(name) && (!more || !"MORE".equals(name))) labels.add(MessageActions.label(name));
+        }
+        if (labels.isEmpty()) return L10n.t(more ? "Keep Instagram's action positions." : "Keep every available action.");
+        String preview = String.join(", ", labels.subList(0, Math.min(3, labels.size())));
+        return labels.size() <= 3 ? preview : L10n.f("%1$s, and %2$d more", preview, labels.size() - 3);
+    }
+
+    /** Save both lists together from the current values; an action has only one chosen destination. */
+    static void selectMessageAction(String name, boolean checked, boolean more) {
+        Set<String> hidden = MessageActions.parse(Settings.HIDE_MESSAGE_ACTIONS.savedValue());
+        Set<String> moved = MessageActions.parse(Settings.MORE_MESSAGE_ACTIONS.savedValue());
+        Set<String> selected = more ? moved : hidden;
+        if (checked) {
+            selected.add(name);
+            (more ? hidden : moved).remove(name);
+            if (more) hidden.remove("MORE");
+            else if ("MORE".equals(name)) moved.clear();
+        } else selected.remove(name);
+        Settings.HIDE_MESSAGE_ACTIONS.save(MessageActions.join(hidden));
+        Settings.MORE_MESSAGE_ACTIONS.save(MessageActions.join(moved));
+    }
+
+    void pickMessageActions(Row row, boolean more) {
+        Context context = getActivity();
+        if (context == null) return;
+        List<String> names = new ArrayList<>(MessageActions.OFFERED);
+        if (more) names.remove("MORE");
+        CharSequence[] labels = new CharSequence[names.size()];
+        boolean[] checked = new boolean[names.size()];
+        Set<String> picked = MessageActions.parse((more ? Settings.MORE_MESSAGE_ACTIONS : Settings.HIDE_MESSAGE_ACTIONS).savedValue());
+        for (int i = 0; i < names.size(); i++) {
+            labels[i] = MessageActions.label(names.get(i));
+            checked[i] = picked.contains(names.get(i));
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(context).setTitle(row.getTitle());
+        builder.setMultiChoiceItems(labels, checked, (dialog, which, on) -> {
+            Preference other = findPreference(more ? Settings.HIDE_MESSAGE_ACTIONS.key : Settings.MORE_MESSAGE_ACTIONS.key);
+            if (!allowMutation(row, true) || (other != null && !allowMutation(other, true))) {
+                Set<String> saved = MessageActions.parse((more ? Settings.MORE_MESSAGE_ACTIONS : Settings.HIDE_MESSAGE_ACTIONS).savedValue());
+                setChecked((AlertDialog) dialog, which, saved.contains(names.get(which)));
+                return;
+            }
+            selectMessageAction(names.get(which), on, more);
+            row.setSummary(messageActionsSummary(more));
+            if (other != null) other.setSummary(messageActionsSummary(!more));
+        });
+        show(builder.setPositiveButton(L10n.t("OK"), null));
     }
 
     /** What the buttons left off in [saved] do, for the row's summary, with the plus menu switch as saved. */
