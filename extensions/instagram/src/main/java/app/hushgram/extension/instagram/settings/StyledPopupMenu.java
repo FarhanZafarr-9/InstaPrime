@@ -66,8 +66,10 @@ public class StyledPopupMenu extends PopupMenu {
         latest = new WeakReference<>(this);
         Context context = anchor.getContext();
         ScreenColors colors = ScreenColors.forScreen(context);
-        int text = colors.title;
-        int surface = colors.dialog;
+        boolean accent = Settings.THEME_NATIVE_POPUPS.get();
+        boolean black = SettingsStatus.pureBlack();
+        int text = accent || black ? colors.title : themeColor(context, android.R.attr.textColorPrimary, colors.title);
+        int surface = popupSurface(context, colors, black, accent);
         List<MenuItem> items = new ArrayList<>();
         for (int i = 0; i < getMenu().size(); i++) {
             MenuItem item = getMenu().getItem(i);
@@ -193,6 +195,18 @@ public class StyledPopupMenu extends PopupMenu {
         return panel(color, anchor.getResources().getDisplayMetrics().density);
     }
 
+    static int popupSurface(Context context, ScreenColors colors, boolean black, boolean accent) {
+        if (accent) return colors.dialog;
+        if (black) return Color.BLACK;
+        return themeColor(context, android.R.attr.colorBackgroundFloating, colors.dialog);
+    }
+
+    private static int themeColor(Context context, int attribute, int fallback) {
+        android.content.res.TypedArray values = context.obtainStyledAttributes(new int[]{attribute});
+        try { return values.getColor(0, fallback); }
+        finally { values.recycle(); }
+    }
+
     private static GradientDrawable panel(int color, float density) {
         GradientDrawable background = new GradientDrawable();
         background.setColor(color);
@@ -221,13 +235,10 @@ public class StyledPopupMenu extends PopupMenu {
         try {
             View content = popup.getContentView();
             if (content == null) return;
-            ScreenColors colors = Settings.THEME_NATIVE_POPUPS.get()
-                    ? ScreenColors.forScreen(content.getContext()) : ScreenColors.DEFAULT;
-            GradientDrawable panel = panel(colors.dialog, content.getResources().getDisplayMetrics().density);
-            popup.setBackgroundDrawable(panel);
-            content.setBackgroundTintList(null);
-            content.setBackground(panel.getConstantState().newDrawable().mutate());
-            content.setClipToOutline(true);
+            boolean accent = Settings.THEME_NATIVE_POPUPS.get(), black = SettingsStatus.pureBlack();
+            ScreenColors colors = accent ? ScreenColors.forScreen(content.getContext())
+                    : black ? ScreenColors.BLACK : ScreenColors.forScreen(content.getContext());
+            Integer tint = accent ? colors.dialog : black ? Color.BLACK : null;
             NativeStyle style = nativeStyles.get(content);
             if (style == null) {
                 style = new NativeStyle(content);
@@ -236,7 +247,14 @@ public class StyledPopupMenu extends PopupMenu {
                 content.addOnAttachStateChangeListener(style);
             }
             style.colors = colors;
-            style.textColors = ScreenColors.dimmedWhenDisabled(colors.title);
+            style.surfaceTint = tint;
+            style.textColors = tint == null ? null : ScreenColors.dimmedWhenDisabled(colors.title);
+            // Keep native shapes, transparent insets and padding. Replacing these with a solid
+            // panel changes message-menu placement and can paint a viewport after its rows hide.
+            if (tint != null) {
+                if (popup.getBackground() != null) popup.getBackground().mutate().setTint(tint);
+                if (content.getBackground() != null) content.getBackground().mutate().setTint(tint);
+            }
             style.painted.clear();
             style.paint();
         } catch (Throwable failure) {
@@ -261,7 +279,7 @@ public class StyledPopupMenu extends PopupMenu {
             android.widget.TextView text = (android.widget.TextView) view;
             int color = text.getCurrentTextColor();
             // Keep native destructive actions visibly red.
-            if (!(Color.red(color) > 120 && Color.red(color) > Color.green(color) * 1.4f
+            if (style.textColors != null && !(Color.red(color) > 120 && Color.red(color) > Color.green(color) * 1.4f
                     && Color.red(color) > Color.blue(color) * 1.4f) && !style.textColors.equals(text.getTextColors()))
                 text.setTextColor(style.textColors);
         }
@@ -294,6 +312,7 @@ public class StyledPopupMenu extends PopupMenu {
         final java.util.Map<View, WeakReference<Drawable>> painted = new java.util.WeakHashMap<>();
         ScreenColors colors;
         ColorStateList textColors;
+        Integer surfaceTint;
         NativeStyle(View content) { this.content = new WeakReference<>(content); }
         void paint() {
             View root = content.get();
@@ -312,14 +331,11 @@ public class StyledPopupMenu extends PopupMenu {
             view.setBackground(background);
             view.setPaddingRelative(start, top, end, bottom);
             painted.put(view, new WeakReference<>(background));
-            View root = content.get();
-            for (android.view.ViewParent parent = view.getParent(); parent instanceof View && parent != root; parent = parent.getParent()) {
-                View surface = (View) parent;
-                if (surface.getBackground() != null && !(surface instanceof android.widget.AdapterView)) {
-                    surface.setBackgroundTintList(null);
-                    if (!(surface.getBackground() instanceof ColorDrawable)
-                            || ((ColorDrawable) surface.getBackground()).getColor() != colors.dialog)
-                        surface.setBackgroundColor(colors.dialog);
+            if (surfaceTint != null) {
+                View root = content.get();
+                for (android.view.ViewParent parent = view.getParent(); parent instanceof View && parent != root; parent = parent.getParent()) {
+                    Drawable original = ((View) parent).getBackground();
+                    if (original != null) original.mutate().setTint(surfaceTint);
                 }
             }
         }

@@ -148,8 +148,10 @@ public class ChatPopupMenuTest {
                 GradientDrawable background = (GradientDrawable) list.getBackground();
                 app.hushgram.extension.instagram.settings.ScreenColors palette =
                         app.hushgram.extension.instagram.settings.ScreenColors.forScreen(activity.get());
-                assertEquals("the panel uses the shared wallpaper surface", palette.dialog,
-                        background.getColor().getDefaultColor());
+                android.content.res.TypedArray nativeTheme = activity.get().obtainStyledAttributes(new int[]{android.R.attr.colorBackgroundFloating});
+                try { assertEquals("without an override, use the native popup surface", nativeTheme.getColor(0, palette.dialog),
+                        background.getColor().getDefaultColor()); }
+                finally { nativeTheme.recycle(); }
                 assertEquals(16 * list.getResources().getDisplayMetrics().density, background.getCornerRadius(), 0.1f);
                 View large = list.getAdapter().getView(1, null, list);
                 assertTrue("the list reserves a real gutter beside every option", list.getPaddingLeft() > 0);
