@@ -1,0 +1,108 @@
+/*
+ * Copyright 2026 HushGram contributors
+ * https://github.com/SysAdminDoc/HushGram
+ */
+package app.hushgram.extension.instagram.direct;
+
+import static org.junit.Assert.*;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import app.hushgram.extension.instagram.settings.Settings;
+import app.hushgram.extension.shared.SettingsContextRule;
+import app.hushgram.extension.shared.settings.BaseSettings;
+import app.hushgram.extension.shared.settings.HushgramPause;
+import app.hushgram.extension.shared.settings.PauseForTests;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = {28, 37})
+public class MessageGesturesTest {
+    @Rule public final SettingsContextRule settings = new SettingsContextRule();
+    private final List<String> actions = Arrays.asList("Reply", "More");
+
+    @Before public void before() {
+        BaseSettings.PAUSED.save(false);
+        PauseForTests.resume();
+        Settings.MESSAGE_TAP_ACTIONS.resetToDefault();
+        Settings.MESSAGE_TAP_REACTIONS.resetToDefault();
+        MessageGestures.inBuildForTests = true;
+    }
+
+    @After public void after() {
+        Settings.MESSAGE_TAP_ACTIONS.resetToDefault();
+        Settings.MESSAGE_TAP_REACTIONS.resetToDefault();
+        BaseSettings.PAUSED.save(false);
+        PauseForTests.resume();
+        MessageGestures.inBuildForTests = null;
+        MessageGestures.bridgeForTests = null;
+    }
+
+    @Test public void defaultsAndPauseLeaveNativeTapAlone() {
+        AtomicInteger calls = new AtomicInteger();
+        MessageGestures.bridgeForTests = delegate -> { calls.incrementAndGet(); return true; };
+        assertFalse(MessageGestures.tap(new Object()));
+        Settings.MESSAGE_TAP_ACTIONS.save(true);
+        BaseSettings.PAUSED.save(true);
+        PauseForTests.pause(HushgramPause.Reason.SWITCH);
+        assertFalse(MessageGestures.tap(new Object()));
+        BaseSettings.PAUSED.save(false);
+        MessageGestures.inBuildForTests = false;
+        assertFalse(MessageGestures.tap(new Object()));
+        assertEquals(0, calls.get());
+    }
+
+    @Test public void tapSectionsAreIndependentAndNativeHoldIsUnchanged() {
+        for (int mode = 1; mode <= 3; mode++) {
+            Settings.MESSAGE_TAP_ACTIONS.save((mode & 1) != 0);
+            Settings.MESSAGE_TAP_REACTIONS.save((mode & 2) != 0);
+            final int selected = mode;
+            MessageGestures.bridgeForTests = delegate -> {
+                if ((selected & 1) != 0) assertSame(actions, MessageGestures.actions(actions));
+                else assertTrue(MessageGestures.actions(actions).isEmpty());
+                assertEquals((selected & 2) != 0, MessageGestures.reactions(true));
+                assertFalse(MessageGestures.reactions(false));
+                return true;
+            };
+            assertTrue(MessageGestures.tap(new Object()));
+            assertSame(actions, MessageGestures.actions(actions));
+            assertTrue(MessageGestures.reactions(true));
+        }
+    }
+
+    @Test public void unsupportedAndThrowingMenuFallBackAndClearScope() {
+        Settings.MESSAGE_TAP_REACTIONS.save(true);
+        MessageGestures.bridgeForTests = delegate -> true;
+        assertFalse("eligibility alone must not swallow a tap if no native model was built", MessageGestures.tap(new Object()));
+        MessageGestures.bridgeForTests = delegate -> false;
+        assertFalse(MessageGestures.tap(new Object()));
+        MessageGestures.bridgeForTests = delegate -> { throw new IllegalStateException("native failed"); };
+        assertFalse(MessageGestures.tap(new Object()));
+        assertSame(actions, MessageGestures.actions(actions));
+        assertTrue(MessageGestures.reactions(true));
+    }
+
+    @Test public void menuScopeDoesNotLeakAcrossThreads() throws Exception {
+        Settings.MESSAGE_TAP_REACTIONS.save(true);
+        AtomicBoolean otherThreadNative = new AtomicBoolean();
+        MessageGestures.bridgeForTests = delegate -> {
+            Thread thread = new Thread(() -> otherThreadNative.set(MessageGestures.actions(actions) == actions));
+            thread.start();
+            try { thread.join(); } catch (InterruptedException e) { throw new AssertionError(e); }
+            assertTrue(MessageGestures.actions(actions).isEmpty());
+            return true;
+        };
+        assertTrue(MessageGestures.tap(new Object()));
+        assertTrue(otherThreadNative.get());
+    }
+}
