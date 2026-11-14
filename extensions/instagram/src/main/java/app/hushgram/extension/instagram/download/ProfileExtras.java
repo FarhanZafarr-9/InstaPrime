@@ -4,6 +4,8 @@
  */
 package app.hushgram.extension.instagram.download;
 
+import app.hushgram.extension.instagram.settings.StyledPopupMenu;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.ContextWrapper;
@@ -380,7 +382,7 @@ public final class ProfileExtras {
                 Utils.showToastShort(L10n.t(context, "Nothing to do for this profile"));
                 return;
             }
-            PopupMenu menu = new PopupMenu(button.getContext(), button);
+            PopupMenu menu = new StyledPopupMenu(button.getContext(), button);
             for (int i = 0; i < entries.size(); i++) menu.getMenu().add(0, i, i, entries.get(i).label);
             menu.setOnMenuItemClickListener(item -> {
                 try {

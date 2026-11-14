@@ -96,6 +96,7 @@ public class ProfileExtrasTest {
     }
 
     @After public void restore() {
+        app.hushgram.extension.instagram.settings.StyledPopupMenu.resetForTests();
         activity.close();
         ProfileExtras.source = ProfilePicture::entries;
         ProfileExtras.account = ProfileExtras::accountOf;
@@ -250,7 +251,7 @@ public class ProfileExtrasTest {
     @Test public void aTapListsTheRowsAndARowRunsItsAction() {
         bind();
         button().performClick();
-        PopupMenu menu = ShadowPopupMenu.getLatestPopupMenu();
+        PopupMenu menu = app.hushgram.extension.instagram.settings.StyledPopupMenu.latestForTests();
         assertNotNull(menu);
         Menu items = menu.getMenu();
         assertEquals(2, items.size());
@@ -268,7 +269,7 @@ public class ProfileExtrasTest {
         Settings.COPY_PROFILE_TEXT.save(false);
         bind();
         button().performClick();
-        Menu items = ShadowPopupMenu.getLatestPopupMenu().getMenu();
+        Menu items = app.hushgram.extension.instagram.settings.StyledPopupMenu.latestForTests().getMenu();
         assertEquals(Arrays.asList("Save profile picture", "View profile picture"), titles(items));
 
         Settings.SAVE_PROFILE_PICTURES.save(false);
@@ -276,7 +277,7 @@ public class ProfileExtrasTest {
         bind();
         button().performClick();
         assertEquals(Arrays.asList("View profile picture", "Copy username", "Copy bio"),
-                titles(ShadowPopupMenu.getLatestPopupMenu().getMenu()));
+                titles(app.hushgram.extension.instagram.settings.StyledPopupMenu.latestForTests().getMenu()));
     }
 
     /** A profile opened from a link hands its rows a context with no activity under it; the screen above them has one. */
@@ -289,7 +290,7 @@ public class ProfileExtrasTest {
         bind();
         assertFalse(button().getContext() instanceof Activity);
         button().performClick();
-        PopupMenu menu = ShadowPopupMenu.getLatestPopupMenu();
+        PopupMenu menu = app.hushgram.extension.instagram.settings.StyledPopupMenu.latestForTests();
         assertEquals("View profile picture", menu.getMenu().getItem(0).getTitle().toString());
         Shadows.shadowOf(menu).getOnMenuItemClickListener().onMenuItemClick(menu.getMenu().getItem(0));
         assertEquals(Collections.singletonList(activity.get()), opened);
@@ -306,10 +307,10 @@ public class ProfileExtrasTest {
     @Test public void aTapAfterTheSwitchWentOffListsNothing() {
         bind();
         ImageView tapped = button();
-        PopupMenu before = ShadowPopupMenu.getLatestPopupMenu();
+        PopupMenu before = app.hushgram.extension.instagram.settings.StyledPopupMenu.latestForTests();
         Settings.PROFILE_EXTRAS_BUTTON.save(false);
         tapped.performClick();
-        assertTrue("no new menu", ShadowPopupMenu.getLatestPopupMenu() == before);
+        assertTrue("no new menu", app.hushgram.extension.instagram.settings.StyledPopupMenu.latestForTests() == before);
     }
 
     @Test public void aSourceThatThrowsLeavesTheScreenAlone() {
