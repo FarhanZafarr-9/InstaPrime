@@ -46,6 +46,42 @@ extensions.getByType<com.android.build.api.variant.ApplicationAndroidComponentsE
     variant.sources.java?.addGeneratedSourceDirectory(generateLicenseNotice, GenerateLicenseNotice::outputDir)
 }
 
+/** Compile the patch's actual splash artwork into debug test resources; release payloads omit it. */
+abstract class GenerateSplashTestArtwork : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val brand: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val source = brand.get().asFile.readText()
+        val cameraSource = source.substringAfter("internal const val INSTA_PRIME_CAMERA_PATH")
+            .substringBefore("internal const val INSTA_PRIME_BADGE_CUTOUT_PATH")
+        val camera = Regex("\"([^\"\\r\\n]*)\"").findAll(cameraSource).joinToString("") { it.groupValues[1] }
+        check(camera.isNotEmpty()) { "InstaPrime camera path is missing" }
+        val xml = source.substringAfter("internal val INSTA_PRIME_LAUNCH_XML")
+            .substringAfter("\"\"\"").substringBefore("\"\"\"").trim()
+            .replace("\$INSTA_PRIME_CAMERA_PATH", camera)
+        check(!xml.contains('$')) { "Unresolved splash artwork template" }
+        val target = outputDir.get().asFile.resolve("drawable/instaprime_splash_test.xml")
+        target.parentFile.mkdirs()
+        target.writeText(xml)
+    }
+}
+
+val generateSplashTestArtwork = tasks.register<GenerateSplashTestArtwork>("generateSplashTestArtwork") {
+    brand.set(rootProject.layout.projectDirectory.file("patches/src/main/kotlin/app/morphe/patches/instagram/misc/icon/InstaPrimeBrand.kt"))
+    outputDir.set(layout.buildDirectory.dir("generated/res/splashTestArtwork"))
+}
+extensions.getByType<com.android.build.api.variant.ApplicationAndroidComponentsExtension>().run {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.sources.res?.addGeneratedSourceDirectory(generateSplashTestArtwork, GenerateSplashTestArtwork::outputDir)
+    }
+}
+
 // Robolectric 4.17 asks for Bouncy Castle 1.85 twice: by name, through the bc-jdk18on-bom it
 // imports, and with no version of its own for the bcprov module that BOM governs. Every request
 // in this module is rewritten to the reviewed release so related test libraries cannot resolve
