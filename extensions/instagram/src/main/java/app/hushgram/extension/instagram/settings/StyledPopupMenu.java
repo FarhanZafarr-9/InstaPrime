@@ -73,7 +73,7 @@ public class StyledPopupMenu extends PopupMenu {
             MenuItem item = getMenu().getItem(i);
             if (item.isVisible()) items.add(item);
         }
-        if (items.isEmpty()) return;
+        if (items.isEmpty()) { dismiss(); return; }
         window.setBackgroundDrawable(surface(surface));
         Rect frame = new Rect();
         anchor.getWindowVisibleDisplayFrame(frame);
@@ -169,10 +169,10 @@ public class StyledPopupMenu extends PopupMenu {
             try { getMenu().performIdentifierAction(items.get(position).getItemId(), 0); }
             finally { dismiss(); }
         });
-        open = true;
-        anchor.addOnAttachStateChangeListener(attachment);
         // A recycled or closing chat has no window to attach a popup to.
         if (anchor.getWindowToken() == null) return;
+        open = true;
+        anchor.addOnAttachStateChangeListener(attachment);
         window.show();
         window.getListView().setBackground(surface(surface));
         window.getListView().setLayoutDirection(anchor.getLayoutDirection());
@@ -215,9 +215,11 @@ public class StyledPopupMenu extends PopupMenu {
         try {
             View content = popup.getContentView();
             if (content == null) return;
-            ScreenColors colors = ScreenColors.forScreen(content.getContext());
+            ScreenColors colors = Settings.THEME_NATIVE_POPUPS.get()
+                    ? ScreenColors.forScreen(content.getContext()) : ScreenColors.DEFAULT;
             GradientDrawable panel = panel(colors.dialog, content.getResources().getDisplayMetrics().density);
             popup.setBackgroundDrawable(panel);
+            content.setBackgroundTintList(null);
             content.setBackground(panel.getConstantState().newDrawable().mutate());
             content.setClipToOutline(true);
             NativeStyle style = nativeStyles.get(content);
@@ -297,9 +299,20 @@ public class StyledPopupMenu extends PopupMenu {
             if (previous != null && previous.get() == view.getBackground()) return;
             int start = view.getPaddingStart(), top = view.getPaddingTop(), end = view.getPaddingEnd(), bottom = view.getPaddingBottom();
             Drawable background = optionBackground(colors, view.getResources().getDisplayMetrics().density, true);
+            view.setBackgroundTintList(null);
             view.setBackground(background);
             view.setPaddingRelative(start, top, end, bottom);
             painted.put(view, new WeakReference<>(background));
+            View root = content.get();
+            for (android.view.ViewParent parent = view.getParent(); parent instanceof View && parent != root; parent = parent.getParent()) {
+                View surface = (View) parent;
+                if (surface.getBackground() != null && !(surface instanceof android.widget.AdapterView)) {
+                    surface.setBackgroundTintList(null);
+                    if (!(surface.getBackground() instanceof ColorDrawable)
+                            || ((ColorDrawable) surface.getBackground()).getColor() != colors.dialog)
+                        surface.setBackgroundColor(colors.dialog);
+                }
+            }
         }
         @Override public boolean onPreDraw() {
             try { paint(); }

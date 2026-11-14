@@ -25,6 +25,24 @@ import app.hushgram.extension.shared.SettingsContextRule;
 public class StyledPopupNativeTest {
     @Rule public final SettingsContextRule settings = new SettingsContextRule();
 
+    @Test public void nativePopupThemeMatchingIsOptInAndPreservesItsWidth() {
+        try (var host = Robolectric.buildActivity(Activity.class).setup()) {
+            LinearLayout root = new LinearLayout(host.get());
+            PopupWindow popup = new PopupWindow(root, 231, 400);
+            Settings.THEME_NATIVE_POPUPS.save(false);
+            StyledPopupMenu.styleNative(popup);
+            assertEquals(ScreenColors.DEFAULT.dialog, ((GradientDrawable) popup.getBackground()).getColor().getDefaultColor());
+            Settings.SETTINGS_BLACK_LOOK.save(true);
+            Settings.THEME_NATIVE_POPUPS.save(true);
+            StyledPopupMenu.styleNative(popup);
+            assertEquals(ScreenColors.forScreen(host.get()).dialog, ((GradientDrawable) popup.getBackground()).getColor().getDefaultColor());
+            assertEquals(231, popup.getWidth());
+        } finally {
+            Settings.THEME_NATIVE_POPUPS.resetToDefault();
+            Settings.SETTINGS_BLACK_LOOK.resetToDefault();
+        }
+    }
+
     @Test public void nativeFlatRowsKeepTheirActionsAndDestructiveColor() {
         try (var host = Robolectric.buildActivity(Activity.class).setup()) {
             LinearLayout root = new LinearLayout(host.get());
