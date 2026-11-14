@@ -813,6 +813,16 @@ public final class ScreenColors {
         forScreen(field.getContext()).paintField(field);
     }
 
+    /** Searches use a tonal field without the form-input outline. */
+    public static void styleSearchField(EditText field) {
+        styleField(field);
+        if (field.getBackground() instanceof GradientDrawable) {
+            GradientDrawable surface = (GradientDrawable) field.getBackground();
+            surface.setColor(forScreen(field.getContext()).card);
+            surface.setStroke(0, Color.TRANSPARENT);
+        }
+    }
+
     /** Styles an existing action without replacing its content, listeners or accessibility delegate. */
     public static void styleAction(TextView action, boolean primary) {
         forScreen(action.getContext()).paintAction(action, primary);
