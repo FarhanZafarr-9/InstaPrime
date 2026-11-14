@@ -24,6 +24,7 @@ import app.morphe.patches.instagram.misc.extension.requireStatusMethod
 import app.morphe.patches.instagram.misc.settings.settingsPatch
 import app.morphe.patches.shared.compat.AppCompatibilities
 import app.morphe.util.RegisterLiveness
+import app.morphe.util.ControlFlow
 import app.morphe.util.addInstructionsAtControlFlowLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
@@ -139,7 +140,7 @@ internal fun BytecodePatchContext.findMessageGestures(): MessageGestureSite {
     val fragment = classesHolding("reactionsCreationController must be initialized", "vibrator")
         .flatMap { it.methods }.singleOrNull { it.name == "onViewCreated" && it.code().any { ins -> ins.string() == "vibrator" } }
         ?: refuse("no unique native message menu fragment")
-    val reaction = findReactionTrayGate(fragment.code())
+    val reaction = findReactionTrayGate(fragment)
     val reactionWrite = factory.code().indices.singleOrNull { at ->
         factory.code()[at].opcode == Opcode.IPUT_BOOLEAN && factory.code()[at].field()?.toString() == reaction.toString()
     } ?: refuse("reaction tray availability is not set once by factory")
@@ -156,13 +157,28 @@ internal fun BytecodePatchContext.findMessageGestures(): MessageGestureSite {
         actionWrites, reactionWrite, scratch)
 }
 
-/** Outer model conditions may also skip the setup. Only its innermost enclosing gate owns it. */
-internal fun findReactionTrayGate(fragmentCode: List<Instruction>): FieldReference {
+/** A forward branch can loop back into setup; its destination alone does not identify the tray. */
+internal fun findReactionTrayGate(fragment: Method): FieldReference {
+    val flow = ControlFlow.of(fragment)
+    val fragmentCode = flow.instructions
     val offsets = IntArray(fragmentCode.size)
     var units = 0
     fragmentCode.forEachIndexed { i, ins -> offsets[i] = units; units += ins.codeUnits }
     val vibrator = fragmentCode.indexOfFirst { it.string() == "vibrator" }
     if (vibrator < 0) refuse("no reaction tray vibrator setup")
+    fun reachesSetup(start: Int, gate: Int): Boolean {
+        val seen = BooleanArray(fragmentCode.size)
+        val pending = ArrayDeque<Int>()
+        pending.add(start)
+        while (pending.isNotEmpty()) {
+            val at = pending.removeFirst()
+            if (at == gate || seen[at]) continue
+            if (at == vibrator) return true
+            seen[at] = true
+            pending.addAll(flow.normal[at])
+        }
+        return false
+    }
     val gates = fragmentCode.indices.mapNotNull { at ->
         val ins = fragmentCode[at]
         val field = ins.field()?.takeIf { ins.opcode == Opcode.IGET_BOOLEAN && it.definingClass == MODEL } ?: return@mapNotNull null
@@ -170,13 +186,15 @@ internal fun findReactionTrayGate(fragmentCode: List<Instruction>): FieldReferen
         if (branch?.opcode != Opcode.IF_EQZ || branch !is OffsetInstruction) return@mapNotNull null
         if ((branch as OneRegisterInstruction).registerA != (ins as TwoRegisterInstruction).registerA) return@mapNotNull null
         val target = offsets[at + 1] + branch.codeOffset
-        if (at < vibrator && target > offsets[vibrator] && target in offsets) Triple(at, target, field) else null
+        val targetIndex = offsets.indexOf(target)
+        if (at < vibrator && target > offsets[vibrator] && targetIndex >= 0 &&
+            reachesSetup(at + 2, at) && !reachesSetup(targetIndex, at)) Triple(at, target, field) else null
     }
     val innermost = gates.filter { candidate -> gates.all { other ->
         candidate.first >= other.first && candidate.second <= other.second
     } }
     return innermost.singleOrNull()?.third
-        ?: refuse("expected one innermost native reaction tray gate, found ${innermost.size} among ${gates.size}")
+        ?: refuse("expected one native reaction tray control-flow gate, found ${innermost.size} among ${gates.size}")
 }
 
 internal fun BytecodePatchContext.applyMessageGestures(site: MessageGestureSite) {

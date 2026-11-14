@@ -18,6 +18,8 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableClassDef
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.instruction.*
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableFieldReference
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableStringReference
@@ -27,18 +29,29 @@ import java.io.File
 
 class MessageGesturesHookTest {
     @Test fun reactionGateIgnoresAnEnclosingModelCondition() {
-        assertEquals("tray", findReactionTrayGate(gates(10, 5)).name)
+        assertEquals("tray", findReactionTrayGate(method(gates(10, 5))).name)
     }
 
     @Test fun crossingReactionGateCandidatesRefuse() {
-        assertThrows(PatchException::class.java) { findReactionTrayGate(gates(9, 6)) }
+        assertThrows(PatchException::class.java) { findReactionTrayGate(method(gates(9, 6))) }
     }
 
     @Test fun aBranchOnAnotherRegisterIsNotAReactionGate() {
         val code = gates(10, 5).toMutableList()
         code[3] = ImmutableInstruction21t(Opcode.IF_EQZ, 1, 5)
-        assertEquals("outer", findReactionTrayGate(code).name)
+        assertEquals("outer", findReactionTrayGate(method(code)).name)
     }
+
+    @Test fun forwardBranchThatLoopsBackIntoSetupIsNotTheTrayGate() {
+        val code = gates(9, 6).toMutableList()
+        // Outer branch lands at 11, then loops to the tray read at 4.
+        code[6] = ImmutableInstruction10t(Opcode.GOTO, -7)
+        assertEquals("tray", findReactionTrayGate(method(code)).name)
+    }
+
+    private fun method(code: List<Instruction>): Method = ImmutableMethod(
+        "Lfixture/Tray;", "setup", emptyList(), "V", 0, emptySet(), emptySet(),
+        ImmutableMethodImplementation(3, code, emptyList(), emptyList()))
 
     // Offsets: outer read 0, branch 2; tray read 4, branch 6; vibrator 8;
     // three trailing instruction boundaries at 10, 11, 12.
