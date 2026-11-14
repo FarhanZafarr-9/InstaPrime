@@ -24,6 +24,9 @@ final class SwitchThumb extends Drawable {
     private boolean initialized;
     private boolean checked;
     private ValueAnimator transition;
+    private boolean restartPending;
+
+    void setRestartPending(boolean pending) { restartPending = pending; invalidateSelf(); }
 
     SwitchThumb(Context context, ScreenColors colors) {
         this.colors = colors;
@@ -81,13 +84,24 @@ final class SwitchThumb extends Drawable {
         float x = getBounds().exactCenterX(), y = getBounds().exactCenterY();
         float radius = Math.min(getBounds().width(), getBounds().height()) / 2f;
         canvas.drawCircle(x, y, radius, paint);
-        if (progress <= 0) return;
+        if (progress <= 0 && !restartPending) return;
         paint.setColor(enabled ? colors.accent : colors.switchOff);
-        paint.setAlpha(Math.round(alpha * progress));
+        if (restartPending && enabled && progress < 0.5f) paint.setColor(colors.dialog);
+        paint.setAlpha(restartPending ? alpha : Math.round(alpha * progress));
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(2 * density);
         paint.setStrokeCap(Paint.Cap.ROUND);
         paint.setStrokeJoin(Paint.Join.ROUND);
+        if (restartPending) {
+            float r = 4.5f * density;
+            canvas.drawArc(x - r, y - r, x + r, y + r, 35, 285, false, paint);
+            Path arrow = new Path();
+            arrow.moveTo(x + r - 3 * density, y - r + density);
+            arrow.lineTo(x + r, y - r + density);
+            arrow.lineTo(x + r, y - r + 4 * density);
+            canvas.drawPath(arrow, paint);
+            return;
+        }
         Path tick = new Path();
         tick.moveTo(x - 4 * density, y);
         tick.lineTo(x - density, y + 3 * density);

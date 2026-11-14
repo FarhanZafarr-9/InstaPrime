@@ -17,6 +17,7 @@ final class AnimatedSettingsSwitch extends Switch {
     private Motion motion;
     private ScreenColors colors;
     private SwitchThumb thumb;
+    private boolean restartPending;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     AnimatedSettingsSwitch(Context context) {
@@ -32,6 +33,7 @@ final class AnimatedSettingsSwitch extends Switch {
         if (colors == palette) return;
         colors = palette;
         thumb = new SwitchThumb(getContext(), palette);
+        thumb.setRestartPending(restartPending);
         setThumbDrawable(new InsetDrawable(thumb, 0, dp(6), 0, dp(6)));
         GradientDrawable track = new GradientDrawable() {
             @Override public boolean getPadding(Rect out) { out.set(dp(6), dp(6), dp(6), dp(6)); return true; }
@@ -79,6 +81,44 @@ final class AnimatedSettingsSwitch extends Switch {
     }
 
     void unbindMotion() { motion = null; }
+
+    void setRestartPending(boolean pending) {
+        restartPending = pending;
+        thumb.setRestartPending(pending);
+        invalidate();
+    }
+
+    boolean restartPending() { return restartPending; }
+
+    /** UI-only shortening keeps the original strings available to search and translations. */
+    static CharSequence summary(android.preference.Preference row) {
+        CharSequence text = row.getSummary();
+        app.hushgram.extension.shared.settings.Setting<?> setting =
+                app.hushgram.extension.shared.settings.Setting.getSettingFromPath(row.getKey());
+        if (setting == null || !setting.rebootApp || text == null) return text;
+        return compact(text.toString());
+    }
+
+    static String compact(String description) {
+        // Only application instructions; "until you restart" and other behavior stays intact.
+        String[] instructions = {"Restart Instagram to see the change.", "Restart Instagram to see a change.",
+                "Restart Instagram to see the change on Home.", "Restart Instagram to see it.",
+                "Restart Instagram to see them.", "Restart Instagram to apply these choices.",
+                "Instagram needs a restart to use it.",
+                "Restart Instagram after changing it.", "Restart Instagram after a change.",
+                "It shows from the next start.", "Shows from the next start.", "Needs a restart.", "Takes a restart."};
+        String text = description;
+        for (String instruction : instructions) {
+            text = text.replace(instruction, "");
+            String translated = app.hushgram.extension.shared.L10n.t(instruction);
+            if (!instruction.equals(translated)) text = text.replace(translated, "");
+        }
+        return text.replaceAll(" {2,}", " ").trim();
+    }
+
+    static boolean pending(android.preference.Preference row) {
+        return app.hushgram.extension.shared.settings.preference.AbstractPreferenceFragment.restartPending.contains(row.getKey());
+    }
 
     void bindMotion(Motion value) {
         motion = value;

@@ -3152,6 +3152,7 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         Preference card = statusCard;
         Context context = getContext();
         if (card != null && context != null) showStatus(card, context);
+        rebindRows();
         showRestart();
     }
 
@@ -7104,6 +7105,9 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             if (widget instanceof AnimatedSettingsSwitch) ((AnimatedSettingsSwitch) widget).bindMotion(motion);
             showAllText(view);
             ScreenColors.row(view, this);
+            if (widget instanceof AnimatedSettingsSwitch) {
+                ((AnimatedSettingsSwitch) widget).setRestartPending(AnimatedSettingsSwitch.pending(this));
+            }
             view.setAccessibilityDelegate(new RowSemantics(this, Switch.class));
         }
     }
@@ -9732,7 +9736,11 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
             }
             info.setClassName(role.getName());
             // A Switch role reads its own label instead of aggregating descendant TextViews.
-            CharSequence title = preference.getTitle(), summary = preference.getSummary();
+            CharSequence title = preference.getTitle(), summary = AnimatedSettingsSwitch.summary(preference);
+            if (AnimatedSettingsSwitch.pending(preference)) {
+                summary = TextUtils.isEmpty(summary) ? L10n.t("Restart required")
+                        : TextUtils.concat(summary, "\n", L10n.t("Restart required"));
+            }
             info.setContentDescription(TextUtils.isEmpty(summary) ? title : TextUtils.isEmpty(title)
                     ? summary : TextUtils.concat(title, "\n", summary));
             if (preference instanceof TwoStatePreference) {
