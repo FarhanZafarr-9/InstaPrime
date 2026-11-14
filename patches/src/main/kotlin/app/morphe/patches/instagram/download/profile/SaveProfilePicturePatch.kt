@@ -27,6 +27,7 @@ import app.morphe.patches.instagram.misc.extension.requireStatusMethod
 import app.morphe.patches.instagram.misc.settings.settingsPatch
 import app.morphe.patches.shared.compat.AppCompatibilities
 import app.morphe.util.ControlFlow
+import app.morphe.util.addInstructionsAtControlFlowLabel
 import app.morphe.util.literalReads
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
@@ -149,6 +150,7 @@ internal class ProfilePopupSite(
     val free: Int,
     val item: String,
     val fields: List<String>,
+    val populates: MethodReference,
 )
 
 /** The method that shows the menu, its three ways, the sheet's adder of a plain row and the stub that calls it. */
@@ -342,7 +344,7 @@ private fun BytecodePatchContext.findProfilePopup(
     }
     if (overwritten.isNotEmpty()) refuse("the newer helper or the popup's context is overwritten before the pop-up list gets its items")
     val free = method.freeLocalsAt(PROFILE_PICTURE_PATCH, index, 1, except = listOf(context, owner, popup, list)).single()
-    return ProfilePopupSite(index, list, context, owner, newer.user, free, item.type, fields)
+    return ProfilePopupSite(index, list, context, owner, newer.user, free, item.type, fields, handed)
 }
 
 /**
@@ -463,6 +465,14 @@ internal fun BytecodePatchContext.applyProfileMenus(menus: ProfileMenus) {
     """)
     // From the end, so an earlier site's index still holds when a later one's code goes in.
     val popup = menus.popup
+    // Style the populated native window; its adapter and action callbacks stay native.
+    val populate = mutableClassDefBy(popup.populates.definingClass).methods.single {
+        it.name == popup.populates.name && it.parameters() == listOf(LIST)
+    }
+    populate.code().indices.filter { populate.code()[it].opcode == Opcode.RETURN_VOID }.asReversed().forEach { at ->
+        populate.addInstructionsAtControlFlowLabel(at,
+            "invoke-static/range { p0 .. p0 }, $EXTENSION_PACKAGE/settings/StyledPopupMenu;->styleNative(Landroid/widget/PopupWindow;)V")
+    }
     val places = menus.sites.map { it.index to it }.plus(popup.index to null).sortedByDescending { it.first }
     for ((index, site) in places) {
         if (site == null) {
