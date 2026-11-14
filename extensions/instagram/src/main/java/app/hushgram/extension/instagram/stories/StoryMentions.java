@@ -1156,7 +1156,6 @@ public final class StoryMentions {
         GradientDrawable outline = new GradientDrawable();
         outline.setColor(Color.TRANSPARENT);
         outline.setCornerRadius(Dim.dp(12));
-        outline.setStroke(Dim.dp(1), colors.outline);
         close.setBackground(new RippleDrawable(ColorStateList.valueOf(ScreenColors.half(colors.heading)), outline, null));
         LinearLayout.LayoutParams wide = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -1267,7 +1266,6 @@ public final class StoryMentions {
         GradientDrawable surface = new GradientDrawable();
         surface.setColor(glass ? (colors.card & 0x00FFFFFF) | (ROW_GLASS_ALPHA << 24) : colors.card);
         surface.setCornerRadius(Dim.dp(12));
-        surface.setStroke(Dim.dp(1), glass ? (colors.light ? 0x80FFFFFF : 0x26FFFFFF) : colors.outline);
         row.setBackground(new RippleDrawable(ColorStateList.valueOf(ScreenColors.half(colors.heading)), surface, null));
         LinearLayout.LayoutParams place = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
