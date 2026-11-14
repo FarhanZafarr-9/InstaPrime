@@ -215,13 +215,13 @@ public final class PostInfo {
     private static LinearLayout factRows(Context themed, List<String> facts) {
         LinearLayout rows = new LinearLayout(themed);
         rows.setOrientation(LinearLayout.VERTICAL);
-        rows.setDividerDrawable(divider());
+        rows.setDividerDrawable(divider(themed));
         rows.setShowDividers(LinearLayout.SHOW_DIVIDER_MIDDLE);
         for (String fact : facts) {
             TextView row = new TextView(themed);
             if (rows.getChildCount() == 0) row.setId(android.R.id.message);
             row.setText(fact);
-            row.setTextColor(ScreenColors.DEFAULT.summary);
+            row.setTextColor(ScreenColors.forScreen(themed).summary);
             row.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
             row.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
             row.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
@@ -235,9 +235,9 @@ public final class PostInfo {
         return rows;
     }
 
-    private static GradientDrawable divider() {
+    private static GradientDrawable divider(Context themed) {
         GradientDrawable divider = new GradientDrawable();
-        divider.setColor(ScreenColors.DEFAULT.outline);
+        divider.setColor(ScreenColors.forScreen(themed).outline);
         divider.setSize(Dim.dp(1), Dim.dp(1));
         return divider;
     }
@@ -251,7 +251,7 @@ public final class PostInfo {
     static View copies(Context themed, Activity activity, Facts facts, AlertDialog dialog) {
         LinearLayout rows = new LinearLayout(themed);
         rows.setOrientation(LinearLayout.VERTICAL);
-        rows.setDividerDrawable(divider());
+        rows.setDividerDrawable(divider(themed));
         rows.setShowDividers(LinearLayout.SHOW_DIVIDER_MIDDLE | LinearLayout.SHOW_DIVIDER_END);
         String owner = facts.owner;
         if (owner != null) {
@@ -349,13 +349,13 @@ public final class PostInfo {
         TextView row = new Button(themed);
         row.setText(label);
         ScreenColors.styleAction(row, false);
-        row.setTextColor(ScreenColors.DEFAULT.summary);
-        row.setBackground(new RippleDrawable(ColorStateList.valueOf(ScreenColors.half(ScreenColors.DEFAULT.heading)),
+        row.setTextColor(ScreenColors.forScreen(themed).summary);
+        row.setBackground(new RippleDrawable(ColorStateList.valueOf(ScreenColors.half(ScreenColors.forScreen(themed).heading)),
                 null, null));
         row.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
         row.setPaddingRelative(0, Dim.dp(12), 0, Dim.dp(12));
         row.setCompoundDrawablePadding(Dim.dp(16));
-        row.setCompoundDrawablesRelative(copyIcon(), null, null, null);
+        row.setCompoundDrawablesRelative(copyIcon(themed), null, null, null);
         LinearLayout.LayoutParams place = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
         row.setLayoutParams(place);
@@ -369,10 +369,10 @@ public final class PostInfo {
         return row;
     }
 
-    private static Drawable copyIcon() {
-        GradientDrawable back = copyOutline();
-        GradientDrawable front = copyOutline();
-        front.setColor(ScreenColors.DEFAULT.dialog);
+    private static Drawable copyIcon(Context themed) {
+        GradientDrawable back = copyOutline(themed);
+        GradientDrawable front = copyOutline(themed);
+        front.setColor(ScreenColors.forScreen(themed).dialog);
         LayerDrawable copy = new LayerDrawable(new Drawable[]{back, front});
         copy.setLayerInset(0, 0, Dim.dp(6), Dim.dp(6), 0);
         copy.setLayerInset(1, Dim.dp(6), 0, 0, Dim.dp(6));
@@ -380,10 +380,10 @@ public final class PostInfo {
         return copy;
     }
 
-    private static GradientDrawable copyOutline() {
+    private static GradientDrawable copyOutline(Context themed) {
         GradientDrawable shape = new GradientDrawable();
         shape.setCornerRadius(Dim.dp(4));
-        shape.setStroke(Dim.dp(2), ScreenColors.DEFAULT.heading);
+        shape.setStroke(Dim.dp(2), ScreenColors.forScreen(themed).heading);
         return shape;
     }
 
