@@ -5,6 +5,7 @@
 package app.hushgram.extension.instagram.download;
 
 import app.hushgram.extension.instagram.settings.StyledPopupMenu;
+import app.hushgram.extension.instagram.settings.SettingsIcons;
 
 import android.app.Activity;
 import android.content.Context;
@@ -383,7 +384,16 @@ public final class ProfileExtras {
                 return;
             }
             PopupMenu menu = new StyledPopupMenu(button.getContext(), button);
-            for (int i = 0; i < entries.size(); i++) menu.getMenu().add(0, i, i, entries.get(i).label);
+            for (int i = 0; i < entries.size(); i++) {
+                ProfilePicture.Entry entry = entries.get(i);
+                String icon = entry.click instanceof ProfilePicture.Row ? "save"
+                        : entry.click instanceof ProfilePicture.ViewRow ? "view"
+                        : entry.click instanceof SavedProfiles.Row ? (((SavedProfiles.Row) entry.click).saved ? "remove" : "save")
+                        : entry.click instanceof SavedProfiles.OpenRow ? "profiles"
+                        : entry.click instanceof ProfilePicture.CopyRow ? (((ProfilePicture.CopyRow) entry.click).bio ? "bio" : "username")
+                        : "text";
+                menu.getMenu().add(0, i, i, entry.label).setIcon(SettingsIcons.profileAction(context, icon));
+            }
             menu.setOnMenuItemClickListener(item -> {
                 try {
                     entries.get(item.getItemId()).click.onClick(button);

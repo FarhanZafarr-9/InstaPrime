@@ -29,8 +29,22 @@ import java.util.Map;
  * the settings page leads with one: its own, one picked by the words of its key, or its
  * category's. They only decorate, so a screen reader never hears them.
  */
-final class SettingsIcons {
+public final class SettingsIcons {
     private SettingsIcons() { }
+
+    /** Material icons shared by profile actions; labels and native callbacks stay in their owner. */
+    public static Drawable profileAction(Context context, String action) {
+        String data;
+        switch (action) {
+            case "save": data = DOWNLOADS; break;
+            case "view": data = SEARCH; break;
+            case "remove": data = DELETE; break;
+            case "profiles": data = PERSON; break;
+            case "username": data = PERSON; break;
+            default: data = WRITING; break;
+        }
+        return icon(context, data, ScreenColors.forScreen(context).title);
+    }
 
     /** Each icon decoded once. The page is built on the main thread, and every row carries one. */
     private static final Map<String, Bitmap> DECODED = new HashMap<>();

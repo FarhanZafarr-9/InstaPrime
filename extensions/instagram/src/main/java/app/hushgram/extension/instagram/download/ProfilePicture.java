@@ -97,7 +97,7 @@ public final class ProfilePicture {
      * their switch is on, each when the account has one. [context] is the menu's. Never throws.
      */
     public static void offer(Object sheet, Object user, Context context) {
-        offer(sheet, user, context, NATIVE, SAVE, VIEWER);
+        // Profile actions live exclusively in ProfileExtras; keep the injected ABI for older hooks.
     }
 
     /**
@@ -106,7 +106,7 @@ public final class ProfilePicture {
      * as a copy of a plain row the list already has. Never throws.
      */
     public static void offerPopup(List<?> items, Object user, Context context) {
-        offer(items, user, context, popupReads(NATIVE), SAVE, VIEWER);
+        // Do not duplicate the extra menu's actions in Instagram's original menu.
     }
 
     /** [reads] with the row adder swapped for one that appends to a pop-up list's items. */
