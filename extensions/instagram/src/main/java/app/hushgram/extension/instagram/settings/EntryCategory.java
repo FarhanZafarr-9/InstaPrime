@@ -53,6 +53,13 @@ final class EntryCategory {
             return true;
         });
         entry.addPreference(descriptions);
+        SwitchPreference bulk = toggle(context, Settings.SHOW_ENABLE_ALL, L10n.t("Show Enable all controls"),
+                L10n.t("Offers one switch to change all available switches on a settings page."));
+        bulk.setOnPreferenceChangeListener((preference, value) -> {
+            Utils.runOnMainThread(page::refreshEnableAll);
+            return true;
+        });
+        entry.addPreference(bulk);
         SwitchPreference black = toggle(context, Settings.SETTINGS_BLACK_LOOK, L10n.t("Black settings page"),
                 L10n.t("Use black backgrounds for settings rows and dialogs."));
         black.setOnPreferenceChangeListener((preference, value) -> {

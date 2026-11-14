@@ -1440,8 +1440,10 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         showLock();
     }
 
+    void refreshEnableAll() { filterSettings(); }
+
     private Toggle enableAllRow(SettingsNavigation.Node page) {
-        if (!page.children.isEmpty()) return null;
+        if (!Settings.SHOW_ENABLE_ALL.savedValue() || !page.children.isEmpty()) return null;
         List<TwoStatePreference> toggles = page.toggles();
         int available = 0;
         boolean checked = true;

@@ -161,6 +161,10 @@ public class Settings extends BaseSettings {
     public static final BooleanSetting DESCRIPTIONS_BEHIND_INFO =
             new BooleanSetting("hushgram_descriptions_behind_info", FALSE);
 
+    /** Optional bulk controls on settings pages; the UI reads the saved choice through Pause. */
+    public static final BooleanSetting SHOW_ENABLE_ALL =
+            new BooleanSetting("instaprime_show_enable_all", FALSE);
+
     /**
      * Optional black rows and dialogs (#455). InstaPrime keeps its wallpaper-derived tones by
      * default. A settings-page choice, read saved even during Pause.
