@@ -369,6 +369,8 @@ public class GridJumpTest {
         Dialog dialog = ShadowDialog.getLatestDialog();
         assertTrue(String.valueOf(dialog), dialog instanceof DatePickerDialog);
         assertTrue(dialog.isShowing());
+        assertEquals("date dialog uses the shared action layout", android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                ((DatePickerDialog) dialog).getButton(android.content.DialogInterface.BUTTON_POSITIVE).getLayoutParams().width);
         assertEquals(GridJump.MEDIA_EPOCH_MS, ((DatePickerDialog) dialog).getDatePicker().getMinDate());
         assertTrue(((DatePickerDialog) dialog).getDatePicker().getMaxDate() <= System.currentTimeMillis());
         assertTrue("the tap itself asks for nothing", asked.isEmpty());

@@ -261,6 +261,7 @@ public final class GridJump {
             dialog.getDatePicker().setMinDate(MEDIA_EPOCH_MS);
             dialog.getDatePicker().setMaxDate(now.getTimeInMillis());
             dialog.show();
+            app.hushgram.extension.instagram.settings.ScreenColors.dialog(dialog);
         } catch (Throwable failure) {
             HookStatus.threw(FamilyNames.PROFILE_GRID_JUMP, "calendar tap", failure);
             Logger.printException(() -> "Jump to a date: the button's tap failed", failure);
