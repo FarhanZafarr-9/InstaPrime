@@ -48,6 +48,7 @@ internal const val LAUNCH_MARK = "hushgram_launch_mark"
 internal const val SPLASH_ICON = "android:windowSplashScreenAnimatedIcon"
 internal const val SPLASH_BRANDING = "android:windowSplashScreenBrandingImage"
 internal const val SPLASH_BACKGROUND = "android:windowSplashScreenBackground"
+internal const val SPLASH_ICON_BACKGROUND = "android:windowSplashScreenIconBackgroundColor"
 
 /** The version of [LAUNCH_THEME] filled with one AccentHue's color, as LaunchScreen names it. */
 internal fun launchTheme(hue: String): String = "${LAUNCH_THEME}_$hue"
@@ -83,10 +84,9 @@ private const val USER_SESSION = "Lcom/instagram/common/session/UserSession;"
 private const val BOXED_INT = "Ljava/lang/Integer;"
 
 /**
- * HushGram's mark, drawn from vectors so it's sharp on every screen: the pink to plum tile of the
- * app's icon with its white H and the ribbon through it. Android 12's launch screen shows an icon in
- * a 160dp square, masked to the middle two thirds, and Instagram's own glyph is 61.333dp across, so
- * the mark is 64dp, centered.
+ * InstaPrime's black camera on its white tile, centered at 64dp inside a transparent 160dp vector.
+ * Explicit outer dimensions keep Android's splash renderer from stretching the tile to fill its
+ * icon slot; the transparent icon backdrop also leaves the selected screen fill visible around it.
  */
 internal val LAUNCH_MARK_XML = INSTA_PRIME_LAUNCH_XML
 
@@ -127,7 +127,10 @@ internal fun addLaunchTheme(styles: Document) {
         }
         styles.documentElement.appendChild(style)
     }
-    add(LAUNCH_THEME, "@style/$INSTAGRAM_LAUNCH_THEME", listOf(SPLASH_ICON to "@drawable/$LAUNCH_MARK", SPLASH_BRANDING to "@null"))
+    add(LAUNCH_THEME, "@style/$INSTAGRAM_LAUNCH_THEME", listOf(
+        SPLASH_ICON to "@drawable/$LAUNCH_MARK", SPLASH_BRANDING to "@null",
+        SPLASH_ICON_BACKGROUND to "@android:color/transparent",
+    ))
     for ((hue, color) in LAUNCH_FILLS) add(launchTheme(hue), "@style/$LAUNCH_THEME", listOf(SPLASH_BACKGROUND to color))
 }
 

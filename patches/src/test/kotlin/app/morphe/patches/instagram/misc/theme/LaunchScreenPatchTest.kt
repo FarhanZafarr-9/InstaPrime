@@ -49,7 +49,8 @@ class LaunchScreenPatchTest {
         val added = themes.single { it.getAttribute("name") == LAUNCH_THEME }
         assertEquals("@style/$INSTAGRAM_LAUNCH_THEME", added.getAttribute("parent"))
         assertEquals(
-            listOf(SPLASH_ICON to "@drawable/$LAUNCH_MARK", SPLASH_BRANDING to "@null"),
+            listOf(SPLASH_ICON to "@drawable/$LAUNCH_MARK", SPLASH_BRANDING to "@null",
+                SPLASH_ICON_BACKGROUND to "@android:color/transparent"),
             added.elements("item").map { it.getAttribute("name") to it.textContent },
         )
         assertEquals(
@@ -116,24 +117,22 @@ class LaunchScreenPatchTest {
         """)))
     }
 
-    /** The mark is a tile and the H drawn from vectors, each 64dp and centered, as Instagram's glyph is. */
+    /** The 64dp brand tile has explicit transparent padding within Android's 160dp icon canvas. */
     @Test
     fun theMarkIsATileAndAVectorCentered() {
         val mark = parse(LAUNCH_MARK_XML)
-        assertEquals("layer-list", mark.documentElement.tagName)
-        val items = mark.documentElement.elements("item")
-        assertEquals(2, items.size)
-        items.forEach { item ->
-            assertEquals("center", item.getAttribute("android:gravity"))
-            assertEquals("64dp", item.getAttribute("android:width"))
-            assertEquals("64dp", item.getAttribute("android:height"))
-        }
-        assertEquals("#FFFFFFFF", items[0].elements("solid").single().getAttribute("android:color"))
-        assertEquals("9dp", items[0].elements("corners").single().getAttribute("android:radius"))
-        val vector = items[1].elements("vector").single()
-        assertEquals("100", vector.getAttribute("android:viewportWidth"))
-        assertEquals(INSTA_PRIME_CAMERA_PATH, vector.elements("path").single().getAttribute("android:pathData"))
-        assertEquals("#FF000000", vector.elements("path").single().getAttribute("android:fillColor"))
+        val vector = mark.documentElement
+        assertEquals("vector", vector.tagName)
+        assertEquals("160dp", vector.getAttribute("android:width"))
+        assertEquals("160dp", vector.getAttribute("android:height"))
+        assertEquals("160", vector.getAttribute("android:viewportWidth"))
+        val group = vector.elements("group").single()
+        assertEquals("48", group.getAttribute("android:translateX"))
+        assertEquals("48", group.getAttribute("android:translateY"))
+        assertEquals("0.64", group.getAttribute("android:scaleX"))
+        assertEquals(INSTA_PRIME_CAMERA_PATH, group.elements("path").single().getAttribute("android:pathData"))
+        assertEquals("#FFFFFFFF", vector.elements("path").first().getAttribute("android:fillColor"))
+        assertEquals("#FF000000", group.elements("path").single().getAttribute("android:fillColor"))
     }
 
     /**
@@ -182,7 +181,8 @@ class LaunchScreenPatchTest {
                     assertEquals("$code: parent", "@style/$INSTAGRAM_LAUNCH_THEME", theme.getAttribute("parent"))
                     assertEquals(
                         "$code: items",
-                        listOf(SPLASH_ICON to "@drawable/$LAUNCH_MARK", SPLASH_BRANDING to "@null"),
+                        listOf(SPLASH_ICON to "@drawable/$LAUNCH_MARK", SPLASH_BRANDING to "@null",
+                            SPLASH_ICON_BACKGROUND to "@android:color/transparent"),
                         theme.elements("item").map { it.getAttribute("name") to it.textContent.trim() },
                     )
                     for ((hue, fill) in LAUNCH_FILLS) {
@@ -195,8 +195,8 @@ class LaunchScreenPatchTest {
                         )
                     }
                     val mark = parse(File(res, "drawable/$LAUNCH_MARK.xml").readText()).documentElement
-                    assertEquals("$code: the mark", "layer-list", mark.tagName)
-                    assertEquals("$code: the mark's H", 3, mark.elements("path").size)
+                    assertEquals("$code: the mark", "vector", mark.tagName)
+                    assertEquals("$code: brand paths", 2, mark.elements("path").size)
                 }
             } finally {
                 work.deleteRecursively()

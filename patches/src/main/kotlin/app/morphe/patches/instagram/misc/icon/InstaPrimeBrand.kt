@@ -24,20 +24,13 @@ internal fun instaPrimeForeground(tint: String) = """
 </vector>
 """.trimStart()
 
-/** White tile with gently rounded corners, matching the settings entry and shortcut icon. */
+/** A 64dp white tile within a transparent 160dp splash canvas; the outer area never paints a card. */
 internal val INSTA_PRIME_LAUNCH_XML = """
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:gravity="center" android:width="64dp" android:height="64dp">
-        <shape android:shape="rectangle">
-            <corners android:radius="9dp" />
-            <solid android:color="#FFFFFFFF" />
-        </shape>
-    </item>
-    <item android:gravity="center" android:width="64dp" android:height="64dp">
-        <vector android:width="64dp" android:height="64dp" android:viewportWidth="100" android:viewportHeight="100">
-            <path android:fillColor="#FF000000" android:fillType="evenOdd" android:pathData="$INSTA_PRIME_CAMERA_PATH" />
-        </vector>
-    </item>
-</layer-list>
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="160dp" android:height="160dp" android:viewportWidth="160" android:viewportHeight="160">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M57,48H103A9,9 0,0 1,112,57V103A9,9 0,0 1,103,112H57A9,9 0,0 1,48,103V57A9,9 0,0 1,57,48Z" />
+    <group android:translateX="48" android:translateY="48" android:scaleX="0.64" android:scaleY="0.64">
+        <path android:fillColor="#FF000000" android:fillType="evenOdd" android:pathData="$INSTA_PRIME_CAMERA_PATH" />
+    </group>
+</vector>
 """.trimStart()
