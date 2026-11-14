@@ -238,7 +238,9 @@ public class StyledPopupMenu extends PopupMenu {
             boolean accent = Settings.THEME_NATIVE_POPUPS.get(), black = SettingsStatus.pureBlack();
             ScreenColors colors = accent ? ScreenColors.forScreen(content.getContext())
                     : black ? ScreenColors.BLACK : ScreenColors.forScreen(content.getContext());
-            Integer tint = accent ? colors.dialog : black ? Color.BLACK : null;
+            Integer tint = null;
+            if (accent) tint = colors.dialog;
+            else if (black) tint = Color.BLACK;
             NativeStyle style = nativeStyles.get(content);
             if (style == null) {
                 style = new NativeStyle(content);
