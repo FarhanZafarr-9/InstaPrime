@@ -4,6 +4,9 @@
  */
 package app.morphe.patches.instagram.direct.gestures
 
+import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
+import app.morphe.patcher.patch.classDefBy as globalClassDefBy
+
 import app.morphe.ExtensionDex
 import app.morphe.Fixtures
 import app.morphe.PatchContexts
@@ -90,26 +93,26 @@ class MessageGesturesHookTest {
             val timing = context.messageTiming(site)
             val originalTap = site.tap.code()
             val originalHold = site.hold.code().map(::reference)
-            val owner = context.classDefBy(site.tap.definingClass)
+            val owner = globalClassDefBy(site.tap.definingClass)
             val otherMethods = owner.methods.filter { it.name != site.tap.name }.associate { it.name to it.code().map(::reference) }
             context.applyMessageGestures(site)
             context.applyMessageTiming(site, timing)
-            val tap = context.mutableClassDefBy(site.tap.definingClass).methods.single { it.name == site.tap.name }.code()
+            val tap = globalMutableClassDefBy(site.tap.definingClass).methods.single { it.name == site.tap.name }.code()
             assertEquals(originalTap.size + 4, tap.size)
             assertEquals("$GESTURES->tap(Ljava/lang/Object;)Z", reference(tap.first()))
-            val after = context.mutableClassDefBy(site.tap.definingClass)
+            val after = globalMutableClassDefBy(site.tap.definingClass)
             for ((name, body) in otherMethods) assertEquals("${bundle.name}: native $name changed", body,
                 after.methods.single { it.name == name }.code().map(::reference))
             assertEquals(originalHold, after.methods.single { it.name == site.hold.name }.code().map(::reference))
-            val factory = context.mutableClassDefBy(site.factory.definingClass).methods.single { it.name == site.factory.name }.code()
+            val factory = globalMutableClassDefBy(site.factory.definingClass).methods.single { it.name == site.factory.name }.code()
             assertEquals(3, factory.count { reference(it) == "$GESTURES->actions(Ljava/util/List;)Ljava/util/List;" })
             assertEquals(1, factory.count { reference(it) == "$GESTURES->reactions(Z)Z" })
             assertEquals(1, factory.count { reference(it) == "$GESTURES->floatingActions(Z)Z" })
-            val node = context.mutableClassDefBy(timing.flag.definingClass)
+            val node = globalMutableClassDefBy(timing.flag.definingClass)
             assertTrue(node.methods.single { it.name == "instaprimeDoubleTapEnabled" }.code().any {
                 reference(it) == "$GESTURES->doubleTapEnabled(ZLjava/lang/Object;)Z"
             })
-            val bridge = context.mutableClassDefBy(GESTURES).methods.single { it.name == "openNative" }.code()
+            val bridge = globalMutableClassDefBy(GESTURES).methods.single { it.name == "openNative" }.code()
             assertTrue(bridge.any { reference(it) == site.hold.text() })
             assertTrue(bridge.any { reference(it) == site.eligible.text() })
             assertTrue(bridge.any { reference(it) == site.blocked.text() })

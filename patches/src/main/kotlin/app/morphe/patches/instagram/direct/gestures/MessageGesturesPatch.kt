@@ -4,6 +4,10 @@
  */
 package app.morphe.patches.instagram.direct.gestures
 
+import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
+import app.morphe.patcher.patch.classDefByOrNull as globalClassDefByOrNull
+import app.morphe.patcher.patch.classDefBy as globalClassDefBy
+
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
@@ -47,7 +51,7 @@ private const val MODEL = "Lcom/instagram/direct/messagethread/messageactions/mo
 private const val LIST = "Ljava/util/List;"
 private const val FUNCTION = "Lkotlin/jvm/functions/Function0;"
 
-@Suppress("unused")
+@Suppress("unused", "DEPRECATION") // Shared helpers still require the legacy execute context.
 val messageGesturesPatch = bytecodePatch(
     name = "Message tap menus",
     description = "Lets a single tap on a chat message open its native actions, reactions, or both. " +
@@ -85,6 +89,7 @@ internal class MessageGestureSite(
 )
 
 /** Discover the delegate from its call to the native double-tap helper, never by obfuscated names. */
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.findMessageGestures(): MessageGestureSite {
     val helpers = classesHolding("should_show_like_direct_message_count").flatMap { it.methods }
         .filter { method -> method.code().any { it.string() == "double_tap" } &&
@@ -121,29 +126,29 @@ internal fun BytecodePatchContext.findMessageGestures(): MessageGestureSite {
     val blocked = guards.singleOrNull { it.definingClass != data } ?: refuse("no unique controller guard")
     val controller = code.mapNotNull { it.field() }.filter { it.type == blocked.definingClass }.distinctBy { it.toString() }.singleOrNull()
         ?: refuse("no controller for menu availability")
-    val messageType = classDefBy(data).methods.singleOrNull { method ->
+    val messageType = globalClassDefBy(data).methods.singleOrNull { method ->
         method.parameterTypes.isEmpty() && method.returnType in helper.types() &&
-            classDefByOrNull(method.returnType)?.methods?.any { it.name == "<clinit>" && it.code().any { ins -> ins.string() == "text" } } == true
+            globalClassDefByOrNull(method.returnType)?.methods?.any { it.name == "<clinit>" && it.code().any { ins -> ins.string() == "text" } } == true
     } ?: refuse("no unique native message type reader")
-    val typeName = classDefBy(messageType.returnType).fields.singleOrNull {
+    val typeName = globalClassDefBy(messageType.returnType).fields.singleOrNull {
         !AccessFlags.STATIC.isSet(it.accessFlags) && it.type == "Ljava/lang/String;"
     } ?: refuse("no unique native message type name")
     for (type in listOf(tap.definingClass, data, blocked.definingClass, messageType.returnType)) {
-        if (!AccessFlags.PUBLIC.isSet(classDefBy(type).accessFlags)) refuse("native bridge type $type is not public")
+        if (!AccessFlags.PUBLIC.isSet(globalClassDefBy(type).accessFlags)) refuse("native bridge type $type is not public")
     }
     for (field in listOf(provider, controller, typeName)) {
-        val declaration = classDefBy(field.definingClass).fields.singleOrNull { it.name == field.name && it.type == field.type }
+        val declaration = globalClassDefBy(field.definingClass).fields.singleOrNull { it.name == field.name && it.type == field.type }
             ?: refuse("native bridge field $field is absent")
         if (!AccessFlags.PUBLIC.isSet(declaration.accessFlags)) refuse("native bridge field $field is not public")
     }
     for (call in listOf(eligible, blocked, messageType)) {
-        val declaration = classDefBy(call.definingClass).methods.singleOrNull {
+        val declaration = globalClassDefBy(call.definingClass).methods.singleOrNull {
             it.name == call.name && it.types() == call.types() && it.returnType == call.returnType
         } ?: refuse("native bridge method ${call.text()} is absent")
         if (!AccessFlags.PUBLIC.isSet(declaration.accessFlags)) refuse("native bridge method ${call.text()} is not public")
     }
 
-    val factories = classDefBy(MODEL).methods.filter { method ->
+    val factories = globalClassDefBy(MODEL).methods.filter { method ->
         AccessFlags.STATIC.isSet(method.accessFlags) && method.returnType == MODEL &&
             method.code().any { it.opcode == Opcode.NEW_INSTANCE && ((it as ReferenceInstruction).reference as TypeReference).type == MODEL }
     }
@@ -169,9 +174,9 @@ internal fun BytecodePatchContext.findMessageGestures(): MessageGestureSite {
     val floatingWrite = factory.code().indices.singleOrNull { at -> factory.code()[at].opcode == Opcode.IPUT_BOOLEAN &&
         factory.code()[at].field()?.toString() == floatingField.toString()
     } ?: refuse("floating action layout flag is not set once")
-    val extension = classDefBy(GESTURES)
+    val extension = globalClassDefBy(GESTURES)
     if (extension.methods.none { it.name == "openNative" && it.types() == listOf("Ljava/lang/Object;") && it.returnType == "Z" }) refuse("native bridge absent")
-    val touch = classDefBy(FRAGMENT_ACTIVITY).methods.singleOrNull {
+    val touch = globalClassDefBy(FRAGMENT_ACTIVITY).methods.singleOrNull {
         it.name == "dispatchTouchEvent" && it.types() == listOf("Landroid/view/MotionEvent;") && it.returnType == "Z" && it.implementation != null
     } ?: refuse("no native activity touch dispatcher")
     val actionWrites = listOf(writes[0], writes[1], writes[4])
@@ -225,8 +230,9 @@ internal fun findReactionTrayGate(fragment: Method): FieldReference {
         ?: refuse("expected one native reaction tray control-flow gate, found ${innermost.size} among ${gates.size}")
 }
 
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.applyMessageGestures(site: MessageGestureSite) {
-    val extension = mutableClassDefBy(GESTURES)
+    val extension = globalMutableClassDefBy(GESTURES)
     extension.methods.single { it.name == "textDelegate" }.addInstructions(0, """
         check-cast p0, ${site.tap.definingClass}
         iget-object p0, p0, ${site.provider}
@@ -310,7 +316,8 @@ internal fun BytecodePatchContext.applyMessageGestures(site: MessageGestureSite)
     }
 }
 
-private fun BytecodePatchContext.mutable(method: Method): MutableMethod = mutableClassDefBy(method.definingClass).methods.single {
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
+private fun BytecodePatchContext.mutable(method: Method): MutableMethod = globalMutableClassDefBy(method.definingClass).methods.single {
     it.name == method.name && it.types() == method.types() && it.returnType == method.returnType
 }
 private fun Method.code(): List<Instruction> = implementation?.instructions?.toList().orEmpty()

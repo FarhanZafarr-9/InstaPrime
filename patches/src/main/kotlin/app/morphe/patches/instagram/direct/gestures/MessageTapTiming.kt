@@ -1,5 +1,9 @@
 package app.morphe.patches.instagram.direct.gestures
 
+import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
+import app.morphe.patcher.patch.classDefByOrNull as globalClassDefByOrNull
+import app.morphe.patcher.patch.classDefBy as globalClassDefBy
+
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
@@ -20,13 +24,14 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 
 internal data class MessageTiming(val method: Method, val at: Int, val flag: FieldReference, val delegate: FieldReference)
 
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.messageTiming(site: MessageGestureSite): MessageTiming {
     fun refuse(): Nothing = throw PatchException("Message tap menus: no unique message double-tap recognition flag")
-    val interfaces = classDefBy(site.tap.definingClass).interfaces
+    val interfaces = globalClassDefBy(site.tap.definingClass).interfaces
     val delegates = interfaces.flatMap { type -> classesCalling(type, site.tap.name).flatMap { it.methods } }
         .flatMap { it.implementation?.instructions?.toList().orEmpty() }
         .mapNotNull { (it as? ReferenceInstruction)?.reference as? FieldReference }
-        .filter { field -> field.type in interfaces && classDefByOrNull(field.definingClass)?.methods?.any {
+        .filter { field -> field.type in interfaces && globalClassDefByOrNull(field.definingClass)?.methods?.any {
             it.name == "<init>" && it.parameterTypes.map(Any::toString) ==
                 listOf(field.type, "Ljava/lang/Object;", "Z", "Z")
         } == true }.distinctBy { it.toString() }
@@ -48,9 +53,10 @@ internal fun BytecodePatchContext.messageTiming(site: MessageGestureSite): Messa
     return candidates.singleOrNull() ?: refuse()
 }
 
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.applyMessageTiming(site: MessageGestureSite, timing: MessageTiming) {
     val name = "instaprimeDoubleTapEnabled"
-    val node = mutableClassDefBy(timing.flag.definingClass)
+    val node = globalMutableClassDefBy(timing.flag.definingClass)
     if (node.methods.any { it.name == name }) throw PatchException("Message tap menus: duplicate timing bridge")
     node.methods.add(ImmutableMethod(node.type, name, emptyList(), "Z", AccessFlags.PUBLIC.value,
         emptySet(), emptySet(), ImmutableMethodImplementation(3, emptyList(), null, null)).toMutable().apply {
@@ -65,7 +71,7 @@ internal fun BytecodePatchContext.applyMessageTiming(site: MessageGestureSite, t
             return v1
         """)
     })
-    val method = mutableClassDefBy(timing.method.definingClass).methods.single {
+    val method = globalMutableClassDefBy(timing.method.definingClass).methods.single {
         it.name == timing.method.name && it.parameterTypes == timing.method.parameterTypes
     }
     val read = method.implementation!!.instructions.toList()[timing.at] as TwoRegisterInstruction
