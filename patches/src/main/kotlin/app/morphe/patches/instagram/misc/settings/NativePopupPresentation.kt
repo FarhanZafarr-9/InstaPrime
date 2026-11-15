@@ -2,6 +2,7 @@
 package app.morphe.patches.instagram.misc.settings
 
 import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
+import app.morphe.patcher.patch.classDefByOrNull as globalClassDefByOrNull
 
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
@@ -27,6 +28,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
+import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
@@ -37,7 +39,7 @@ private const val WINDOW = "Landroid/widget/PopupWindow;"
 private const val SESSION = "Lcom/instagram/common/session/UserSession;"
 internal data class NativePopupChoice(val method: Method, val results: Map<Int, Boolean>)
 internal data class NativePopupPlan(val choices: List<NativePopupChoice>, val populations: List<Method>,
-    val primary: Method, val primaryAt: Int, val more: Method, val inbox: Method)
+    val primary: Method, val primaryAt: Int, val more: Method, val inbox: Method, val primaryX: Method)
 
 @Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.nativePopupPlan(): NativePopupPlan {
@@ -88,7 +90,16 @@ internal fun BytecodePatchContext.nativePopupPlan(): NativePopupPlan {
     val primaryAt = primary.popupCode().indices.singleOrNull { at -> primary.popupCode()[at].popupCall()?.let {
         it.definingClass == renderer.type && it.parameterTypes.map(Any::toString) == listOf("Ljava/util/List;")
     } == true } ?: refuse("primary message popup population changed")
-    return NativePopupPlan(choices, populations, primary, primaryAt, more, inbox)
+    val primaryX = primary.popupCode().filter { it.opcode == Opcode.NEW_INSTANCE }.mapNotNull {
+        val type = ((it as? ReferenceInstruction)?.reference as? TypeReference)?.type ?: return@mapNotNull null
+        val owner = globalClassDefByOrNull(type) ?: return@mapNotNull null
+        if (owner.fields.none { field -> field.type == renderer.type }) return@mapNotNull null
+        owner.superclass?.let { parent -> globalClassDefByOrNull(parent) }
+    }.flatMap { it.methods }.filter {
+        it.returnType == "I" && it.parameterTypes.map(Any::toString) ==
+            listOf("Landroid/view/View;", "Landroidx/slidingpanelayout/widget/SlidingPaneLayout;")
+    }.distinctBy { it.toString() }.singleOrNull() ?: refuse("no unique primary horizontal position")
+    return NativePopupPlan(choices, populations, primary, primaryAt, more, inbox, primaryX)
 }
 
 @Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
@@ -103,6 +114,14 @@ internal fun BytecodePatchContext.applyNativePopupPlan(plan: NativePopupPlan) {
     }
     primary.addInstructionsAtControlFlowLabel(plan.primaryAt + 1,
         "invoke-static/range {v$popupRegister .. v$popupRegister}, $position->remember(Landroid/widget/PopupWindow;)V")
+    val primaryX = globalMutableClassDefBy(plan.primaryX.definingClass).methods.single { it.toString() == plan.primaryX.toString() }
+    primaryX.popupCode().withIndex().filter { it.value.opcode == Opcode.RETURN }.asReversed().forEach { (at, instruction) ->
+        val result = (instruction as OneRegisterInstruction).registerA
+        primaryX.addInstructionsAtControlFlowLabel(at, """
+            invoke-static/range {v$result .. v$result}, $position->primaryX(I)I
+            move-result v$result
+        """)
+    }
     for (choice in plan.choices) {
         val method = globalMutableClassDefBy(choice.method.definingClass).methods.single {
             it.name == choice.method.name && it.parameterTypes == choice.method.parameterTypes && it.returnType == choice.method.returnType

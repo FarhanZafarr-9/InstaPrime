@@ -20,7 +20,7 @@ class NativePopupPresentationTest {
         val path = System.getenv("HUSHGRAM_GESTURE_APK")
         assumeTrue("HUSHGRAM_GESTURE_APK is unset", !path.isNullOrBlank())
         // Original 454 fixture: presenters, shared gate and renderer only.
-        val classes = FixtureDex.classes(File(path!!), setOf("LX/0GKB;", "LX/0Gjr;", "LX/0NSr;", "LX/01SB;", "LX/01SD;", "LX/0hgO;", "LX/0Om0;", "LX/0I3u;")).values
+        val classes = FixtureDex.classes(File(path!!), setOf("LX/0GKB;", "LX/0Gjr;", "LX/0NSr;", "LX/0Iof;", "LX/0LJp;", "LX/01SB;", "LX/01SD;", "LX/0hgO;", "LX/0Om0;", "LX/0I3u;")).values
         val context = PatchContexts.of(classes)
         val plan = context.nativePopupPlan()
         assertEquals(3, plan.choices.size)
@@ -35,6 +35,12 @@ class NativePopupPresentationTest {
         assertEquals(4, plan.populations.size)
         val gate = classes.single { it.type == "LX/0Om0;" }.methods.associate { it.toString() to it.code() }
         context.applyNativePopupPlan(plan)
+        val positioned = globalMutableClassDefBy(plan.primaryX.definingClass).methods.single { it.toString() == plan.primaryX.toString() }
+        assertEquals(plan.primaryX.implementation!!.registerCount, positioned.implementation!!.registerCount)
+        assertEquals(plan.primaryX.implementation!!.instructions.count { it.opcode == Opcode.RETURN },
+            positioned.implementation!!.instructions.count {
+                ((it as? ReferenceInstruction)?.reference?.toString())?.endsWith("MessageMenuPosition;->primaryX(I)I") == true
+            })
         val anchorBridge = globalMutableClassDefBy("LX/0hgO;").methods.single { it.name == "instaprimeInboxAnchor" }
         assertEquals(listOf("LX/0hgO;->A00:I", "LX/0hgO;->A01:I"),
             anchorBridge.implementation!!.instructions.filter { it.opcode == Opcode.IPUT }.map {
