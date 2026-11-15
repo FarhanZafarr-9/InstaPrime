@@ -4,6 +4,8 @@
  */
 package app.morphe.patches.instagram.direct.plusmenu
 
+import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
+
 import app.morphe.ExtensionDex
 import app.morphe.Fixtures
 import app.morphe.PatchContexts
@@ -103,7 +105,7 @@ class ChatPlusMenuHookTest {
         val empty = context.findEmptyPlusMenu()
         assertTrue("$label: reads this item's actual overflow list", empty.field.endsWith(":Ljava/util/List;"))
         context.hideEmptyPlusMenu(empty)
-        val availability = context.mutableClassDefBy(empty.owner).methods.single {
+        val availability = globalMutableClassDefBy(empty.owner).methods.single {
             it.name == empty.method && it.parameterTypes.map(Any::toString) == empty.parameters
         }.code()
         assertEquals("$label: empty menu hook once", 1, availability.count {
@@ -113,7 +115,7 @@ class ChatPlusMenuHookTest {
         val buttonFields = context.plusButtonFields(site)
         assertEquals("$label: controller, plus controller, plus icon", 3, buttonFields.size)
         context.readPlusButton(buttonFields)
-        val buttonReader = context.mutableClassDefBy(PLUS_MENU).methods.single { it.name == "button" }.code()
+        val buttonReader = globalMutableClassDefBy(PLUS_MENU).methods.single { it.name == "button" }.code()
         for (field in buttonFields) assertTrue("$label: reads verified field $field", buttonReader.any {
             it.reference() == field.toString()
         })
@@ -123,7 +125,7 @@ class ChatPlusMenuHookTest {
         }.code()
         context.handPlusMenu(site)
 
-        val patched = context.mutableClassDefBy(site.type).methods.single {
+        val patched = globalMutableClassDefBy(site.type).methods.single {
             it.name == site.name && it.parameterTypes.map(CharSequence::toString) == site.parameters
         }
         val code = patched.code()
@@ -139,12 +141,12 @@ class ChatPlusMenuHookTest {
         assertTrue("$label: the list and the spare register are low", site.list < 16 && site.scratch < 16)
 
         context.removeEmptyComposerItem(site, empty)
-        val filtered = context.mutableClassDefBy(site.type).methods.single {
+        val filtered = globalMutableClassDefBy(site.type).methods.single {
             it.name == site.name && it.parameterTypes.map(Any::toString) == site.parameters
         }.code()
         assertEquals("$label: filter every composer return", filtered.count { it.opcode == Opcode.RETURN_OBJECT },
             filtered.count { it.reference() == "$PLUS_MENU->composer(Ljava/util/List;)Ljava/util/List;" })
-        val reader = context.mutableClassDefBy(PLUS_MENU).methods.single { it.name == "emptyMore" }.code()
+        val reader = globalMutableClassDefBy(PLUS_MENU).methods.single { it.name == "emptyMore" }.code()
         assertTrue("$label: uses the actual MORE item's overflow", reader.any { it.reference() == empty.field })
         // The register handed on as the map still holds the builder's Map where the loop exits, not a
         // copy the loop's test has written over since.

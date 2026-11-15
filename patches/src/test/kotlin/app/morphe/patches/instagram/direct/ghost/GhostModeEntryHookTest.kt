@@ -4,6 +4,8 @@
  */
 package app.morphe.patches.instagram.direct.ghost
 
+import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
+
 import app.morphe.ExtensionDex
 import app.morphe.Fixtures
 import app.morphe.PatchContexts
@@ -77,7 +79,7 @@ class GhostModeEntryHookTest {
         assertTrue(refusal.message, refusal.message.orEmpty().contains("the build has no $IGDS_ACTION_BAR"))
         val before = classes.associate { it.type to snapshot(it) }
         assertFalse(context.addGhostAction())
-        for ((type, methods) in before) assertEquals(type, methods, snapshot(context.mutableClassDefBy(type)))
+        for ((type, methods) in before) assertEquals(type, methods, snapshot(globalMutableClassDefBy(type)))
 
         val older = PatchContexts.of(slice(bundle))
         assertTrue("the older bar's search doesn't need the newer bar", older.addGhostModeEntry())
@@ -101,7 +103,7 @@ class GhostModeEntryHookTest {
         assertTrue(where, context.addGhostAction())
 
         // The maker: one hook right before each return, handed the value that return answers.
-        val makerCode = context.mutableClassDefBy(found.makerType).methods.single {
+        val makerCode = globalMutableClassDefBy(found.makerType).methods.single {
             it.name == found.makerName && it.parameterTypes.map(CharSequence::toString) == found.makerParameters
         }.visualCode()
         val hooks = makerCode.indices.filter { makerCode[it].visualReference().toString() == GHOST_NEW_MESSAGE_ACTION }
@@ -113,7 +115,7 @@ class GhostModeEntryHookTest {
         }
 
         // The binder: the hook first, handed the button and its model, the rest as it was.
-        val binder = context.mutableClassDefBy(IGDS_ACTION_BAR).methods.single {
+        val binder = globalMutableClassDefBy(IGDS_ACTION_BAR).methods.single {
             it.name == found.binderName && it.parameterTypes.map(CharSequence::toString) == found.binderParameters
         }
         val binderCode = binder.visualCode()
@@ -123,7 +125,7 @@ class GhostModeEntryHookTest {
         assertEquals("$where: one binder hook", 1, binderCode.count { it.visualReference().toString() == GHOST_BIND_ACTION })
 
         for ((type, original) in before) {
-            val now = snapshot(context.mutableClassDefBy(type))
+            val now = snapshot(globalMutableClassDefBy(type))
             for ((method, instructions) in original) {
                 val after = now.getValue(method)
                 when {
@@ -191,14 +193,16 @@ class GhostModeEntryHookTest {
         for (found in entries) checkEntry(bundle, context, found, before, hooked)
     }
 
+    @Suppress("DEPRECATION") // The existing fixture harness passes a legacy context.
     private fun checkEntry(
         bundle: File, context: BytecodePatchContext, found: GhostEntry,
         before: Map<String, Map<String, List<Triple<Opcode, String?, List<Int>>>>>,
         hooked: Set<String>,
     ) {
         val signature = "${found.type}->${found.name}(${found.parameters.joinToString("")})V"
+        PatchContexts.use(context)
 
-        val builder = context.mutableClassDefBy(found.type).methods.single {
+        val builder = globalMutableClassDefBy(found.type).methods.single {
             it.name == found.name && it.parameterTypes.map(CharSequence::toString) == found.parameters
         }
         val code = builder.visualCode()
@@ -223,7 +227,7 @@ class GhostModeEntryHookTest {
 
         // Only that builder changed, and only by those three instructions.
         for ((type, original) in before) {
-            val now = snapshot(context.mutableClassDefBy(type))
+            val now = snapshot(globalMutableClassDefBy(type))
             for ((method, instructions) in original) {
                 if (method == signature) {
                     val after = now.getValue(method)

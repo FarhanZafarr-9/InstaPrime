@@ -4,6 +4,9 @@
  */
 package app.morphe.patches.instagram.direct.ghost
 
+import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
+import app.morphe.patcher.patch.classDefByOrNull as globalClassDefByOrNull
+
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
@@ -74,6 +77,7 @@ private const val FUNCTION0 = "Lkotlin/jvm/functions/Function0;"
  * built from button configurations, and the newer one (IgdsActionBar) from action models that have
  * no long press at all, so each gets its own hook and either can be missing alone.
  */
+@Suppress("DEPRECATION") // Keep the shared parent patch execution contract.
 internal val ghostModeEntryPatch = bytecodePatch {
     dependsOn(instagramExtensionPatch)
 
@@ -98,6 +102,7 @@ internal class GhostEntry(
 )
 
 /** Gives both inbox top bars the long press on New message. Returns whether either got it. */
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.addGhostModeEntry(): Boolean {
     val older = addGhostEntries()
     val newer = addGhostAction()
@@ -108,6 +113,7 @@ internal fun BytecodePatchContext.addGhostModeEntry(): Boolean {
  * Puts the extension's listener in each New message button's configuration, which Instagram's older action bar
  * binds to the button with setOnLongClickListener when the field isn't null. Returns whether it did.
  */
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.addGhostEntries(): Boolean {
     val entries = try {
         findGhostEntries()
@@ -117,7 +123,7 @@ internal fun BytecodePatchContext.addGhostEntries(): Boolean {
     }
     // Later instructions first, so an insert doesn't move the index of one still to come in the same method.
     for (found in entries.sortedByDescending { it.insertAt }) {
-        val method = mutableClassDefBy(found.type).methods.single {
+        val method = globalMutableClassDefBy(found.type).methods.single {
             it.name == found.name && it.parameterTypes.map(CharSequence::toString) == found.parameters
         }
         method.addInstructions(
@@ -151,6 +157,7 @@ internal class GhostAction(
  * press. The binder sets only a tap listener, so the long press is the extension's alone. Returns
  * whether it did.
  */
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.addGhostAction(): Boolean {
     val found = try {
         findGhostAction()
@@ -158,7 +165,7 @@ internal fun BytecodePatchContext.addGhostAction(): Boolean {
         patchLog.warning("${refusal.message}. Ghost mode is still in HushGram settings, and the long press on New message is left out of the newer inbox top bar.")
         return false
     }
-    val maker = mutableClassDefBy(found.makerType).methods.single {
+    val maker = globalMutableClassDefBy(found.makerType).methods.single {
         it.name == found.makerName && it.parameterTypes.map(CharSequence::toString) == found.makerParameters
     }
     // Later returns first, so each insert leaves the indexes still to come where they were.
@@ -166,7 +173,7 @@ internal fun BytecodePatchContext.addGhostAction(): Boolean {
         val answer = (maker.implementation!!.instructions.elementAt(at) as OneRegisterInstruction).registerA
         maker.addInstructionsAtControlFlowLabel(at, "invoke-static/range { v$answer .. v$answer }, $GHOST_NEW_MESSAGE_ACTION")
     }
-    val binder = mutableClassDefBy(IGDS_ACTION_BAR).methods.single {
+    val binder = globalMutableClassDefBy(IGDS_ACTION_BAR).methods.single {
         it.name == found.binderName && it.parameterTypes.map(CharSequence::toString) == found.binderParameters
     }
     // p1 and p2 are the button and its model, next to each other, so a range call reaches them past v15.
@@ -192,6 +199,7 @@ private fun Method.holds(string: String) = code().any { (it.reference() as? Stri
  * header builder is the one place that makes such a listener with such a number in a button's
  * configuration. A different build fails the search with a reason, and nothing is changed.
  */
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.findGhostEntries(): List<GhostEntry> {
     val (controller, start) = findNewMessageStart()
 
@@ -233,10 +241,11 @@ internal fun BytecodePatchContext.findGhostEntries(): List<GhostEntry> {
  * that makes such a lambda with such a number and answers a model of the binder's type is the New
  * message model's maker.
  */
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.findGhostAction(): GhostAction {
     val (_, start) = findNewMessageStart()
 
-    val bar = classDefByOrNull(IGDS_ACTION_BAR) ?: refuse("the build has no $IGDS_ACTION_BAR")
+    val bar = globalClassDefByOrNull(IGDS_ACTION_BAR) ?: refuse("the build has no $IGDS_ACTION_BAR")
     val binders = bar.methods.filter { method ->
         !method.isStatic() && method.returnType == "V" && method.parameterTypes.size == 2 &&
             method.parameterTypes[0].toString() == IMAGE_VIEW && method.code().any {
@@ -296,6 +305,7 @@ private fun Method.callsOf(owner: String, name: String) = code().indices.filter 
  * (07Bp.A03 is 06Sw, whose A0C calls the tap 06Ur.A07), and the listeners reach it through that
  * field, so the controller's fields are searched when the controller has none of its own.
  */
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 private fun BytecodePatchContext.findNewMessageStart(): Pair<ClassDef, Method> {
     val taps = classesHolding(NEW_MESSAGE_TAPPED).flatMap { owner -> owner.methods.filter { it.holds(NEW_MESSAGE_TAPPED) }.map { owner to it } }
     val (tapOwner, tap) = taps.singleOrNull() ?: refuse("expected one method that logs $NEW_MESSAGE_TAPPED, found ${taps.size}")
@@ -311,15 +321,16 @@ private fun BytecodePatchContext.findNewMessageStart(): Pair<ClassDef, Method> {
     }
     val starts = controller.starts().ifEmpty {
         controller.fields.filter { !AccessFlags.STATIC.isSet(it.accessFlags) && it.type != controller.type }
-            .map { it.type }.distinct().mapNotNull { classDefByOrNull(it) }.flatMap { it.starts() }
+            .map { it.type }.distinct().mapNotNull { globalClassDefByOrNull(it) }.flatMap { it.starts() }
     }
     val start = starts.singleOrNull() ?: refuse("expected one inbox header method that starts a new message, found ${starts.size}")
     return controller to start
 }
 
 /** The hook's place in the header builder [builder], whose `invoke-direct` at [made] makes the listener, or null when it isn't a button builder. */
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 private fun BytecodePatchContext.entryAt(builder: Method, made: Int, controller: String): GhostEntry? {
-    val owner = classDefByOrNull(builder.definingClass) ?: return null
+    val owner = globalClassDefByOrNull(builder.definingClass) ?: return null
     if (!builder.isStatic() || builder.returnType != "V" || owner.fields.none { it.type == controller }) return null
     val code = builder.code()
     val listenerRegister = (code[made] as FiveRegisterInstruction).registerC
@@ -330,7 +341,7 @@ private fun BytecodePatchContext.entryAt(builder: Method, made: Int, controller:
     } ?: return null
     val tapField = code[store].reference() as FieldReference
     val config = (code[store] as TwoRegisterInstruction).registerB
-    val configClass = classDefByOrNull(tapField.definingClass) ?: refuse("the button configuration's class is missing")
+    val configClass = globalClassDefByOrNull(tapField.definingClass) ?: refuse("the button configuration's class is missing")
     val field = configClass.fields.filter { !AccessFlags.STATIC.isSet(it.accessFlags) && it.type == LONG_LISTENER }
         .singleOrNull() ?: refuse("the button configuration has no single long press field")
     val longPress = "${configClass.type}->${field.name}:${field.type}"
