@@ -1,4 +1,4 @@
-<# Copyright 2026 InstaPrime contributors. Focused checks; builds the MPP only with -Build. #>
+<# Copyright 2026 InstaPrime contributors. Focused regression checks; builds the MPP only with -Build. #>
 [CmdletBinding()]
 param(
     [string]$Apk = 'C:\Users\hp\Downloads\com.instagram.android_454.0.0.54.77_original.apk',
