@@ -39,7 +39,11 @@ internal fun BytecodePatchContext.nativePopupPlan(): NativePopupPlan {
     val more = classesHolding("MessageActionsHelper").flatMap { it.methods }.singleOrNull {
         it.returnType == "V" && it.popupCode().any { ins -> ins.popupCall()?.toString() == gate.toString() }
     } ?: refuse("no unique message More presenter")
-    val choices = listOf(profile, more).map { method ->
+    val inbox = classesHolding("DirectInboxThreadDialogController").flatMap { it.methods }.singleOrNull {
+        it.returnType == "V" && "Lcom/instagram/model/direct/DirectThreadKey;" in it.parameterTypes.map(Any::toString) &&
+            it.popupCode().any { ins -> ins.popupCall()?.toString() == gate.toString() }
+    } ?: refuse("no unique inbox chat-hold presenter")
+    val choices = listOf(profile, more, inbox).map { method ->
         val code = method.popupCode()
         val results = code.indices.filter { code[it].popupCall()?.toString() == gate.toString() }.associate { at ->
             if (code.getOrNull(at + 1)?.opcode != Opcode.MOVE_RESULT) refuse("native popup gate result changed")

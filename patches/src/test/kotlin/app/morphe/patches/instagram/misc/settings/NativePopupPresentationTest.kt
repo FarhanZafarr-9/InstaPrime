@@ -16,10 +16,13 @@ class NativePopupPresentationTest {
         val path = System.getenv("HUSHGRAM_GESTURE_APK")
         assumeTrue("HUSHGRAM_GESTURE_APK is unset", !path.isNullOrBlank())
         // Original 454 fixture: presenters, shared gate and renderer only.
-        val classes = FixtureDex.classes(File(path!!), setOf("LX/0Gjr;", "LX/0NSr;", "LX/0Om0;", "LX/0I3u;")).values
+        val classes = FixtureDex.classes(File(path!!), setOf("LX/0Gjr;", "LX/0NSr;", "LX/01SB;", "LX/0Om0;", "LX/0I3u;")).values
         val context = PatchContexts.of(classes)
         val plan = context.nativePopupPlan()
-        assertEquals(2, plan.choices.size)
+        assertEquals(3, plan.choices.size)
+        val inbox = plan.choices.single { it.method.definingClass == "LX/01SB;" }
+        assertEquals("inbox anchor and fallback presenters both choose native popups", 2, inbox.results.size)
+        assertTrue(inbox.results.values.all { it })
         assertEquals(4, plan.populations.size)
         val gate = classes.single { it.type == "LX/0Om0;" }.methods.associate { it.toString() to it.code() }
         context.applyNativePopupPlan(plan)
