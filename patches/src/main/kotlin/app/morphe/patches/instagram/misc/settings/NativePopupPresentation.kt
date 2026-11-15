@@ -27,11 +27,9 @@ import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
-import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
-import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
 private const val POPUP_FLAG = 36329998780490487L
 private const val PROFILE_SHEET_FLAG = 36322151875231018L
@@ -153,8 +151,6 @@ internal fun BytecodePatchContext.applyNativePopupPlan(plan: NativePopupPlan) {
                 "invoke-static/range {p0 .. p0}, $EXTENSION_PACKAGE/settings/StyledPopupMenu;->styleNative(Landroid/widget/PopupWindow;)V")
         }
     }
-    // Compose inbox rows provide a RectF; the legacy popup overlay instead centers
-    // on their shared host View. Keep the real row center when forcing that route.
     val inbox = globalMutableClassDefBy(plan.inbox.definingClass).methods.single { it.toString() == plan.inbox.toString() }
     if (inbox.parameterTypes.firstOrNull()?.toString() != "Landroid/graphics/RectF;")
         throw PatchException("Inbox popup: row bounds parameter changed")
@@ -164,51 +160,58 @@ internal fun BytecodePatchContext.applyNativePopupPlan(plan: NativePopupPlan) {
             !call.returnType.startsWith("L")) return@mapNotNull null
         val factory = globalMutableClassDefBy(call.definingClass).methods.singleOrNull { it.toString() == call.toString() }
             ?: return@mapNotNull null
-        if (factory.popupCode().none { it.popupCall()?.name == "getLocationOnScreen" }) return@mapNotNull null
+        if (!AccessFlags.STATIC.isSet(factory.accessFlags) ||
+            factory.popupCode().none { it.popupCall()?.name == "getLocationOnScreen" }) return@mapNotNull null
         Triple(at, call, factory)
     }
     val (at, factoryCall, factory) = candidates.singleOrNull()
         ?: throw PatchException("Inbox popup: no unique native anchor factory")
-    val fields = factory.popupCode().filter { it.opcode == Opcode.IPUT }.mapNotNull {
-        ((it as? ReferenceInstruction)?.reference as? FieldReference)?.takeIf { field ->
-            field.definingClass == factoryCall.returnType && field.type == "I"
-        }
-    }.take(2)
-    if (fields.size != 2 || inbox.popupCode().getOrNull(at + 1)?.opcode != Opcode.MOVE_RESULT_OBJECT)
-        throw PatchException("Inbox popup: native anchor coordinates changed")
-    val overlay = globalMutableClassDefBy(factoryCall.returnType)
-    val bridge = "instaprimeInboxAnchor"
-    overlay.methods.add(ImmutableMethod(overlay.type, bridge,
-        listOf(ImmutableMethodParameter("Landroid/graphics/RectF;", emptySet(), null)), "V", AccessFlags.PUBLIC.value,
-        emptySet(), emptySet(), ImmutableMethodImplementation(3, emptyList(), null, null)).toMutable().apply {
+    val helper = "$EXTENSION_PACKAGE/direct/InboxPopup;"
+    val bridge = "instaprimeInboxPopup"
+    val parameters = factory.parameterTypes.joinToString("")
+    val words = factory.parameterTypes.map { if (it.toString() in listOf("J", "D")) 2 else 1 }.sum()
+    globalMutableClassDefBy(factory.definingClass).methods.add(ImmutableMethod(factory.definingClass, bridge,
+        factory.parameters, factory.returnType, AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+        emptySet(), emptySet(), ImmutableMethodImplementation(words + 1, emptyList(), null, null)).toMutable().apply {
         addInstructions(0, """
-            if-eqz p1, :done
-            invoke-virtual {p1}, Landroid/graphics/RectF;->isEmpty()Z
+            invoke-static {p0, p1}, $helper->show(Landroid/view/View;Landroid/view/View;)Z
             move-result v0
-            if-nez v0, :done
-            invoke-virtual {p1}, Landroid/graphics/RectF;->centerX()F
-            move-result v0
-            float-to-int v0, v0
-            iput v0, p0, ${fields[0]}
-            invoke-virtual {p1}, Landroid/graphics/RectF;->centerY()F
-            move-result v0
-            float-to-int v0, v0
-            iput v0, p0, ${fields[1]}
-            :done
-            return-void
+            if-eqz v0, :native_overlay
+            const/4 v0, 0x0
+            return-object v0
+            :native_overlay
+            invoke-static/range {p0 .. p${words - 1}}, $factoryCall
+            move-result-object v0
+            return-object v0
         """)
     })
-    val result = (inbox.popupCode()[at + 1] as OneRegisterInstruction).registerA
-    inbox.requireParameterIntact("Inbox popup", 0, listOf(at + 2))
-    val locals = inbox.freeLocalsAt("Inbox popup", at + 2, 2, except = listOf(result))
-    inbox.addInstructionsAtControlFlowLabel(at + 2, """
-        move-object/from16 v${locals[0]}, v$result
-        move-object/from16 v${locals[1]}, v${inbox.parameterRegisterNumber(0)}
-        if-eqz v${locals[0]}, :no_inbox_overlay
-        invoke-virtual {v${locals[0]}, v${locals[1]}}, ${overlay.type}->$bridge(Landroid/graphics/RectF;)V
-        :no_inbox_overlay
-        nop
-    """)
+    val target = "${factory.definingClass}->$bridge($parameters)${factory.returnType}"
+    val call = when (val instruction = inbox.popupCode()[at]) {
+        is RegisterRangeInstruction -> "invoke-static/range {v${instruction.startRegister} .. v${instruction.startRegister + instruction.registerCount - 1}}, $target"
+        is FiveRegisterInstruction -> "invoke-static {${listOf(instruction.registerC, instruction.registerD, instruction.registerE, instruction.registerF, instruction.registerG).take(instruction.registerCount).joinToString { "v$it" }}}, $target"
+        else -> throw PatchException("Inbox popup: unsupported factory call")
+    }
+    inbox.replaceInstruction(at, call)
+    val renderer = plan.populations.first().definingClass
+    val preparations = inbox.popupCode().withIndex().filter { (_, instruction) ->
+        instruction.popupCall()?.let { it.definingClass == renderer && it.returnType == "V" &&
+            it.parameterTypes.map(Any::toString) == listOf("Ljava/util/List;") } == true
+    }
+    if (preparations.isEmpty()) throw PatchException("Inbox popup: no native menu population")
+    for ((index, instruction) in preparations.asReversed()) {
+        val popup = when (instruction) {
+            is FiveRegisterInstruction -> instruction.registerC
+            is RegisterRangeInstruction -> instruction.startRegister
+            else -> throw PatchException("Inbox popup: unsupported population call")
+        }
+        inbox.requireParameterIntact("Inbox popup", 0, listOf(index + 1))
+        val locals = inbox.freeLocalsAt("Inbox popup", index + 1, 2, except = listOf(popup))
+        inbox.addInstructionsAtControlFlowLabel(index + 1, """
+            move-object/from16 v${locals[0]}, v$popup
+            move-object/from16 v${locals[1]}, v${inbox.parameterRegisterNumber(0)}
+            invoke-static {v${locals[0]}, v${locals[1]}}, $helper->prepare(Landroid/widget/PopupWindow;Landroid/graphics/RectF;)V
+        """)
+    }
 }
 
 private fun Method.popupCode(): List<Instruction> = implementation?.instructions?.toList().orEmpty()

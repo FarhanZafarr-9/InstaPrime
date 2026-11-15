@@ -42,13 +42,11 @@ class NativePopupPresentationTest {
             positioned.implementation!!.instructions.count {
                 ((it as? ReferenceInstruction)?.reference?.toString())?.endsWith("MessageMenuPosition;->primaryX(I)I") == true
             })
-        val anchorBridge = globalMutableClassDefBy("LX/0hgO;").methods.single { it.name == "instaprimeInboxAnchor" }
-        assertEquals(listOf("LX/0hgO;->A00:I", "LX/0hgO;->A01:I"),
-            anchorBridge.implementation!!.instructions.filter { it.opcode == Opcode.IPUT }.map {
-                ((it as ReferenceInstruction).reference).toString()
-            })
-        assertTrue(anchorBridge.code().any { it.contains("RectF;->centerX()F") })
-        assertTrue(anchorBridge.code().any { it.contains("RectF;->centerY()F") })
+        val popupBridge = globalMutableClassDefBy("LX/01SD;").methods.single { it.name == "instaprimeInboxPopup" }
+        assertTrue(popupBridge.code().any { it.contains("InboxPopup;->show(Landroid/view/View;Landroid/view/View;)Z") })
+        assertTrue("original overlay remains available as fallback", popupBridge.code().any {
+            it.contains("LX/01SD;->A00(")
+        })
         val primary = globalMutableClassDefBy(plan.primary.definingClass).methods.single { it.name == plan.primary.name }
         assertEquals(1, primary.implementation!!.instructions.count {
             ((it as? ReferenceInstruction)?.reference?.toString())?.contains("MessageMenuPosition;->remember(") == true
@@ -58,15 +56,20 @@ class NativePopupPresentationTest {
             assertEquals(choice.method.implementation!!.registerCount, method.implementation!!.registerCount)
             val original = choice.method.implementation!!.instructions.toList()
             val patched = method.implementation!!.instructions.filter { it.opcode != Opcode.NOP }.toMutableList()
-            val anchorCalls = patched.indices.filter {
-                ((patched[it] as? ReferenceInstruction)?.reference?.toString())?.contains("->instaprimeInboxAnchor(") == true
+            val preparations = patched.indices.filter {
+                ((patched[it] as? ReferenceInstruction)?.reference?.toString())?.contains("InboxPopup;->prepare(") == true
             }
-            assertEquals(if (choice.method == plan.inbox) 1 else 0, anchorCalls.size)
-            for (callAt in anchorCalls.asReversed()) {
-                assertEquals(Opcode.MOVE_OBJECT_FROM16, patched[callAt - 3].opcode)
+            val nativePopulations = original.count {
+                ((it as? ReferenceInstruction)?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference)?.let { call ->
+                    call.definingClass == plan.populations.first().definingClass && call.returnType == "V" &&
+                        call.parameterTypes.map(Any::toString) == listOf("Ljava/util/List;")
+                } == true
+            }
+            assertEquals(if (choice.method == plan.inbox) nativePopulations else 0, preparations.size)
+            for (callAt in preparations.asReversed()) {
                 assertEquals(Opcode.MOVE_OBJECT_FROM16, patched[callAt - 2].opcode)
-                assertEquals(Opcode.IF_EQZ, patched[callAt - 1].opcode)
-                repeat(4) { patched.removeAt(callAt - 3) }
+                assertEquals(Opcode.MOVE_OBJECT_FROM16, patched[callAt - 1].opcode)
+                repeat(3) { patched.removeAt(callAt - 2) }
             }
             // dexlib may change payload alignment NOPs and widen jumps after insertion.
             // Compare meaningful operations independently of their encoding width.
@@ -78,6 +81,8 @@ class NativePopupPresentationTest {
                         val opcode = if (instruction.opcode == Opcode.INVOKE_VIRTUAL_RANGE) Opcode.INVOKE_STATIC_RANGE else Opcode.INVOKE_STATIC
                         "$opcode:$EXTENSION_PACKAGE/direct/MessageMenuPosition;->showMore(Landroid/widget/PopupWindow;Landroid/view/View;III)V"
                     }
+                    choice.method == plan.inbox && reference?.toString()?.startsWith("LX/01SD;->A00(") == true ->
+                        "${instruction.semanticOpcode()}:${reference.toString().replace("->A00(", "->instaprimeInboxPopup(")}"
                     else -> "${instruction.semanticOpcode()}:$reference"
                 }
             }
