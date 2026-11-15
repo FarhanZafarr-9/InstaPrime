@@ -364,6 +364,30 @@ public class ScreenColorsAccessibilityTest {
                 Math.round(Color.blue(foreground) * a + Color.blue(background) * (1 - a)));
     }
 
+    @Test public void longChoiceDialogsKeepActionsBelowTheirScrollableList() {
+        String[] labels = new String[30];
+        Arrays.fill(labels, "An available message action");
+        AlertDialog alert = new AlertDialog.Builder(controller.get())
+                .setTitle("Move message actions to More")
+                .setMultiChoiceItems(labels, new boolean[labels.length], (dialog, index, checked) -> { })
+                .setPositiveButton("OK", null).show();
+        opened.add(alert);
+        ScreenColors.dialog(alert);
+        ScreenColors.dialog(alert);
+        layAlert(alert);
+        ListView list = alert.getListView();
+        assertTrue(list.getParent() instanceof DialogContentBounds);
+        assertFalse(list.getParent().getParent() instanceof DialogContentBounds);
+        Rect listBounds = new Rect(), buttonBounds = new Rect();
+        assertTrue(list.getGlobalVisibleRect(listBounds));
+        assertTrue(alert.getButton(AlertDialog.BUTTON_POSITIVE).getGlobalVisibleRect(buttonBounds));
+        assertTrue("the action stays below the list", buttonBounds.top >= listBounds.bottom);
+        assertTrue("long choices remain scrollable", list.getLastVisiblePosition() < labels.length - 1);
+        list.setSelection(labels.length - 1);
+        layAlert(alert);
+        assertEquals("the last option remains reachable", labels.length - 1, list.getLastVisiblePosition());
+    }
+
     @Test public void stylingPreservesEachCheckedAndUncheckedItemAndItsNativeCallback() {
         List<String> changes = new ArrayList<>();
         AlertDialog alert = new AlertDialog.Builder(controller.get())
