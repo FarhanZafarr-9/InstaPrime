@@ -97,6 +97,18 @@ public class TabStartTest {
         assertSame(Tab.PROFILE, ReelsTab.tab(Tab.PROFILE));
     }
 
+    @Test public void warmPagerRebuildRestoresTheRequestedTabInsteadOfTheStartChoice() {
+        Settings.START_TAB.save(StartTab.SEARCH);
+        List<Tab> bar = Arrays.asList(Tab.FEED, Tab.SEARCH, Tab.CLIPS, Tab.DIRECT, Tab.PROFILE);
+        assertSame(Tab.SEARCH, coldStart(launcher(), bar, Tab.FEED));
+        TabStart.noteResumed();
+        ShadowSystemClock.advanceBy(Duration.ofMillis(TabStart.STARTUP_MS + 1));
+        for (Tab previous : new Tab[]{Tab.DIRECT, Tab.PROFILE, Tab.CLIPS, Tab.FEED}) {
+            assertSame("warm return keeps the native last-tab request", previous, ReelsTab.tab(previous));
+            assertTrue("a rebuilt pager must select it rather than its first page", ReelsTab.startAtTab(0));
+        }
+    }
+
     @Test
     public void aReelsFirstAccountLandsOnTheChoiceToo() {
         Settings.START_TAB.save(StartTab.PROFILE);

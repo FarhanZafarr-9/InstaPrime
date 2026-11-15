@@ -208,6 +208,12 @@ public final class TabStart {
         return bar != null && bar.contains(name);
     }
 
+    /** A rebuilt pager must honor its requested tab even when the tab order stayed unchanged. */
+    static boolean hasVisibleTabs() {
+        Set<String> bar = onTheBar;
+        return bar != null && !bar.isEmpty();
+    }
+
     /**
      * The tab called [name] in Instagram's tab enum, as the tab list hook last saw it, on the bar or
      * not. Null before a list is built or when the enum has no such tab.

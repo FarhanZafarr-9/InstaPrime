@@ -13,6 +13,7 @@ import app.hushgram.extension.instagram.settings.FamilyNames;
 import app.hushgram.extension.instagram.settings.Settings;
 import app.hushgram.extension.shared.Logger;
 import app.hushgram.extension.shared.Utils;
+import app.hushgram.extension.shared.settings.HushgramPause;
 import app.hushgram.extension.shared.diagnostics.FeedFilterCounters;
 import app.hushgram.extension.shared.diagnostics.HookStatus;
 
@@ -393,8 +394,9 @@ public final class ReelsTab {
     /**
      * Handed Instagram's answer to whether its tab pager opens on the tab asked for, as the switch
      * makes the pager: 0 for no, which opens it on the pager's first tab. Yes while Tab order has the
-     * bar in another order, or Hide the Home tab took Home off it, since the first tab is then not
-     * the one asked for, otherwise Instagram's answer. Never throws.
+     * bar in another order, or Hide the Home tab took Home off it. Once a bar is known, also honor
+     * the native requested tab when its pager is rebuilt on resume, rather than resetting to its
+     * first page. This does not pick a new tab or reapply Start tab on a warm return. Never throws.
      */
     public static boolean startAtTab(int instagram) {
         try {
@@ -407,7 +409,7 @@ public final class ReelsTab {
                 HookStatus.counted(FamilyNames.REELS_TAB, PAGER_STARTED_WITHOUT_HOME);
                 return true;
             }
-            return false;
+            return Utils.settingsReady() && !HushgramPause.isPaused() && TabStart.hasVisibleTabs();
         } catch (Throwable failure) {
             HookStatus.threw(FamilyNames.REELS_TAB, "pager start", failure);
             return instagram != 0;
