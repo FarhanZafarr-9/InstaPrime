@@ -95,4 +95,27 @@ public class InboxHeaderButtonsTest {
             assertEquals(1, row.getChildCount());
         }
     }
+
+    @Test public void settingsDoesNotCopyTheFullWidthComposeSlot() {
+        try (var host = Robolectric.buildActivity(Activity.class).setup().visible()) {
+            LinearLayout row = new LinearLayout(host.get());
+            ImageView compose = new ImageView(host.get());
+            row.addView(compose, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 48));
+            host.get().setContentView(row);
+            Object action = new Object();
+            InboxHeaderButtons.mark(action);
+            Settings.SETTINGS_BUTTON_IN_DM_HEADER.save(true);
+            InboxHeaderButtons.bind(compose, action);
+            ShadowLooper.idleMainLooper();
+            View gear = row.getChildAt(0);
+            assertEquals(LinearLayout.LayoutParams.WRAP_CONTENT, gear.getLayoutParams().width);
+            int width = Math.round(240 * host.get().getResources().getDisplayMetrics().density);
+            row.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(48, View.MeasureSpec.EXACTLY));
+            row.layout(0, 0, width, 48);
+            assertEquals(View.VISIBLE, compose.getVisibility());
+            assertTrue("Settings leaves room for Compose", gear.getWidth() < width);
+            assertTrue("Compose stays inside the row", compose.getWidth() > 0 && compose.getRight() <= width);
+        }
+    }
 }

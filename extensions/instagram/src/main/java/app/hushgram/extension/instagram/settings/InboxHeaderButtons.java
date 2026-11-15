@@ -82,7 +82,13 @@ public final class InboxHeaderButtons {
                 if (view.getLayoutParams() instanceof LinearLayout.LayoutParams)
                     size = new LinearLayout.LayoutParams((LinearLayout.LayoutParams) view.getLayoutParams());
                 size.weight = 0;
-                if (size.width == 0) size.width = Math.max(view.getWidth(), Math.round(48 * view.getResources().getDisplayMetrics().density));
+                // Compose may fill (or be weighted across) its native slot. The added
+                // gear needs its own touch target, not that slot's entire width.
+                if (size.width <= 0) {
+                    size.width = LinearLayout.LayoutParams.WRAP_CONTENT;
+                    icon.setMinimumWidth(Math.max(view.getMinimumWidth(),
+                            Math.round(48 * view.getResources().getDisplayMetrics().density)));
+                }
                 row.addView(icon, row.indexOfChild(view), size);
                 gear = new WeakReference<>(icon);
             }
