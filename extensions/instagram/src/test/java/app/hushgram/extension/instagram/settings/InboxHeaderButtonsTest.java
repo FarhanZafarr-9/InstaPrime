@@ -121,11 +121,13 @@ public class InboxHeaderButtonsTest {
 
     @Test public void fixedNativeContainerReservesSpaceForBothButtonsAndRestoresIt() {
         try (var host = Robolectric.buildActivity(Activity.class).setup().visible()) {
+            android.widget.FrameLayout content = new android.widget.FrameLayout(host.get());
             LinearLayout row = new LinearLayout(host.get());
-            row.setLayoutParams(new android.widget.FrameLayout.LayoutParams(48, 48));
+            content.addView(row, new android.widget.FrameLayout.LayoutParams(48, 48));
             ImageView compose = new ImageView(host.get());
             row.addView(compose, new LinearLayout.LayoutParams(48, 48));
-            host.get().setContentView(row);
+            host.get().setContentView(content);
+            assertEquals("fixture keeps the native fixed-width container", 48, row.getLayoutParams().width);
             Object action = new Object();
             InboxHeaderButtons.mark(action);
             Settings.SETTINGS_BUTTON_IN_DM_HEADER.save(true);
