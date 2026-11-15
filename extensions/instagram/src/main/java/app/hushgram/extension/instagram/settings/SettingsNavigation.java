@@ -179,7 +179,17 @@ final class SettingsNavigation {
         NewRowDots.opens(row, node);
         for (Preference setting : node.rows) destinations.put(setting, node);
         for (Node child : node.children) register(context, child, open, overview);
-        if (node.icon.equals(SettingsIcons.REELS)) {
+        if (node.icon.equals(SettingsIcons.FEED)) {
+            childSections(node, keys("filters", "content", "home"),
+                    keys("video", "video-controls", "interaction"),
+                    keys("carousels", "post-actions", "post-style", "appearance"));
+        } else if (node.icon.equals(SettingsIcons.CHATS)) {
+            childSections(node, keys("inbox", "controls", "composer", "media-history"),
+                    keys("presence", "calls", "security", "appearance"));
+        } else if (node.icon.equals(SettingsIcons.PERSON)) {
+            childSections(node, keys("banners", "tabs-grid", "appearance"),
+                    keys("relationships", "suggestions"), keys("profile-history", "saved-profiles"));
+        } else if (node.icon.equals(SettingsIcons.REELS)) {
             childSections(node, keys("content", "words-sounds", "actions"),
                     keys("playback", "skip-speed", "likes", "gestures"),
                     keys("reels-header", "player", "buttons", "overlays"),
