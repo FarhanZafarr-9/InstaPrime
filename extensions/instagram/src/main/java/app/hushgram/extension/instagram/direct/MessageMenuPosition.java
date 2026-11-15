@@ -55,6 +55,12 @@ public final class MessageMenuPosition {
         return Math.round(12 * view.getResources().getDisplayMetrics().density);
     }
 
+    static int submenuLeft(Rect anchor, Rect frame, int width, int gap) {
+        boolean rightAligned = frame.right - anchor.right < anchor.left - frame.left;
+        int left = rightAligned ? anchor.right - width : anchor.left;
+        return Math.max(frame.left, insetRight(left, width, frame.right, gap));
+    }
+
     public static void showMore(PopupWindow popup, View host, int gravity, int x, int y) {
         Anchor anchor = latest;
         latest = null;
@@ -68,7 +74,7 @@ public final class MessageMenuPosition {
                 content.measure(View.MeasureSpec.makeMeasureSpec(frame.width(), View.MeasureSpec.AT_MOST),
                         View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                 int width = popup.getWidth() > 0 ? popup.getWidth() : content.getMeasuredWidth();
-                x = Math.max(frame.left, insetRight(anchor.bounds.left, width, frame.right, edgeGap(content))) - frame.left;
+                x = submenuLeft(anchor.bounds, frame, width, edgeGap(content)) - frame.left;
                 y = Math.max(0, anchor.bounds.top - frame.top);
                 gravity = Gravity.TOP | Gravity.LEFT;
             }

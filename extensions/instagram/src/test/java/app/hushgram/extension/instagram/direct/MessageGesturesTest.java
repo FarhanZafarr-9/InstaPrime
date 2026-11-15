@@ -36,6 +36,17 @@ public class MessageGesturesTest {
         assertEquals(540, MessageMenuPosition.insetRight(548, 300, 856, 16));
     }
 
+    @Test public void moreKeepsTheOriginalMenusAlignedEdgeWhenItsWidthChanges() {
+        android.graphics.Rect frame = new android.graphics.Rect(0, 0, 1080, 1920);
+        android.graphics.Rect outgoing = new android.graphics.Rect(756, 400, 1056, 800);
+        assertEquals(656, MessageMenuPosition.submenuLeft(outgoing, frame, 400, 12));
+        assertEquals(856, MessageMenuPosition.submenuLeft(outgoing, frame, 200, 12));
+        android.graphics.Rect incoming = new android.graphics.Rect(24, 400, 324, 800);
+        assertEquals(24, MessageMenuPosition.submenuLeft(incoming, frame, 400, 12));
+        android.graphics.Rect touching = new android.graphics.Rect(780, 400, 1080, 800);
+        assertEquals(668, MessageMenuPosition.submenuLeft(touching, frame, 400, 12));
+    }
+
     @Rule public final SettingsContextRule settings = new SettingsContextRule();
     private final List<String> actions = Arrays.asList("Reply", "More");
 
