@@ -1,5 +1,8 @@
 package app.morphe.patches.instagram.direct.plusmenu
 
+import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
+import app.morphe.patcher.patch.classDefBy as globalClassDefBy
+
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.PatchException
@@ -20,6 +23,7 @@ internal data class EmptyPlusSite(val owner: String, val method: String, val par
     val at: Int, val receiver: Int, val scratch: Int, val field: String)
 
 /** Discover MORE's native item and the field receiving its constructor's overflow list. */
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.findEmptyPlusMenu(): EmptyPlusSite {
     fun refuse(why: String): Nothing = throw PatchException("Chat plus menu: $why")
     val enum = classesHolding(*PLUS_BUTTON_NAMES.toTypedArray()).singleOrNull {
@@ -47,7 +51,7 @@ internal fun BytecodePatchContext.findEmptyPlusMenu(): EmptyPlusSite {
         } else if (ins.opcode.setsRegister() && ins is OneRegisterInstruction) aliases -= ins.registerA
     }
     val field = fields.singleOrNull() ?: refuse("no unique MORE overflow field")
-    val base = classDefBy(item.superclass ?: refuse("MORE item has no base"))
+    val base = globalClassDefBy(item.superclass ?: refuse("MORE item has no base"))
     val methods = base.methods.filter { it.returnType == "Z" && it.parameterTypes.size == 5 &&
         it.parameterTypes.takeLast(3).all { p -> p.toString() == "Z" } }
     val sites = methods.flatMap { method ->
@@ -65,8 +69,9 @@ internal fun BytecodePatchContext.findEmptyPlusMenu(): EmptyPlusSite {
     return sites.singleOrNull() ?: refuse("${sites.size} MORE availability branches")
 }
 
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.hideEmptyPlusMenu(site: EmptyPlusSite) {
-    val method = mutableClassDefBy(site.owner).methods.single { it.name == site.method &&
+    val method = globalMutableClassDefBy(site.owner).methods.single { it.name == site.method &&
         it.parameterTypes.map(Any::toString) == site.parameters }
     method.addInstructionsAtControlFlowLabel(site.at, """
         iget-object v${site.scratch}, v${site.receiver}, ${site.field}
@@ -80,14 +85,15 @@ internal fun BytecodePatchContext.hideEmptyPlusMenu(site: EmptyPlusSite) {
     """)
 }
 
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.removeEmptyComposerItem(builder: PlusMenuSite, site: EmptyPlusSite) {
     val type = site.field.substringBefore("->")
-    val item = mutableClassDefBy(type)
+    val item = globalMutableClassDefBy(type)
     item.accessFlags = item.accessFlags or AccessFlags.PUBLIC.value
     item.fields.single { "$type->${it.name}:${it.type}" == site.field }.apply {
         accessFlags = (accessFlags and (AccessFlags.PRIVATE.value or AccessFlags.PROTECTED.value).inv()) or AccessFlags.PUBLIC.value
     }
-    mutableClassDefBy(PLUS_MENU).methods.single { it.name == "emptyMore" }.addInstructions(0, """
+    globalMutableClassDefBy(PLUS_MENU).methods.single { it.name == "emptyMore" }.addInstructions(0, """
         instance-of p1, p0, $type
         if-eqz p1, :not_more
         check-cast p0, $type
@@ -99,7 +105,7 @@ internal fun BytecodePatchContext.removeEmptyComposerItem(builder: PlusMenuSite,
         const/4 p1, 0x0
         return p1
     """)
-    val method = mutableClassDefBy(builder.type).methods.single {
+    val method = globalMutableClassDefBy(builder.type).methods.single {
         it.name == builder.name && it.parameterTypes.map(Any::toString) == builder.parameters
     }
     val code = method.implementation!!.instructions.toList()

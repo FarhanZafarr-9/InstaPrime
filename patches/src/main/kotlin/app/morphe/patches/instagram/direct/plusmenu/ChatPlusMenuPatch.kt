@@ -4,6 +4,8 @@
  */
 package app.morphe.patches.instagram.direct.plusmenu
 
+import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
+
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
@@ -69,7 +71,7 @@ internal class PlusMenuSite(
  * keys, removes the items of the rows the switches name from the menu, and with the move switch on
  * adds the gallery and microphone items, the same objects the bar draws.
  */
-@Suppress("unused")
+@Suppress("unused", "DEPRECATION") // Shared helpers still require the legacy execute context.
 val chatPlusMenuPatch = bytecodePatch(
     name = "Chat plus menu",
     description = "Lets you take Saved, AI images, Draw, Meta AI and Location off the plus menu in a chat's message bar, " +
@@ -102,6 +104,7 @@ private fun refuse(detail: String): Nothing = throw PatchException("$PATCH: $det
  * string loaded before the static field that gets the new constant. In that method the loop is the one
  * that gets each enum's item from a Map and adds it to a list; the hook goes where the loop exits.
  */
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.findPlusMenu(): PlusMenuSite {
     val enums = classesHolding(*PLUS_BUTTON_NAMES.toTypedArray()).filter { candidate ->
         candidate.superclass == "Ljava/lang/Enum;" && constantFields(candidate).keys.containsAll(PLUS_BUTTON_NAMES)
@@ -151,8 +154,9 @@ internal fun BytecodePatchContext.findPlusMenu(): PlusMenuSite {
 }
 
 /** Hands the finished menu list and the button map to [MENU_HOOK] where the loop exits. */
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.handPlusMenu(site: PlusMenuSite) {
-    val method = mutableClassDefBy(site.type).methods.single {
+    val method = globalMutableClassDefBy(site.type).methods.single {
         it.name == site.name && it.parameterTypes.map(CharSequence::toString) == site.parameters
     }
     method.addInstructionsAtControlFlowLabel(
