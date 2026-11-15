@@ -75,7 +75,8 @@ public final class ProfileStatusBar {
                 WindowInsets insets = decor.getRootWindowInsets();
                 int height = heightForTests != null ? heightForTests : insets == null ? 0 : Build.VERSION.SDK_INT >= 30
                         ? insets.getInsets(WindowInsets.Type.statusBars()).top : insets.getSystemWindowInsetTop();
-                if (!decor.hasWindowFocus() || bar == null || !bar.isShown() || !bar.getGlobalVisibleRect(visible)
+                // Anchored menus take window focus without navigating away from the profile.
+                if (bar == null || !bar.isShown() || !bar.getGlobalVisibleRect(visible)
                         || Color.alpha(color) != 255 || height == 0) {
                     hide(window);
                     return;

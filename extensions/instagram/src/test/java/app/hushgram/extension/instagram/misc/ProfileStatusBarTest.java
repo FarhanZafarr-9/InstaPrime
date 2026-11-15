@@ -77,6 +77,18 @@ public class ProfileStatusBarTest {
         assertFalse(cover.shown);
     }
 
+    @Test public void popupFocusDoesNotRemoveTheProfileAccent() {
+        cover.update();
+        Object attach = ReflectionHelpers.getField(decor, "mAttachInfo");
+        ReflectionHelpers.setField(attach, "mHasWindowFocus", false);
+        cover.onWindowFocusChanged(false);
+        assertTrue("a popup does not leave the profile", cover.shown);
+        if (Build.VERSION.SDK_INT < 35) assertEquals(0xff223344, host.get().getWindow().getStatusBarColor());
+        profile.setVisibility(View.GONE);
+        cover.onGlobalLayout();
+        assertFalse("actual navigation still removes the accent", cover.shown);
+    }
+
     @Test public void anotherScreensNewStatusColorIsNotRestoredOver() {
         cover.update();
         host.get().getWindow().setStatusBarColor(Color.BLUE);
