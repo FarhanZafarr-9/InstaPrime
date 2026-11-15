@@ -52,7 +52,7 @@ public final class MessageMenuPosition {
     }
 
     private static int edgeGap(View view) {
-        return Math.round(8 * view.getResources().getDisplayMetrics().density);
+        return Math.round(12 * view.getResources().getDisplayMetrics().density);
     }
 
     public static void showMore(PopupWindow popup, View host, int gravity, int x, int y) {
