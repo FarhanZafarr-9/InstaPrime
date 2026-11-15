@@ -74,4 +74,25 @@ public class InboxHeaderButtonsTest {
             assertEquals("a recycled non-compose action loses the extra gear", 1, row.getChildCount());
         }
     }
+
+    @Test public void onlyCopiesOfTheComposeConfigurationGetTheShortcut() {
+        try (var host = Robolectric.buildActivity(Activity.class).setup().visible()) {
+            LinearLayout row = new LinearLayout(host.get());
+            ImageView compose = new ImageView(host.get());
+            row.addView(compose, new LinearLayout.LayoutParams(48, 48));
+            host.get().setContentView(row);
+            Settings.SETTINGS_BUTTON_IN_DM_HEADER.save(true);
+            Object builder = new Object(), model = new Object();
+            InboxHeaderButtons.mark(builder);
+            InboxHeaderButtons.copied(model, builder);
+            InboxHeaderButtons.bind(compose, model);
+            ShadowLooper.idleMainLooper();
+            assertEquals(2, row.getChildCount());
+            assertSame(compose, row.getChildAt(1));
+            Object unrelated = new Object();
+            InboxHeaderButtons.copied(unrelated, new Object());
+            InboxHeaderButtons.bind(compose, unrelated);
+            assertEquals(1, row.getChildCount());
+        }
+    }
 }

@@ -24,6 +24,13 @@ class InboxHeaderButtonsHookTest {
             if (owner.type !in kept && owner.methods.any { it.parameterTypes.any { parameter -> parameter.toString() in types } })
                 kept[owner.type] = ImmutableClassDef.of(owner)
         } }
+        val renderedTypes = kept.values.filter { owner -> owner.methods.any {
+            it.name == "<init>" && it.parameterTypes.size == 1 && it.parameterTypes[0].toString() in types
+        } }.map { it.type }.toSet()
+        FixtureDex.forEach(apk) { dex -> for (owner in dex.classes) {
+            if (owner.type !in kept && owner.methods.any { it.parameterTypes.any { parameter -> parameter.toString() in renderedTypes } })
+                kept[owner.type] = ImmutableClassDef.of(owner)
+        } }
         val context = PatchContexts.of(kept.values)
         assertTrue(context.addGhostModeEntry())
         context.installInboxHeaderButtons()
@@ -35,5 +42,8 @@ class InboxHeaderButtonsHookTest {
         assertTrue("both header binders receive the native view and action", references.count {
             it == "$hook->bind(Landroid/view/View;Ljava/lang/Object;)V"
         } >= 2)
+        assertTrue("the legacy builder's identity follows its immutable copy", references.any {
+            it == "$hook->copied(Ljava/lang/Object;Ljava/lang/Object;)V"
+        })
     }
 }
