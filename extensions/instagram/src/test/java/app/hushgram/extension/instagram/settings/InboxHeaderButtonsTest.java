@@ -118,4 +118,34 @@ public class InboxHeaderButtonsTest {
             assertTrue("Compose stays inside the row", compose.getWidth() > 0 && compose.getRight() <= width);
         }
     }
+
+    @Test public void fixedNativeContainerReservesSpaceForBothButtonsAndRestoresIt() {
+        try (var host = Robolectric.buildActivity(Activity.class).setup().visible()) {
+            LinearLayout row = new LinearLayout(host.get());
+            row.setLayoutParams(new android.widget.FrameLayout.LayoutParams(48, 48));
+            ImageView compose = new ImageView(host.get());
+            row.addView(compose, new LinearLayout.LayoutParams(48, 48));
+            host.get().setContentView(row);
+            Object action = new Object();
+            InboxHeaderButtons.mark(action);
+            Settings.SETTINGS_BUTTON_IN_DM_HEADER.save(true);
+            InboxHeaderButtons.bind(compose, action);
+            ShadowLooper.idleMainLooper();
+            int both = row.getLayoutParams().width;
+            assertTrue("the fixed slot grows for Settings and Compose", both > 48);
+            compose.getViewTreeObserver().dispatchOnPreDraw();
+            assertEquals("space is reserved once", both, row.getLayoutParams().width);
+            assertEquals(View.VISIBLE, compose.getVisibility());
+            Settings.HIDE_DM_COMPOSE_BUTTON.save(true);
+            compose.getViewTreeObserver().dispatchOnPreDraw();
+            assertEquals(48, row.getLayoutParams().width);
+            Settings.HIDE_DM_COMPOSE_BUTTON.save(false);
+            compose.getViewTreeObserver().dispatchOnPreDraw();
+            assertEquals(both, row.getLayoutParams().width);
+            Settings.SETTINGS_BUTTON_IN_DM_HEADER.save(false);
+            compose.getViewTreeObserver().dispatchOnPreDraw();
+            assertEquals(48, row.getLayoutParams().width);
+            assertEquals(View.VISIBLE, compose.getVisibility());
+        }
+    }
 }

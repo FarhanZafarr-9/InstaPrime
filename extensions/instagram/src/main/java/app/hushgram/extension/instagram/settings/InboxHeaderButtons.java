@@ -50,6 +50,8 @@ public final class InboxHeaderButtons {
         WeakReference<ImageView> gear = new WeakReference<>(null);
         boolean hidden;
         int visibility;
+        WeakReference<LinearLayout> expandedRow = new WeakReference<>(null);
+        int originalWidth, expandedWidth;
         Binding(View view) { compose = new WeakReference<>(view); }
 
         void update() {
@@ -92,6 +94,7 @@ public final class InboxHeaderButtons {
                 row.addView(icon, row.indexOfChild(view), size);
                 gear = new WeakReference<>(icon);
             }
+            reserveSpace(view, icon, !hideCompose);
             if (hideCompose) {
                 if (!hidden || view.getVisibility() != View.GONE) visibility = view.getVisibility();
                 hidden = true;
@@ -102,7 +105,40 @@ public final class InboxHeaderButtons {
             }
         }
 
+        private void reserveSpace(View view, ImageView icon, boolean composeVisible) {
+            LinearLayout previous = expandedRow.get();
+            LinearLayout row = icon != null && composeVisible && view.getParent() instanceof LinearLayout
+                    ? (LinearLayout) view.getParent() : null;
+            if (previous != null && previous != row) restoreWidth();
+            if (row == null || row.getLayoutParams() == null) return;
+            android.view.ViewGroup.LayoutParams params = row.getLayoutParams();
+            // Some native headers give the whole action container one fixed-width slot.
+            // A compact gear alone still pushes Compose outside that slot.
+            if (params.width <= 0) return;
+            if (expandedRow.get() != row || params.width != expandedWidth) originalWidth = params.width;
+            icon.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+            LinearLayout.LayoutParams size = (LinearLayout.LayoutParams) icon.getLayoutParams();
+            expandedWidth = originalWidth + icon.getMeasuredWidth() + size.leftMargin + size.rightMargin;
+            expandedRow = new WeakReference<>(row);
+            if (params.width != expandedWidth) {
+                params.width = expandedWidth;
+                row.setLayoutParams(params);
+            }
+        }
+
+        private void restoreWidth() {
+            LinearLayout row = expandedRow.get();
+            if (row != null && row.getLayoutParams() != null && row.getLayoutParams().width == expandedWidth) {
+                android.view.ViewGroup.LayoutParams params = row.getLayoutParams();
+                params.width = originalWidth;
+                row.setLayoutParams(params);
+            }
+            expandedRow.clear();
+        }
+
         void remove(View view) {
+            restoreWidth();
             ImageView icon = gear.get();
             if (icon != null && icon.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) icon.getParent()).removeView(icon);
             if (hidden && view.getVisibility() == View.GONE) view.setVisibility(visibility);
@@ -118,6 +154,7 @@ public final class InboxHeaderButtons {
             update();
         }
         @Override public void onViewDetachedFromWindow(View view) {
+            restoreWidth();
             if (view.getViewTreeObserver().isAlive()) view.getViewTreeObserver().removeOnPreDrawListener(this);
             ImageView icon = gear.get();
             if (icon != null && icon.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) icon.getParent()).removeView(icon);
