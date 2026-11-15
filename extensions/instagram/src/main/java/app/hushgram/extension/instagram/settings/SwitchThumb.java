@@ -93,12 +93,22 @@ final class SwitchThumb extends Drawable {
         paint.setStrokeCap(Paint.Cap.ROUND);
         paint.setStrokeJoin(Paint.Join.ROUND);
         if (restartPending) {
-            float r = 4.5f * density;
-            canvas.drawArc(x - r, y - r, x + r, y + r, 35, 285, false, paint);
+            // Size everything from the actual thumb bounds, including stroke and arrowhead.
+            float r = radius * 0.5f;
+            paint.setStrokeWidth(radius * 0.16f);
+            canvas.drawArc(x - r, y - r, x + r, y + r, 45, 270, false, paint);
+            // The clockwise arc ends at 315 degrees. Its tangent points down/right.
+            float diagonal = (float) Math.sqrt(0.5);
+            float endX = x + r * diagonal, endY = y - r * diagonal;
+            float tip = radius * 0.16f, back = radius * 0.22f, halfWidth = radius * 0.18f;
             Path arrow = new Path();
-            arrow.moveTo(x + r - 3 * density, y - r + density);
-            arrow.lineTo(x + r, y - r + density);
-            arrow.lineTo(x + r, y - r + 4 * density);
+            arrow.moveTo(endX + diagonal * tip, endY + diagonal * tip);
+            arrow.lineTo(endX - diagonal * back - diagonal * halfWidth,
+                    endY - diagonal * back + diagonal * halfWidth);
+            arrow.lineTo(endX - diagonal * back + diagonal * halfWidth,
+                    endY - diagonal * back - diagonal * halfWidth);
+            arrow.close();
+            paint.setStyle(Paint.Style.FILL);
             canvas.drawPath(arrow, paint);
             return;
         }
