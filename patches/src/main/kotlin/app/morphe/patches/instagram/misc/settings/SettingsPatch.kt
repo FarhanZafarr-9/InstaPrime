@@ -6,6 +6,8 @@
  */
 package app.morphe.patches.instagram.misc.settings
 
+import app.morphe.patcher.patch.mutableClassDefByOrNull as globalMutableClassDefByOrNull
+
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
@@ -31,12 +33,13 @@ internal const val MAIN_ACTIVITY = "Lcom/instagram/mainactivity/InstagramMainAct
  * The first class in [type]'s hierarchy, as far as the APK carries it, that declares this
  * method with a body.
  */
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.declaredInHierarchy(
     type: String,
     name: String,
     vararg parameters: String,
 ): MutableMethod = superclassChain(type)
-    .mapNotNull { mutableClassDefByOrNull(it) }
+    .mapNotNull { globalMutableClassDefByOrNull(it) }
     .firstNotNullOfOrNull { classDef ->
         classDef.methods.singleOrNull { method ->
             method.name == name && method.returnType == "V" && method.implementation != null &&
@@ -54,7 +57,7 @@ internal fun BytecodePatchContext.declaredInHierarchy(
  * in. Every other name used here is a manifest component or a framework or androidx override or
  * call. Nothing is added to the manifest.
  */
-@Suppress("unused")
+@Suppress("unused", "DEPRECATION") // Shared helpers still require the legacy execute context.
 val settingsPatch = bytecodePatch(
     name = "InstaPrime settings",
     description = "Adds a InstaPrime settings page to Instagram. Open it by long-pressing the Instagram logo at the top " +

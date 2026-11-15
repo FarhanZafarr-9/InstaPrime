@@ -1,6 +1,8 @@
 /* Copyright 2026 InstaPrime contributors */
 package app.morphe.patches.instagram.misc.settings
 
+import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
+
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
@@ -28,6 +30,7 @@ internal data class NativePopupChoice(val method: Method, val results: Map<Int, 
 internal data class NativePopupPlan(val choices: List<NativePopupChoice>, val populations: List<Method>,
     val primary: Method, val primaryAt: Int, val more: Method)
 
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.nativePopupPlan(): NativePopupPlan {
     fun refuse(why: String): Nothing = throw PatchException("Native popup presentation: $why")
     val gate = classesLoading(POPUP_FLAG).flatMap { it.methods }.singleOrNull { method ->
@@ -79,9 +82,10 @@ internal fun BytecodePatchContext.nativePopupPlan(): NativePopupPlan {
     return NativePopupPlan(choices, populations, primary, primaryAt, more)
 }
 
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.applyNativePopupPlan(plan: NativePopupPlan) {
     val position = "$EXTENSION_PACKAGE/direct/MessageMenuPosition;"
-    val primary = mutableClassDefBy(plan.primary.definingClass).methods.single { it.name == plan.primary.name && it.parameterTypes == plan.primary.parameterTypes }
+    val primary = globalMutableClassDefBy(plan.primary.definingClass).methods.single { it.name == plan.primary.name && it.parameterTypes == plan.primary.parameterTypes }
     val population = primary.popupCode()[plan.primaryAt]
     val popupRegister = when (population) {
         is FiveRegisterInstruction -> population.registerC
@@ -91,7 +95,7 @@ internal fun BytecodePatchContext.applyNativePopupPlan(plan: NativePopupPlan) {
     primary.addInstructionsAtControlFlowLabel(plan.primaryAt + 1,
         "invoke-static/range {v$popupRegister .. v$popupRegister}, $position->remember(Landroid/widget/PopupWindow;)V")
     for (choice in plan.choices) {
-        val method = mutableClassDefBy(choice.method.definingClass).methods.single {
+        val method = globalMutableClassDefBy(choice.method.definingClass).methods.single {
             it.name == choice.method.name && it.parameterTypes == choice.method.parameterTypes && it.returnType == choice.method.returnType
         }
         for ((at, popup) in choice.results) {
@@ -99,7 +103,7 @@ internal fun BytecodePatchContext.applyNativePopupPlan(plan: NativePopupPlan) {
             method.replaceInstruction(at, "const/16 v$register, ${if (popup) "0x1" else "0x0"}")
         }
     }
-    val more = mutableClassDefBy(plan.more.definingClass).methods.single { it.name == plan.more.name && it.parameterTypes == plan.more.parameterTypes }
+    val more = globalMutableClassDefBy(plan.more.definingClass).methods.single { it.name == plan.more.name && it.parameterTypes == plan.more.parameterTypes }
     for ((at, ins) in more.popupCode().withIndex()) {
         if (ins.popupCall()?.name != "showAtLocation") continue
         val target = "$position->showMore(Landroid/widget/PopupWindow;Landroid/view/View;III)V"
@@ -111,7 +115,7 @@ internal fun BytecodePatchContext.applyNativePopupPlan(plan: NativePopupPlan) {
         more.replaceInstruction(at, call)
     }
     for (original in plan.populations) {
-        val method = mutableClassDefBy(original.definingClass).methods.single {
+        val method = globalMutableClassDefBy(original.definingClass).methods.single {
             it.name == original.name && it.parameterTypes == original.parameterTypes
         }
         method.popupCode().indices.filter { method.popupCode()[it].opcode == Opcode.RETURN_VOID }.asReversed().forEach { at ->

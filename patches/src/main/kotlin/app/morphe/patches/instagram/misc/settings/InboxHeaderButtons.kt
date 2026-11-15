@@ -1,5 +1,7 @@
 package app.morphe.patches.instagram.misc.settings
 
+import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
+
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patches.instagram.direct.ghost.findGhostAction
@@ -20,10 +22,11 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 private const val INBOX_BUTTONS = "$EXTENSION_PACKAGE/settings/InboxHeaderButtons;"
 
 /** Reuse the exact New message identification used by Ghost mode, without changing its listeners. */
+@Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.installInboxHeaderButtons() {
     val newer = findGhostAction()
     val older = findGhostEntries()
-    val maker = mutableClassDefBy(newer.makerType).methods.single {
+    val maker = globalMutableClassDefBy(newer.makerType).methods.single {
         it.name == newer.makerName && it.parameterTypes.map(Any::toString) == newer.makerParameters
     }
     maker.implementation!!.instructions.toList().withIndex().filter { it.value.opcode == Opcode.RETURN_OBJECT }
@@ -32,7 +35,7 @@ internal fun BytecodePatchContext.installInboxHeaderButtons() {
             maker.addInstructionsAtControlFlowLabel(at,
                 "invoke-static/range {v$register .. v$register}, $INBOX_BUTTONS->mark(Ljava/lang/Object;)V")
         }
-    val binder = mutableClassDefBy("Lcom/instagram/igds/components/actionbar/IgdsActionBar;").methods.single {
+    val binder = globalMutableClassDefBy("Lcom/instagram/igds/components/actionbar/IgdsActionBar;").methods.single {
         it.name == newer.binderName && it.parameterTypes.map(Any::toString) == newer.binderParameters
     }
     binder.implementation!!.instructions.toList().withIndex().filter {
@@ -45,7 +48,7 @@ internal fun BytecodePatchContext.installInboxHeaderButtons() {
         }
 
     for (entry in older.sortedByDescending { it.insertAt }) {
-        val method = mutableClassDefBy(entry.type).methods.single {
+        val method = globalMutableClassDefBy(entry.type).methods.single {
             it.name == entry.name && it.parameterTypes.map(Any::toString) == entry.parameters
         }
         method.addInstructionsAtControlFlowLabel(entry.insertAt,
@@ -59,7 +62,7 @@ internal fun BytecodePatchContext.installInboxHeaderButtons() {
         }
         var bound = false
         for (original in methods) {
-            val method = mutableClassDefBy(original.definingClass).methods.single {
+            val method = globalMutableClassDefBy(original.definingClass).methods.single {
                 it.name == original.name && it.parameterTypes == original.parameterTypes
             }
             val code = method.implementation!!.instructions.toList()
