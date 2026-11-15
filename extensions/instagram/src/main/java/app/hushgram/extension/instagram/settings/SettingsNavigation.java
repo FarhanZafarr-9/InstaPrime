@@ -531,6 +531,7 @@ final class SettingsNavigation {
                     Settings.HIDE_VIDEO_CALL_BUTTON.key, Settings.HIDE_AUDIO_CALL_BUTTON.key,
                     Settings.CALL_BLOCK_MODE.key, Settings.CALL_BLOCK_ACCOUNTS.key));
             split(node, "inbox", L10n.t("Inbox appearance"), keys(Settings.SPLIT_NOTES_ROW.key, Settings.HIDE_NOTES_ROW.key, Settings.HIDE_NOTES_MAP.key,
+                    Settings.HIDE_DM_COMPOSE_BUTTON.key, Settings.SETTINGS_BUTTON_IN_DM_HEADER.key,
                     Settings.HIDE_INBOX_SEARCH.key, Settings.HIDE_INBOX_SUGGESTIONS.key, Settings.HIDE_INSTANTS.key,
                     Settings.FULL_SCREEN_MESSAGES.key, HushgramPreferenceFragment.PINNED_CHATS_ROW));
             split(node, "controls", L10n.t("Chat appearance and behavior"), keys(Settings.KEEP_IN_CHAT.key, Settings.HIDE_KINDNESS_REMINDER.key, Settings.GLASS_CHAT.key,

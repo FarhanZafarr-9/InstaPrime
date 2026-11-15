@@ -1012,6 +1012,8 @@ public class Settings extends BaseSettings {
      * ({@link app.hushgram.extension.instagram.direct.PlusMenu}, #448). Each off to start.
      */
     public static final BooleanSetting HIDE_PLUS_BUTTON = new BooleanSetting("instaprime_hide_plus_button", FALSE);
+    public static final BooleanSetting HIDE_DM_COMPOSE_BUTTON = new BooleanSetting("instaprime_hide_dm_compose_button", FALSE);
+    public static final BooleanSetting SETTINGS_BUTTON_IN_DM_HEADER = new BooleanSetting("instaprime_settings_button_in_dm_header", FALSE);
     public static final BooleanSetting HIDE_EMPTY_PLUS_MENU = new BooleanSetting("instaprime_hide_empty_plus_menu", TRUE);
     public static final BooleanSetting HIDE_PLUS_SAVED = new BooleanSetting("hushgram_hide_plus_saved", FALSE);
     public static final BooleanSetting HIDE_PLUS_AI_IMAGES = new BooleanSetting("hushgram_hide_plus_ai_images", FALSE);

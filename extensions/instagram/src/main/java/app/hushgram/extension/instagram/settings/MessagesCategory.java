@@ -28,6 +28,7 @@ final class MessagesCategory {
     private MessagesCategory() { }
 
     static void add(HushgramPreferenceFragment page, PreferenceScreen screen, Context context, Set<PatchFamily> build) {
+        PreferenceCategory messages = null;
         if (build.contains(PatchFamily.NOTES_ROW) || build.contains(PatchFamily.SPLIT_NOTES_ROW)
                 || build.contains(PatchFamily.INBOX_SEARCH)
                 || build.contains(PatchFamily.INBOX_SUGGESTIONS) || build.contains(PatchFamily.INSTANTS)
@@ -54,7 +55,7 @@ final class MessagesCategory {
                 || build.contains(PatchFamily.MESSAGE_GESTURES)
                 || build.contains(PatchFamily.GLASS_CHAT)
                 || build.contains(PatchFamily.FULL_SCREEN_BARS)) {
-            PreferenceCategory messages = category(screen, L10n.t("Messages"), SettingsIcons.CHATS,
+            messages = category(screen, L10n.t("Messages"), SettingsIcons.CHATS,
                     L10n.t("Privacy and controls for your chats."));
             if (build.contains(PatchFamily.NOTES_ROW)) {
                 messages.addPreference(toggle(context, Settings.HIDE_NOTES_ROW, L10n.t("Hide the notes row"),
@@ -284,5 +285,11 @@ final class MessagesCategory {
                 messages.addPreference(page.pinnedChatsRow(context));
             }
         }
+        if (messages == null) messages = category(screen, L10n.t("Messages"), SettingsIcons.CHATS,
+                L10n.t("Privacy and controls for your chats."));
+        messages.addPreference(toggle(context, Settings.HIDE_DM_COMPOSE_BUTTON, L10n.t("Hide compose button"),
+                L10n.t("Hide the New message button in the inbox header.")));
+        messages.addPreference(toggle(context, Settings.SETTINGS_BUTTON_IN_DM_HEADER, L10n.t("Settings button in DM header"),
+                L10n.t("Place InstaPrime settings before the New message button.")));
     }
 }
