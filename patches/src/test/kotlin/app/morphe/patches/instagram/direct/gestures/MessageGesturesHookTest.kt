@@ -87,11 +87,13 @@ class MessageGesturesHookTest {
         for (bundle in bundles) {
             val context = PatchContexts.of(load(bundle) + ExtensionDex.classDef(GESTURES))
             val site = context.findMessageGestures()
+            val timing = context.messageTiming(site)
             val originalTap = site.tap.code()
             val originalHold = site.hold.code().map(::reference)
             val owner = context.classDefBy(site.tap.definingClass)
             val otherMethods = owner.methods.filter { it.name != site.tap.name }.associate { it.name to it.code().map(::reference) }
             context.applyMessageGestures(site)
+            context.applyMessageTiming(site, timing)
             val tap = context.mutableClassDefBy(site.tap.definingClass).methods.single { it.name == site.tap.name }.code()
             assertEquals(originalTap.size + 4, tap.size)
             assertEquals("$GESTURES->tap(Ljava/lang/Object;)Z", reference(tap.first()))
@@ -102,6 +104,11 @@ class MessageGesturesHookTest {
             val factory = context.mutableClassDefBy(site.factory.definingClass).methods.single { it.name == site.factory.name }.code()
             assertEquals(3, factory.count { reference(it) == "$GESTURES->actions(Ljava/util/List;)Ljava/util/List;" })
             assertEquals(1, factory.count { reference(it) == "$GESTURES->reactions(Z)Z" })
+            assertEquals(1, factory.count { reference(it) == "$GESTURES->floatingActions(Z)Z" })
+            val node = context.mutableClassDefBy(timing.flag.definingClass)
+            assertTrue(node.methods.single { it.name == "instaprimeDoubleTapEnabled" }.code().any {
+                reference(it) == "$GESTURES->doubleTapEnabled(ZLjava/lang/Object;)Z"
+            })
             val bridge = context.mutableClassDefBy(GESTURES).methods.single { it.name == "openNative" }.code()
             assertTrue(bridge.any { reference(it) == site.hold.text() })
             assertTrue(bridge.any { reference(it) == site.eligible.text() })
@@ -147,6 +154,17 @@ class MessageGesturesHookTest {
             .filter { it.code().any { ins -> reference(ins) == "double_tap" } }
             .flatMap { it.parameterTypes.map(Any::toString) } }.filter { it.startsWith("LX/") }
         kept += FixtureDex.classes(bundle, (dependencies + messageTypes).filter { type -> kept.none { it.type == type } }.toSet()).values
+        val interfaces = kept.filter { owner -> owner.methods.any { it.name == "GQe" } &&
+            owner.methods.any { it.parameterTypes.map(Any::toString) == listOf("F", "F") } }.flatMap { it.interfaces }.toSet()
+        FixtureDex.forEach(bundle) { dex -> for (owner in dex.classes) {
+            if (kept.any { it.type == owner.type }) continue
+            val timing = owner.fields.any { it.type in interfaces } || owner.methods.any { method -> method.code().any { ins ->
+                val call = (ins as? ReferenceInstruction)?.reference as? MethodReference
+                call?.definingClass == "Landroidx/compose/foundation/gestures/TapGestureDetectorKt;" ||
+                    (call?.definingClass in interfaces && call?.name == "GQe")
+            } }
+            if (timing) kept += ImmutableClassDef.of(owner)
+        } }
         return kept
     }
 

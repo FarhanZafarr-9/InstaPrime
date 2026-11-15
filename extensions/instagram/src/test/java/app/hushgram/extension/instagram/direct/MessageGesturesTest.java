@@ -69,6 +69,15 @@ public class MessageGesturesTest {
         assertFalse(MessageGestures.intercepts(null));
     }
 
+    @Test public void fasterSingleTapKeepsEnabledDoubleTapsAndMediaRecognition() {
+        assertTrue(MessageGestures.keepDoubleTap(true, true, true));
+        Settings.MESSAGE_TAP_REACTIONS.save(true);
+        assertFalse(MessageGestures.keepDoubleTap(true, true, true));
+        assertTrue(MessageGestures.keepDoubleTap(true, true, false));
+        assertTrue(MessageGestures.keepDoubleTap(true, false, true));
+        assertFalse(MessageGestures.keepDoubleTap(false, true, false));
+    }
+
     @Test public void reactionsWithoutAvailabilityDoNotOpenAnEmptyBackdrop() {
         Settings.MESSAGE_TAP_REACTIONS.save(true);
         AtomicBoolean launched = new AtomicBoolean();
@@ -110,9 +119,13 @@ public class MessageGesturesTest {
                 else assertTrue(MessageGestures.actions(actions).isEmpty());
                 assertEquals((selected & 2) != 0, MessageGestures.reactions(true));
                 assertFalse(MessageGestures.reactions(false));
+                assertEquals("only reaction-only mode removes action-pane compensation", selected != 2,
+                        MessageGestures.floatingActions(true));
+                assertFalse(MessageGestures.floatingActions(false));
                 return true;
             };
             assertTrue(MessageGestures.tap(new Object()));
+            assertTrue("native holds keep their layout flag", MessageGestures.floatingActions(true));
             assertSame(actions, MessageGestures.actions(actions));
             assertTrue(MessageGestures.reactions(true));
         }
