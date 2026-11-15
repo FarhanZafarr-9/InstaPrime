@@ -33,6 +33,7 @@ Invoke-GradleBuild -ProjectDir $repo -Tasks @(':extensions:instagram:testDebugUn
     '--tests', '*ChatPopupMenuTest', '--tests', '*StyledPopupNativeTest',
     '--tests', '*NativeSnackbarTest', '--tests', '*ProfileStatusBarTest', '--tests', '*ScreenColorsAccessibilityTest',
     '--tests', '*InboxHeaderButtonsTest',
+    '--tests', '*TabStartTest', '--tests', '*TabOrderTest', '--tests', '*HideHomeTabTest',
     '--tests', '*SavedProfilesSettingsTest', '--tests', '*ChatPagerTest',
     '--tests', '*ProfileExtrasTest', '--tests', '*ProfilePictureTest',
     '--tests', '*MessageGesturesTest', '--tests', '*MessageActionsTest', '--tests', '*PlusMenuTest',

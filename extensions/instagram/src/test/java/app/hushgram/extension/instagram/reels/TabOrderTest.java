@@ -153,11 +153,11 @@ public class TabOrderTest {
         assertEquals(Arrays.asList("PROFILE", "FEED", "CLIPS", "DIRECT"), TabOrder.choices("SEARCH,PROFILE"));
     }
 
-    @Test public void aReorderedBarOpensThePagerOnTheAskedTabAndInstagramsOwnOrderKeepsItsAnswer() {
+    @Test public void bothNativeAndReorderedBarsHonorTheRequestedTabAfterBuilding() {
         assertTrue("Instagram's yes stays yes", ReelsTab.startAtTab(1));
         assertEquals("nothing built yet", false, ReelsTab.startAtTab(0));
         ReelsTab.tabs(BUILT);
-        assertEquals("Instagram's order", false, ReelsTab.startAtTab(0));
+        assertTrue("native order still restores the requested page", ReelsTab.startAtTab(0));
 
         Settings.TAB_ORDER.save("PROFILE,SEARCH,FEED,CLIPS,DIRECT");
         ReelsTab.tabs(BUILT);
@@ -167,7 +167,7 @@ public class TabOrderTest {
 
         Settings.TAB_ORDER.save("FEED,SEARCH");
         ReelsTab.tabs(BUILT);
-        assertEquals("an order Instagram already has", false, ReelsTab.startAtTab(0));
+        assertTrue("unchanged order still restores the requested page", ReelsTab.startAtTab(0));
     }
 
     @Test public void pausedTheBarKeepsInstagramsOrderAndThePagerItsAnswer() {

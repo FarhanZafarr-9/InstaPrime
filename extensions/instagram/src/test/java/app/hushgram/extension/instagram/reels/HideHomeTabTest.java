@@ -85,7 +85,7 @@ public class HideHomeTabTest {
         assertSame(BAR, ReelsTab.tabs(BAR));
         assertSame(Tab.FEED, ReelsTab.root(Tab.FEED));
         assertSame(Tab.FEED_SWITCHER, ReelsTab.root(Tab.FEED_SWITCHER));
-        assertFalse(ReelsTab.startAtTab(0));
+        assertTrue("native page restoration also applies when Home remains visible", ReelsTab.startAtTab(0));
     }
 
     @Test
@@ -159,7 +159,7 @@ public class HideHomeTabTest {
 
             assertSame(start.name(), BAR, ReelsTab.tabs(BAR));
             assertSame(start.name(), Tab.FEED, ReelsTab.root(Tab.FEED));
-            assertFalse(start.name(), ReelsTab.startAtTab(0));
+            assertTrue(start.name(), ReelsTab.startAtTab(0));
             String report = report();
             assertTrue(report, report.contains(ReelsTab.HOME_KEPT_FOR_START + " 1"));
         }
