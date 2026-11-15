@@ -362,7 +362,20 @@ public final class SettingsDialog extends DialogFragment {
     private void setHeadingIcon(TextView title, @androidx.annotation.Nullable String icon) {
         headingIcon = icon;
         Drawable drawable = icon == null
-                ? new BitmapDrawable(title.getResources(), InstaPrimeIcon.bitmap())
+                ? new BitmapDrawable(title.getResources(), InstaPrimeIcon.bitmap()) {
+                    private final android.graphics.Path outline = new android.graphics.Path();
+                    @Override public void draw(android.graphics.Canvas canvas) {
+                        android.graphics.Rect bounds = getBounds();
+                        float radius = Math.min(bounds.width(), bounds.height()) * 0.20f;
+                        outline.rewind();
+                        outline.addRoundRect(new android.graphics.RectF(bounds), radius, radius,
+                                android.graphics.Path.Direction.CW);
+                        int saved = canvas.save();
+                        canvas.clipPath(outline);
+                        super.draw(canvas);
+                        canvas.restoreToCount(saved);
+                    }
+                }
                 : SettingsIcons.icon(title.getContext(), icon, title.getCurrentTextColor());
         drawable.setBounds(0, 0, dp(24), dp(24));
         title.setCompoundDrawablesRelative(drawable, null, null, null);
