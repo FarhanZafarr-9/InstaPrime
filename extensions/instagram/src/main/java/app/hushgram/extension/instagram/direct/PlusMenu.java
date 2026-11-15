@@ -76,14 +76,16 @@ public final class PlusMenu {
             view.addOnAttachStateChangeListener(binding);
             view.getViewTreeObserver().addOnPreDrawListener(binding);
         }
-        binding.overflow = new WeakReference<>(overflow);
+        // Keep only a count: retaining native menu items leaks their controller, while a weak
+        // list may be collected after the native builder copies it and loses the empty state.
+        binding.optionCount = overflow.size();
         binding.onPreDraw();
     }
 
     private static final class ButtonBinding implements ViewTreeObserver.OnPreDrawListener,
             View.OnAttachStateChangeListener {
         final WeakReference<View> button;
-        WeakReference<List<?>> overflow = new WeakReference<>(null);
+        int optionCount = -1;
         boolean hidden;
         int nativeVisibility;
 
@@ -92,7 +94,7 @@ public final class PlusMenu {
         @Override public boolean onPreDraw() {
             View view = button.get();
             if (view == null) return true;
-            if (empty(overflow.get())) {
+            if (hideButton(optionCount)) {
                 if (!hidden || view.getVisibility() != View.GONE) nativeVisibility = view.getVisibility();
                 hidden = true;
                 view.setVisibility(View.GONE);
@@ -173,10 +175,14 @@ public final class PlusMenu {
 
     /** Native composer availability asks this about this button's own filtered overflow list. */
     public static boolean empty(@Nullable List<?> menu) {
+        return hideButton(menu == null ? -1 : menu.size());
+    }
+
+    private static boolean hideButton(int optionCount) {
         try {
             return Utils.settingsReady() && !HushgramPause.isPaused() &&
                     (Settings.HIDE_PLUS_BUTTON.get() ||
-                    (Settings.HIDE_EMPTY_PLUS_MENU.get() && menu != null && menu.isEmpty()));
+                    (Settings.HIDE_EMPTY_PLUS_MENU.get() && optionCount == 0));
         } catch (Throwable failure) {
             return false;
         }
