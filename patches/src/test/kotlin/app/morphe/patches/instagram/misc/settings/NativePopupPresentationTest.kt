@@ -7,6 +7,7 @@ import app.morphe.patches.instagram.FixtureDex
 import app.morphe.patches.instagram.misc.extension.EXTENSION_PACKAGE
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
@@ -67,8 +68,8 @@ class NativePopupPresentationTest {
                 assertEquals(Opcode.IF_EQZ, patched[callAt - 1].opcode)
                 repeat(4) { patched.removeAt(callAt - 3) }
             }
-            // dexlib may remove an alignment NOP before a switch payload when a
-            // MOVE_RESULT becomes the wider CONST_16. Compare meaningful instructions.
+            // dexlib may change payload alignment NOPs and widen jumps after insertion.
+            // Compare meaningful operations independently of their encoding width.
             val expected = original.withIndex().filter { it.value.opcode != Opcode.NOP }.map { (at, instruction) ->
                 val reference = (instruction as? ReferenceInstruction)?.reference
                 when {
@@ -77,11 +78,11 @@ class NativePopupPresentationTest {
                         val opcode = if (instruction.opcode == Opcode.INVOKE_VIRTUAL_RANGE) Opcode.INVOKE_STATIC_RANGE else Opcode.INVOKE_STATIC
                         "$opcode:$EXTENSION_PACKAGE/direct/MessageMenuPosition;->showMore(Landroid/widget/PopupWindow;Landroid/view/View;III)V"
                     }
-                    else -> "${instruction.opcode}:$reference"
+                    else -> "${instruction.semanticOpcode()}:$reference"
                 }
             }
             assertEquals("only gate results and More placement calls change", expected,
-                patched.map { "${it.opcode}:${(it as? ReferenceInstruction)?.reference}" })
+                patched.map { "${it.semanticOpcode()}:${(it as? ReferenceInstruction)?.reference}" })
             for ((at, popup) in choice.results) {
                 val instruction = patched[original.take(at).count { it.opcode != Opcode.NOP }]
                 assertEquals(Opcode.CONST_16, instruction.opcode)
@@ -100,4 +101,9 @@ class NativePopupPresentationTest {
     }
 
     private fun Method.code() = implementation?.instructions?.map { "${it.opcode}:${(it as? ReferenceInstruction)?.reference}" }.orEmpty()
+
+    private fun Instruction.semanticOpcode() = when (opcode) {
+        Opcode.GOTO_16, Opcode.GOTO_32 -> Opcode.GOTO
+        else -> opcode
+    }
 }
