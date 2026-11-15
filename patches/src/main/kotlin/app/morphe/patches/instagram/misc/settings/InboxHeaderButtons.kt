@@ -8,15 +8,15 @@ import app.morphe.patches.instagram.direct.ghost.findGhostAction
 import app.morphe.patches.instagram.direct.ghost.findGhostEntries
 import app.morphe.patches.instagram.misc.extension.EXTENSION_PACKAGE
 import app.morphe.patches.instagram.misc.extension.classesAccessing
-import app.morphe.patches.instagram.misc.extension.freeLocalsAt
 import app.morphe.patches.instagram.misc.extension.parameterRegisterNumber
 import app.morphe.patches.instagram.misc.extension.requireParameterIntact
 import app.morphe.util.addInstructionsAtControlFlowLabel
 import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 private const val INBOX_BUTTONS = "$EXTENSION_PACKAGE/settings/InboxHeaderButtons;"
@@ -57,38 +57,44 @@ internal fun BytecodePatchContext.installInboxHeaderButtons() {
     for (field in older.map { it.longPress }.distinct()) {
         val type = field.substringBefore("->")
         val name = field.substringAfter("->").substringBefore(':')
-        val methods = classesAccessing(type, name, Opcode.IGET_OBJECT).flatMap { it.methods }.filter {
-            type in it.parameterTypes.map(Any::toString) && it.implementation != null
+        val readers = classesAccessing(type, name, Opcode.IGET_OBJECT).flatMap { it.methods }
+        val renderedFields = mutableSetOf(field)
+        for (copy in readers.filter { it.name == "<init>" && it.parameterTypes.map(Any::toString) == listOf(type) }) {
+            val code = copy.implementation?.instructions?.toList().orEmpty()
+            val copiedFields = code.indices.mapNotNull { at ->
+                if ((code[at] as? ReferenceInstruction)?.reference?.toString() != field || code[at].opcode != Opcode.IGET_OBJECT) return@mapNotNull null
+                val write = code.getOrNull(at + 1)
+                if (write?.opcode != Opcode.IPUT_OBJECT || (write as TwoRegisterInstruction).registerA != (code[at] as TwoRegisterInstruction).registerA)
+                    return@mapNotNull null
+                ((write as ReferenceInstruction).reference as? FieldReference)?.takeIf { it.definingClass == copy.definingClass }
+            }
+            if (copiedFields.isEmpty()) continue
+            renderedFields += copiedFields.map { it.toString() }
+            val constructor = globalMutableClassDefBy(copy.definingClass).methods.single {
+                it.name == copy.name && it.parameterTypes == copy.parameterTypes
+            }
+            constructor.implementation!!.instructions.toList().withIndex().filter { it.value.opcode == Opcode.RETURN_VOID }
+                .asReversed().forEach { (at, _) ->
+                    constructor.requireParameterIntact("Inbox header buttons", 0, listOf(at))
+                    constructor.addInstructionsAtControlFlowLabel(at,
+                        "invoke-static/range {p0 .. p1}, $INBOX_BUTTONS->copied(Ljava/lang/Object;Ljava/lang/Object;)V")
+                }
         }
         var bound = false
-        for (original in methods) {
-            val method = globalMutableClassDefBy(original.definingClass).methods.single {
-                it.name == original.name && it.parameterTypes == original.parameterTypes
-            }
-            val code = method.implementation!!.instructions.toList()
-            val setters = code.indices.filter { at ->
-                val call = (code[at] as? ReferenceInstruction)?.reference as? MethodReference
-                call?.name == "setOnClickListener" && call.parameterTypes.map(Any::toString) == listOf("Landroid/view/View\$OnClickListener;")
-            }
-            for (at in setters.asReversed()) {
-                val register = when (val ins = code[at]) {
-                    is FiveRegisterInstruction -> ins.registerC
-                    is RegisterRangeInstruction -> ins.startRegister
-                    else -> continue
+        for (rendered in renderedFields) {
+            val owner = rendered.substringBefore("->")
+            val member = rendered.substringAfter("->").substringBefore(':')
+            val methods = classesAccessing(owner, member, Opcode.IGET_OBJECT).flatMap { it.methods }.filter {
+                !AccessFlags.STATIC.isSet(it.accessFlags) && it.returnType == "V" &&
+                    it.parameterTypes.map(Any::toString) == listOf("Landroid/view/View;", owner)
+            }.distinctBy { it.toString() }
+            for (original in methods) {
+                val method = globalMutableClassDefBy(original.definingClass).methods.single {
+                    it.name == original.name && it.parameterTypes == original.parameterTypes
                 }
-                val model = method.parameterRegisterNumber(method.parameterTypes.indexOfFirst { it.toString() == type })
-                method.requireParameterIntact("Inbox header buttons", method.parameterTypes.indexOfFirst { it.toString() == type }, listOf(at + 1))
-                if (register <= 15 && model <= 15) {
-                    method.addInstructionsAtControlFlowLabel(at + 1,
-                        "invoke-static {v$register, v$model}, $INBOX_BUTTONS->bind(Landroid/view/View;Ljava/lang/Object;)V")
-                } else {
-                    val locals = method.freeLocalsAt("Inbox header buttons", at + 1, 2, except = listOf(register, model))
-                    method.addInstructionsAtControlFlowLabel(at + 1, """
-                        move-object/from16 v${locals[0]}, v$register
-                        move-object/from16 v${locals[1]}, v$model
-                        invoke-static {v${locals[0]}, v${locals[1]}}, $INBOX_BUTTONS->bind(Landroid/view/View;Ljava/lang/Object;)V
-                    """)
-                }
+                val first = method.parameterRegisterNumber(0)
+                method.addInstructionsAtControlFlowLabel(0,
+                    "invoke-static/range {v$first .. v${first + 1}}, $INBOX_BUTTONS->bind(Landroid/view/View;Ljava/lang/Object;)V")
                 bound = true
             }
         }

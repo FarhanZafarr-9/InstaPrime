@@ -23,6 +23,11 @@ public final class InboxHeaderButtons {
 
     public static void mark(Object action) { if (action != null) actions.put(action, true); }
 
+    /** The legacy header freezes its builder into a separate model before binding a view. */
+    public static void copied(Object action, Object source) {
+        if (action != null && actions.containsKey(source)) mark(action);
+    }
+
     public static void bind(View button, Object action) {
         if (button == null) return;
         if (!actions.containsKey(action)) {
