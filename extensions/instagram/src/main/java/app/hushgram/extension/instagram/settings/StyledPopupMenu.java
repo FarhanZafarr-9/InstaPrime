@@ -39,6 +39,10 @@ public class StyledPopupMenu extends PopupMenu {
     private final ListPopupWindow window;
     private OnDismissListener dismissal;
     private boolean open;
+    private int iconSizeDp = 24;
+
+    /** Applies to both row rendering and content-width measurement. */
+    public void setIconSizeDp(int size) { iconSizeDp = Math.max(1, size); }
 
     public StyledPopupMenu(Context context, View anchor) { this(context, anchor, Gravity.END); }
 
@@ -83,7 +87,7 @@ public class StyledPopupMenu extends PopupMenu {
         int maxWidth = Math.max(1, available);
         int gutter = Math.min(dp(8), Math.max(0, (maxWidth - 1) / 2));
         int maxRowWidth = Math.max(1, maxWidth - gutter * 2);
-        int contentPadding = dp(12), iconSize = dp(24), iconGap = dp(12), checkWidth = dp(24);
+        int contentPadding = dp(12), iconSize = dp(iconSizeDp), iconGap = dp(12), checkWidth = dp(24);
         window.setListSelector(new ColorDrawable(Color.TRANSPARENT));
         BaseAdapter adapter = new BaseAdapter() {
             @Override public int getCount() { return items.size(); }

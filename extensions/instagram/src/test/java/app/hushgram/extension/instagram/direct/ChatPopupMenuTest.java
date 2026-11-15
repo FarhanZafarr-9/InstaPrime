@@ -89,6 +89,13 @@ public class ChatPopupMenuTest {
             assertTrue("the icon and its spacing count toward width: plain=" + shortWidth + ", icon=" + iconWidth,
                     iconWidth > shortWidth);
             popup.dismiss();
+            popup.setIconSizeDp(20);
+            popup.show();
+            int compactWidth = popup.windowForTests().getWidth();
+            assertTrue("smaller utility icons also reduce measured width", compactWidth < iconWidth);
+            assertEquals(Math.round(20 * anchor.getResources().getDisplayMetrics().density), icon.getBounds().width());
+            popup.dismiss();
+            popup.setIconSizeDp(24);
             popup.getMenu().getItem(0).setCheckable(true);
             popup.show();
             assertTrue("the checkmark slot also counts toward width", popup.windowForTests().getWidth() > iconWidth);
