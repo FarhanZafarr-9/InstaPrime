@@ -16,6 +16,8 @@ import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 private const val POPUP_FLAG = 36329998780490487L
@@ -23,7 +25,8 @@ private const val PROFILE_SHEET_FLAG = 36322151875231018L
 private const val WINDOW = "Landroid/widget/PopupWindow;"
 private const val SESSION = "Lcom/instagram/common/session/UserSession;"
 internal data class NativePopupChoice(val method: Method, val results: Map<Int, Boolean>)
-internal data class NativePopupPlan(val choices: List<NativePopupChoice>, val populations: List<Method>)
+internal data class NativePopupPlan(val choices: List<NativePopupChoice>, val populations: List<Method>,
+    val primary: Method, val primaryAt: Int, val more: Method)
 
 internal fun BytecodePatchContext.nativePopupPlan(): NativePopupPlan {
     fun refuse(why: String): Nothing = throw PatchException("Native popup presentation: $why")
@@ -65,10 +68,28 @@ internal fun BytecodePatchContext.nativePopupPlan(): NativePopupPlan {
     val populations = renderer.methods.filter { !AccessFlags.STATIC.isSet(it.accessFlags) && it.returnType == "V" &&
         it.parameterTypes.map(Any::toString) == listOf("Ljava/util/List;") && it.implementation != null }
     if (populations.size < 2) refuse("native popup population variants missing")
-    return NativePopupPlan(choices, populations)
+    val primary = classesHolding("reactionsCreationController must be initialized", "vibrator")
+        .flatMap { it.methods }.singleOrNull { it.name == "onViewCreated" && it.popupCode().any { ins ->
+            ins.popupCall()?.let { call -> call.definingClass == renderer.type &&
+                call.parameterTypes.map(Any::toString) == listOf("Ljava/util/List;") } == true
+        } } ?: refuse("no unique primary message popup")
+    val primaryAt = primary.popupCode().indices.singleOrNull { at -> primary.popupCode()[at].popupCall()?.let {
+        it.definingClass == renderer.type && it.parameterTypes.map(Any::toString) == listOf("Ljava/util/List;")
+    } == true } ?: refuse("primary message popup population changed")
+    return NativePopupPlan(choices, populations, primary, primaryAt, more)
 }
 
 internal fun BytecodePatchContext.applyNativePopupPlan(plan: NativePopupPlan) {
+    val position = "$EXTENSION_PACKAGE/direct/MessageMenuPosition;"
+    val primary = mutableClassDefBy(plan.primary.definingClass).methods.single { it.name == plan.primary.name && it.parameterTypes == plan.primary.parameterTypes }
+    val population = primary.popupCode()[plan.primaryAt]
+    val popupRegister = when (population) {
+        is FiveRegisterInstruction -> population.registerC
+        is RegisterRangeInstruction -> population.startRegister
+        else -> throw PatchException("Native popup presentation: unsupported primary call")
+    }
+    primary.addInstructionsAtControlFlowLabel(plan.primaryAt + 1,
+        "invoke-static/range {v$popupRegister .. v$popupRegister}, $position->remember(Landroid/widget/PopupWindow;)V")
     for (choice in plan.choices) {
         val method = mutableClassDefBy(choice.method.definingClass).methods.single {
             it.name == choice.method.name && it.parameterTypes == choice.method.parameterTypes && it.returnType == choice.method.returnType
@@ -77,6 +98,17 @@ internal fun BytecodePatchContext.applyNativePopupPlan(plan: NativePopupPlan) {
             val register = (method.popupCode()[at] as OneRegisterInstruction).registerA
             method.replaceInstruction(at, "const/16 v$register, ${if (popup) "0x1" else "0x0"}")
         }
+    }
+    val more = mutableClassDefBy(plan.more.definingClass).methods.single { it.name == plan.more.name && it.parameterTypes == plan.more.parameterTypes }
+    for ((at, ins) in more.popupCode().withIndex()) {
+        if (ins.popupCall()?.name != "showAtLocation") continue
+        val target = "$position->showMore(Landroid/widget/PopupWindow;Landroid/view/View;III)V"
+        val call = when (ins) {
+            is FiveRegisterInstruction -> "invoke-static {v${ins.registerC}, v${ins.registerD}, v${ins.registerE}, v${ins.registerF}, v${ins.registerG}}, $target"
+            is RegisterRangeInstruction -> "invoke-static/range {v${ins.startRegister} .. v${ins.startRegister + ins.registerCount - 1}}, $target"
+            else -> throw PatchException("Native popup presentation: unsupported More placement call")
+        }
+        more.replaceInstruction(at, call)
     }
     for (original in plan.populations) {
         val method = mutableClassDefBy(original.definingClass).methods.single {
