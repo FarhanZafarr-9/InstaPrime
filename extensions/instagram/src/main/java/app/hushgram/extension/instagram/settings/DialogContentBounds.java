@@ -9,7 +9,13 @@ import android.widget.FrameLayout;
 final class DialogContentBounds extends FrameLayout {
     private final Rect visibleFrame = new Rect();
 
-    private DialogContentBounds(View content) { super(content.getContext()); }
+    private DialogContentBounds(View content) {
+        super(content.getContext());
+        if (content instanceof android.widget.ListView) {
+            int titleGap = Math.round(8 * getResources().getDisplayMetrics().density);
+            setPadding(0, titleGap, 0, 0);
+        }
+    }
 
     static void limit(View content) {
         if (content == null || content.getVisibility() == View.GONE || !(content.getParent() instanceof ViewGroup)
