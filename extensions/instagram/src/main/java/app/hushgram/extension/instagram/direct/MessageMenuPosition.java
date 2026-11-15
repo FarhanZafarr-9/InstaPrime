@@ -25,7 +25,7 @@ public final class MessageMenuPosition {
         content.addOnAttachStateChangeListener(anchor);
     }
 
-    /** Keep a floating primary menu off the physical right edge without changing its Y. */
+    /** Native X can be an offset from either edge, depending on message direction. */
     public static int primaryX(int nativeX) {
         Anchor anchor = latest;
         if (anchor == null || anchor.detached != 0) return nativeX;
@@ -44,7 +44,12 @@ public final class MessageMenuPosition {
         }
         int[] origin = new int[2];
         decor.getLocationOnScreen(origin);
-        return insetRight(nativeX, width, frame.right - origin[0], edgeGap(content));
+        return insetPrimary(nativeX, width, frame.right - origin[0], edgeGap(content));
+    }
+
+    static int insetPrimary(int offset, int width, int right, int gap) {
+        return width > 0 && width + 2 * gap <= right
+                ? Math.max(gap, insetRight(offset, width, right, gap)) : offset;
     }
 
     static int insetRight(int x, int width, int right, int gap) {
