@@ -35,7 +35,7 @@ import com.android.tools.smali.dexlib2.iface.reference.StringReference
 
 private const val PATCH = "Chat plus menu"
 internal const val PLUS_MENU = "$EXTENSION_PACKAGE/direct/PlusMenu;"
-internal const val MENU_HOOK = "$PLUS_MENU->menu(Ljava/util/List;Ljava/util/Map;)V"
+internal const val MENU_HOOK = "$PLUS_MENU->configure(Landroid/view/View;Ljava/util/List;Ljava/util/Map;)V"
 private const val LIST = "Ljava/util/List;"
 
 /** The names of the rows of the chat composer's plus menu this patch tells apart, in Instagram's button enum. */
@@ -54,6 +54,7 @@ internal class PlusMenuSite(
     val list: Int,
     val map: Int,
     val scratch: Int,
+    val buttonScratch: Int,
 )
 
 /**
@@ -143,7 +144,10 @@ internal fun BytecodePatchContext.findPlusMenu(): PlusMenuSite {
     val live = RegisterLiveness.of(builder).liveInto(exit)
     val scratch = (0 until minOf(builder.localRegisterCount(), 16)).firstOrNull { it !in live && it != list }
         ?: refuse("$where has no spare register where its loop exits")
-    return PlusMenuSite(builder.definingClass, builder.name, builder.parameterTypes.map(CharSequence::toString), exit, list, map, scratch)
+    val buttonScratch = (0 until minOf(builder.localRegisterCount(), 16)).firstOrNull {
+        it !in live && it != list && it != scratch
+    } ?: refuse("$where has no spare register for the plus view")
+    return PlusMenuSite(builder.definingClass, builder.name, builder.parameterTypes.map(CharSequence::toString), exit, list, map, scratch, buttonScratch)
 }
 
 /** Hands the finished menu list and the button map to [MENU_HOOK] where the loop exits. */
@@ -155,10 +159,9 @@ internal fun BytecodePatchContext.handPlusMenu(site: PlusMenuSite) {
         site.at,
         """
             move-object/from16 v${site.scratch}, v${site.map}
-            invoke-static { v${site.list}, v${site.scratch} }, $MENU_HOOK
             invoke-static/range {p0 .. p0}, $PLUS_MENU->button(Ljava/lang/Object;)Landroid/view/View;
-            move-result-object v${site.scratch}
-            invoke-static {v${site.scratch}, v${site.list}}, $PLUS_MENU->bind(Landroid/view/View;Ljava/util/List;)V
+            move-result-object v${site.buttonScratch}
+            invoke-static {v${site.buttonScratch}, v${site.list}, v${site.scratch}}, $MENU_HOOK
         """,
     )
 }

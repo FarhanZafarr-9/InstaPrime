@@ -66,6 +66,37 @@ public final class PlusMenu {
     /** Filled by the patch with the composer's verified button field chain. */
     public static View button(Object builder) { return null; }
 
+    /** Snapshot names before filtering, so visibility follows settings without retaining native items. */
+    public static void configure(@Nullable View view, @Nullable List<?> overflow, @Nullable Map<?, ?> byButton) {
+        if (overflow == null || byButton == null) return;
+        Set<String> names = new HashSet<>();
+        int unknown = 0;
+        boolean gallery = false;
+        for (Map.Entry<?, ?> entry : byButton.entrySet()) {
+            if (entry.getKey() instanceof Enum<?> && GALLERY.equals(((Enum<?>) entry.getKey()).name())
+                    && entry.getValue() != null) gallery = true;
+        }
+        for (Object item : overflow) {
+            String name = null;
+            for (Map.Entry<?, ?> entry : byButton.entrySet()) {
+                if (entry.getValue() == item && entry.getKey() instanceof Enum<?>) {
+                    name = ((Enum<?>) entry.getKey()).name();
+                    break;
+                }
+            }
+            if (name == null) unknown++; else names.add(name);
+        }
+        menu(overflow, byButton);
+        bind(view, overflow);
+        ButtonBinding binding = view == null ? null : buttons.get(view);
+        if (binding != null) {
+            binding.optionNames = names;
+            binding.unknownOptions = unknown;
+            binding.galleryAvailable = gallery;
+            binding.onPreDraw();
+        }
+    }
+
     /** The native plus view is separate from the MORE item in the composer's list. */
     public static void bind(@Nullable View view, @Nullable List<?> overflow) {
         if (view == null || overflow == null) return;
@@ -79,6 +110,7 @@ public final class PlusMenu {
         // Keep only a count: retaining native menu items leaks their controller, while a weak
         // list may be collected after the native builder copies it and loses the empty state.
         binding.optionCount = overflow.size();
+        binding.optionNames = null;
         binding.onPreDraw();
     }
 
@@ -86,6 +118,9 @@ public final class PlusMenu {
             View.OnAttachStateChangeListener {
         final WeakReference<View> button;
         int optionCount = -1;
+        Set<String> optionNames;
+        int unknownOptions;
+        boolean galleryAvailable;
         boolean hidden;
         int nativeVisibility;
 
@@ -94,7 +129,13 @@ public final class PlusMenu {
         @Override public boolean onPreDraw() {
             View view = button.get();
             if (view == null) return true;
-            if (hideButton(optionCount)) {
+            int remaining = optionCount;
+            if (Utils.settingsReady() && !HushgramPause.isPaused() && optionNames != null) {
+                remaining = unknownOptions;
+                for (String name : optionNames) if (!hiddenOption(name)) remaining++;
+                if (galleryAvailable && Settings.MOVE_TO_PLUS_MENU.get() && !optionNames.contains(GALLERY)) remaining++;
+            }
+            if (hideButton(remaining)) {
                 if (!hidden || view.getVisibility() != View.GONE) nativeVisibility = view.getVisibility();
                 hidden = true;
                 view.setVisibility(View.GONE);
@@ -120,6 +161,14 @@ public final class PlusMenu {
     static boolean inBuild() {
         Boolean forced = inBuildForTests;
         return forced != null ? forced : SettingsStatus.plusMenu();
+    }
+
+    private static boolean hiddenOption(String name) {
+        return SAVED.equals(name) && Settings.HIDE_PLUS_SAVED.get()
+                || AI_IMAGES.equals(name) && Settings.HIDE_PLUS_AI_IMAGES.get()
+                || DRAW.equals(name) && Settings.HIDE_PLUS_DRAW.get()
+                || META_AI.contains(name) && Settings.HIDE_PLUS_META_AI.get()
+                || LOCATION.equals(name) && Settings.HIDE_PLUS_LOCATION.get();
     }
 
     /**
