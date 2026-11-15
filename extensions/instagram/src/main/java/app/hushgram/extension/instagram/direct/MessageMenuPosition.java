@@ -25,6 +25,36 @@ public final class MessageMenuPosition {
         content.addOnAttachStateChangeListener(anchor);
     }
 
+    /** Keep a floating primary menu off the physical right edge without changing its Y. */
+    public static int primaryX(int nativeX) {
+        Anchor anchor = latest;
+        if (anchor == null || anchor.detached != 0) return nativeX;
+        View content = anchor.content.get();
+        Activity host = anchor.activity.get();
+        if (content == null || host == null || host.isDestroyed()) return nativeX;
+        Rect frame = new Rect();
+        View decor = host.getWindow().getDecorView();
+        decor.getWindowVisibleDisplayFrame(frame);
+        if (frame.isEmpty()) return nativeX;
+        int width = content.getMeasuredWidth();
+        if (width <= 0) {
+            content.measure(View.MeasureSpec.makeMeasureSpec(frame.width(), View.MeasureSpec.AT_MOST),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+            width = content.getMeasuredWidth();
+        }
+        int[] origin = new int[2];
+        decor.getLocationOnScreen(origin);
+        return insetRight(nativeX, width, frame.right - origin[0], edgeGap(content));
+    }
+
+    static int insetRight(int x, int width, int right, int gap) {
+        return width > 0 && width + gap <= right ? Math.min(x, right - width - gap) : x;
+    }
+
+    private static int edgeGap(View view) {
+        return Math.round(8 * view.getResources().getDisplayMetrics().density);
+    }
+
     public static void showMore(PopupWindow popup, View host, int gravity, int x, int y) {
         Anchor anchor = latest;
         latest = null;
@@ -38,7 +68,7 @@ public final class MessageMenuPosition {
                 content.measure(View.MeasureSpec.makeMeasureSpec(frame.width(), View.MeasureSpec.AT_MOST),
                         View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                 int width = popup.getWidth() > 0 ? popup.getWidth() : content.getMeasuredWidth();
-                x = Math.max(frame.left, Math.min(anchor.bounds.left, frame.right - width)) - frame.left;
+                x = Math.max(frame.left, insetRight(anchor.bounds.left, width, frame.right, edgeGap(content))) - frame.left;
                 y = Math.max(0, anchor.bounds.top - frame.top);
                 gravity = Gravity.TOP | Gravity.LEFT;
             }

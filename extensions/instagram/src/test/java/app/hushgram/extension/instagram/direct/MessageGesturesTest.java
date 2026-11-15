@@ -28,6 +28,14 @@ import app.hushgram.extension.shared.settings.PauseForTests;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = {28, 37})
 public class MessageGesturesTest {
+    @Test public void floatingMenusKeepTheirRightGapWithoutMovingInsetMenus() {
+        assertEquals(772, MessageMenuPosition.insetRight(780, 300, 1080, 8));
+        assertEquals(40, MessageMenuPosition.insetRight(40, 300, 1080, 8));
+        assertEquals(700, MessageMenuPosition.insetRight(700, 300, 1080, 8));
+        assertEquals(0, MessageMenuPosition.insetRight(0, 1080, 1080, 8));
+        assertEquals(540, MessageMenuPosition.insetRight(548, 300, 856, 16));
+    }
+
     @Rule public final SettingsContextRule settings = new SettingsContextRule();
     private final List<String> actions = Arrays.asList("Reply", "More");
 
