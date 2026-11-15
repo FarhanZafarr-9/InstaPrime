@@ -672,6 +672,11 @@ public final class ScreenColors {
             choices.setDividerHeight(0);
         }
         stackDialogActions(dialog);
+        if (choices != null) DialogContentBounds.limit(choices);
+        else {
+            int scrollId = dialog.getContext().getResources().getIdentifier("scrollView", "id", "android");
+            if (scrollId != 0) DialogContentBounds.limit(dialog.findViewById(scrollId));
+        }
         View field = dialog.findViewById(android.R.id.edit);
         if (field instanceof EditText) paintField((EditText) field);
         if (window != null) startTextAtTheStart(window.getDecorView());
