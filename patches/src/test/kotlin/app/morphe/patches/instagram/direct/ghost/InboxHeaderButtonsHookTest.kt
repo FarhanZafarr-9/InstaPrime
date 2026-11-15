@@ -1,10 +1,9 @@
-package app.morphe.patches.instagram.misc.settings
+package app.morphe.patches.instagram.direct.ghost
 
 import app.morphe.PatchContexts
+import app.morphe.patcher.patch.mutableClassDefBy
 import app.morphe.patches.instagram.FixtureDex
-import app.morphe.patches.instagram.direct.ghost.GhostModeEntryHookTest
-import app.morphe.patches.instagram.direct.ghost.findGhostEntries
-import app.morphe.patches.instagram.direct.ghost.addGhostModeEntry
+import app.morphe.patches.instagram.misc.settings.installInboxHeaderButtons
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.immutable.ImmutableClassDef
 import org.junit.Assert.*
@@ -29,7 +28,7 @@ class InboxHeaderButtonsHookTest {
         assertTrue(context.addGhostModeEntry())
         context.installInboxHeaderButtons()
         val hook = "Lapp/hushgram/extension/instagram/settings/InboxHeaderButtons;"
-        val references = kept.keys.flatMap { type -> context.mutableClassDefBy(type).methods.flatMap { method ->
+        val references = kept.keys.flatMap { type -> mutableClassDefBy(type).methods.flatMap { method ->
             method.implementation?.instructions?.mapNotNull { (it as? ReferenceInstruction)?.reference?.toString() }.orEmpty()
         } }
         assertTrue("both action models and legacy configurations are marked", references.count { it == "$hook->mark(Ljava/lang/Object;)V" } >= 2)

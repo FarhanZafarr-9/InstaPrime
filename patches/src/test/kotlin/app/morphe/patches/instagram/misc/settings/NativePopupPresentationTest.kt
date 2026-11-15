@@ -1,5 +1,7 @@
 package app.morphe.patches.instagram.misc.settings
 
+import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
+
 import app.morphe.PatchContexts
 import app.morphe.patches.instagram.FixtureDex
 import com.android.tools.smali.dexlib2.Opcode
@@ -21,17 +23,22 @@ class NativePopupPresentationTest {
         val plan = context.nativePopupPlan()
         assertEquals(3, plan.choices.size)
         val inbox = plan.choices.single { it.method.definingClass == "LX/01SB;" }
-        assertEquals("inbox anchor and fallback presenters both choose native popups", 2, inbox.results.size)
+        val nativeGateReads = inbox.method.implementation!!.instructions.count {
+            ((it as? ReferenceInstruction)?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference)
+                ?.definingClass == "LX/0Om0;"
+        }
+        assertTrue("inbox has a native presentation gate", nativeGateReads > 0)
+        assertEquals("every native inbox gate chooses popups", nativeGateReads, inbox.results.size)
         assertTrue(inbox.results.values.all { it })
         assertEquals(4, plan.populations.size)
         val gate = classes.single { it.type == "LX/0Om0;" }.methods.associate { it.toString() to it.code() }
         context.applyNativePopupPlan(plan)
-        val primary = context.mutableClassDefBy(plan.primary.definingClass).methods.single { it.name == plan.primary.name }
+        val primary = globalMutableClassDefBy(plan.primary.definingClass).methods.single { it.name == plan.primary.name }
         assertEquals(1, primary.implementation!!.instructions.count {
             ((it as? ReferenceInstruction)?.reference?.toString())?.contains("MessageMenuPosition;->remember(") == true
         })
         for (choice in plan.choices) {
-            val method = context.mutableClassDefBy(choice.method.definingClass).methods.single { it.toString() == choice.method.toString() }
+            val method = globalMutableClassDefBy(choice.method.definingClass).methods.single { it.toString() == choice.method.toString() }
             assertEquals(choice.method.implementation!!.registerCount, method.implementation!!.registerCount)
             assertEquals(choice.method.code().size, method.code().size)
             for ((at, popup) in choice.results) {
@@ -40,9 +47,9 @@ class NativePopupPresentationTest {
                 assertEquals(if (popup) 1 else 0, (instruction as NarrowLiteralInstruction).narrowLiteral)
             }
         }
-        for (method in context.mutableClassDefBy("LX/0Om0;").methods) assertEquals(gate[method.toString()], method.code())
+        for (method in globalMutableClassDefBy("LX/0Om0;").methods) assertEquals(gate[method.toString()], method.code())
         for (original in plan.populations) {
-            val method = context.mutableClassDefBy(original.definingClass).methods.single { it.toString() == original.toString() }
+            val method = globalMutableClassDefBy(original.definingClass).methods.single { it.toString() == original.toString() }
             assertEquals(original.implementation!!.registerCount, method.implementation!!.registerCount)
             assertEquals(original.implementation!!.instructions.count { it.opcode == Opcode.RETURN_VOID },
                 method.implementation!!.instructions.count { ((it as? ReferenceInstruction)?.reference?.toString())?.contains("->styleNative(") == true })
