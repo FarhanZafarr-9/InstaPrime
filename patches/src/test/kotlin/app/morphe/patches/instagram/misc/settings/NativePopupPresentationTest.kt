@@ -4,10 +4,12 @@ import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
 
 import app.morphe.PatchContexts
 import app.morphe.patches.instagram.FixtureDex
+import app.morphe.patches.instagram.misc.extension.EXTENSION_PACKAGE
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -40,11 +42,29 @@ class NativePopupPresentationTest {
         for (choice in plan.choices) {
             val method = globalMutableClassDefBy(choice.method.definingClass).methods.single { it.toString() == choice.method.toString() }
             assertEquals(choice.method.implementation!!.registerCount, method.implementation!!.registerCount)
-            assertEquals(choice.method.code().size, method.code().size)
+            val original = choice.method.implementation!!.instructions.toList()
+            val patched = method.implementation!!.instructions.filter { it.opcode != Opcode.NOP }
+            // dexlib may remove an alignment NOP before a switch payload when a
+            // MOVE_RESULT becomes the wider CONST_16. Compare meaningful instructions.
+            val expected = original.withIndex().filter { it.value.opcode != Opcode.NOP }.map { (at, instruction) ->
+                val reference = (instruction as? ReferenceInstruction)?.reference
+                when {
+                    at in choice.results -> "${Opcode.CONST_16}:null"
+                    choice.method == plan.more && (reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference)?.name == "showAtLocation" -> {
+                        val opcode = if (instruction.opcode == Opcode.INVOKE_VIRTUAL_RANGE) Opcode.INVOKE_STATIC_RANGE else Opcode.INVOKE_STATIC
+                        "$opcode:$EXTENSION_PACKAGE/direct/MessageMenuPosition;->showMore(Landroid/widget/PopupWindow;Landroid/view/View;III)V"
+                    }
+                    else -> "${instruction.opcode}:$reference"
+                }
+            }
+            assertEquals("only gate results and More placement calls change", expected,
+                patched.map { "${it.opcode}:${(it as? ReferenceInstruction)?.reference}" })
             for ((at, popup) in choice.results) {
-                val instruction = method.implementation!!.instructions.toList()[at]
+                val instruction = patched[original.take(at).count { it.opcode != Opcode.NOP }]
                 assertEquals(Opcode.CONST_16, instruction.opcode)
                 assertEquals(if (popup) 1 else 0, (instruction as NarrowLiteralInstruction).narrowLiteral)
+                assertEquals((original[at] as OneRegisterInstruction).registerA,
+                    (instruction as OneRegisterInstruction).registerA)
             }
         }
         for (method in globalMutableClassDefBy("LX/0Om0;").methods) assertEquals(gate[method.toString()], method.code())

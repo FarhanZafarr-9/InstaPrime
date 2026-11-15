@@ -98,7 +98,9 @@ internal fun BytecodePatchContext.applyNativePopupPlan(plan: NativePopupPlan) {
         val method = globalMutableClassDefBy(choice.method.definingClass).methods.single {
             it.name == choice.method.name && it.parameterTypes == choice.method.parameterTypes && it.returnType == choice.method.returnType
         }
-        for ((at, popup) in choice.results) {
+        // A wider constant can change switch-payload alignment padding. Work backwards
+        // so any removed padding cannot shift a result that still needs replacing.
+        for ((at, popup) in choice.results.entries.sortedByDescending { it.key }) {
             val register = (method.popupCode()[at] as OneRegisterInstruction).registerA
             method.replaceInstruction(at, "const/16 v$register, ${if (popup) "0x1" else "0x0"}")
         }
