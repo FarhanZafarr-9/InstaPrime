@@ -237,7 +237,7 @@ class GhostModeEntryHookTest {
         }
     }
 
-    private companion object {
+    companion object {
         const val CLICK = "Landroid/view/View\$OnClickListener;"
         const val FUNCTION0 = "Lkotlin/jvm/functions/Function0;"
 
