@@ -28,6 +28,36 @@ import app.hushgram.extension.shared.settings.PauseForTests;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = {28, 37})
 public class MessageGesturesTest {
+    @Test public void inboxPopupUsesRowBoundsAndFlipsAboveOnlyWhenNeeded() {
+        android.graphics.Rect frame = new android.graphics.Rect(0, 24, 1080, 1920);
+        assertArrayEquals(new int[]{8, 488}, InboxPopup.position(
+                new android.graphics.RectF(0, 400, 1080, 480), frame, 300, 400, 8));
+        assertArrayEquals(new int[]{8, 1392}, InboxPopup.position(
+                new android.graphics.RectF(0, 1800, 1080, 1880), frame, 300, 400, 8));
+    }
+
+    @Test public void inboxShowsThePreparedNativePopupAndPreservesItsAction() {
+        try (var host = org.robolectric.Robolectric.buildActivity(android.app.Activity.class).setup().visible()) {
+            android.widget.TextView anchor = new android.widget.TextView(host.get());
+            host.get().setContentView(anchor);
+            android.widget.TextView action = new android.widget.TextView(host.get());
+            action.setText("Native action");
+            android.widget.PopupWindow popup = new android.widget.PopupWindow(action, 200, 100);
+            AtomicBoolean clicked = new AtomicBoolean();
+            action.setOnClickListener(view -> { clicked.set(true); popup.dismiss(); });
+            InboxPopup.prepare(popup, new android.graphics.RectF(0, 100, 500, 180));
+            assertTrue(InboxPopup.show(anchor, action));
+            assertSame(action, popup.getContentView());
+            assertTrue(popup.isShowing());
+            action.performClick();
+            assertTrue(clicked.get());
+            assertFalse(popup.isShowing());
+            assertFalse("a consumed preparation cannot reopen the popup", InboxPopup.show(anchor, action));
+            InboxPopup.prepare(popup, null);
+            assertFalse("missing row bounds retain the native fallback", InboxPopup.show(anchor, action));
+        }
+    }
+
     @Test public void primaryInsetsBothLeftCoordinatesAndRightEdgeOffsets() {
         assertEquals(12, MessageMenuPosition.insetPrimary(0, 300, 1080, 12));
         assertEquals(24, MessageMenuPosition.insetPrimary(24, 300, 1080, 12));
