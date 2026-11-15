@@ -45,7 +45,8 @@ public class ProfileStatusBarTest {
     @After public void close() {
         cover.hide(host.get().getWindow());
         host.close();
-        ProfileStatusBar.profileIdForTests = ProfileStatusBar.heightForTests = ProfileStatusBar.colorForTests = null;
+        ProfileStatusBar.profileIdForTests = ProfileStatusBar.searchIdForTests =
+                ProfileStatusBar.heightForTests = ProfileStatusBar.colorForTests = null;
     }
 
     @Test public void reusedActivityFollowsProfileArrivalAndDeparture() {
@@ -95,5 +96,19 @@ public class ProfileStatusBarTest {
         profile.setVisibility(View.GONE);
         cover.update();
         if (Build.VERSION.SDK_INT < 35) assertEquals(Color.BLUE, host.get().getWindow().getStatusBarColor());
+    }
+
+    @Test public void searchHeaderKeepsAccentUntilSearchIsLeft() {
+        // Reuse the visible fixture header as Search while the profile header is absent.
+        ProfileStatusBar.profileIdForTests = 0;
+        ProfileStatusBar.searchIdForTests = profile.getId();
+        cover.update();
+        assertTrue("Search gets the same status inset color", cover.shown);
+        if (Build.VERSION.SDK_INT >= 35) assertEquals(0xff223344, cover.strip.getColor());
+        else assertEquals(0xff223344, host.get().getWindow().getStatusBarColor());
+        profile.setVisibility(View.GONE);
+        cover.update();
+        assertFalse("leaving Search removes the override", cover.shown);
+        if (Build.VERSION.SDK_INT < 35) assertEquals(Color.RED, host.get().getWindow().getStatusBarColor());
     }
 }

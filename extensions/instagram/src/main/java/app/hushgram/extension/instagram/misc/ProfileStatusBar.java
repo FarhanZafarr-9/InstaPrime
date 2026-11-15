@@ -16,11 +16,11 @@ import app.hushgram.extension.instagram.settings.SettingsStatus;
 import app.hushgram.extension.shared.Utils;
 import app.hushgram.extension.shared.Logger;
 
-/** Keeps the native profile's status inset in its accent background, even after a same-activity deep link. */
+/** Keeps native profile and Explore status insets in their accent background during same-activity navigation. */
 public final class ProfileStatusBar {
     private static final Map<View, Cover> covers = new WeakHashMap<>();
     static Boolean inBuildForTests;
-    static Integer profileIdForTests, heightForTests, colorForTests;
+    static Integer profileIdForTests, searchIdForTests, heightForTests, colorForTests;
     private ProfileStatusBar() { }
 
     public static void watch(Activity activity) {
@@ -70,13 +70,15 @@ public final class ProfileStatusBar {
                 int id = profileIdForTests != null ? profileIdForTests : host.getResources().getIdentifier(
                         "profile_action_bar", "id", Utils.resourcePackage(host));
                 View bar = id == 0 ? null : decor.findViewById(id);
-                Rect visible = new Rect();
+                int searchId = searchIdForTests != null ? searchIdForTests : host.getResources().getIdentifier(
+                        "explore_action_bar_container", "id", Utils.resourcePackage(host));
+                View search = searchId == 0 ? null : decor.findViewById(searchId);
                 int color = colorForTests != null ? colorForTests : AccentTheme.profileBackground(host);
                 WindowInsets insets = decor.getRootWindowInsets();
                 int height = heightForTests != null ? heightForTests : insets == null ? 0 : Build.VERSION.SDK_INT >= 30
                         ? insets.getInsets(WindowInsets.Type.statusBars()).top : insets.getSystemWindowInsetTop();
-                // Anchored menus take window focus without navigating away from the profile.
-                if (bar == null || !bar.isShown() || !bar.getGlobalVisibleRect(visible)
+                // Anchored menus take window focus without navigating away from the screen.
+                if ((!visible(bar) && !visible(search))
                         || Color.alpha(color) != 255 || height == 0) {
                     hide(window);
                     return;
@@ -99,6 +101,10 @@ public final class ProfileStatusBar {
                 hide(host.getWindow());
                 Logger.printException(() -> "Could not paint profile status bar", failure);
             }
+        }
+
+        private static boolean visible(View view) {
+            return view != null && view.isShown() && view.getGlobalVisibleRect(new Rect());
         }
 
         void hide(Window window) {
