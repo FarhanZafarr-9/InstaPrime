@@ -20,7 +20,7 @@ class NativePopupPresentationTest {
         val path = System.getenv("HUSHGRAM_GESTURE_APK")
         assumeTrue("HUSHGRAM_GESTURE_APK is unset", !path.isNullOrBlank())
         // Original 454 fixture: presenters, shared gate and renderer only.
-        val classes = FixtureDex.classes(File(path!!), setOf("LX/0GKB;", "LX/0Gjr;", "LX/0NSr;", "LX/01SB;", "LX/0Om0;", "LX/0I3u;")).values
+        val classes = FixtureDex.classes(File(path!!), setOf("LX/0GKB;", "LX/0Gjr;", "LX/0NSr;", "LX/01SB;", "LX/01SD;", "LX/0hgO;", "LX/0Om0;", "LX/0I3u;")).values
         val context = PatchContexts.of(classes)
         val plan = context.nativePopupPlan()
         assertEquals(3, plan.choices.size)
@@ -35,6 +35,13 @@ class NativePopupPresentationTest {
         assertEquals(4, plan.populations.size)
         val gate = classes.single { it.type == "LX/0Om0;" }.methods.associate { it.toString() to it.code() }
         context.applyNativePopupPlan(plan)
+        val anchorBridge = globalMutableClassDefBy("LX/0hgO;").methods.single { it.name == "instaprimeInboxAnchor" }
+        assertEquals(listOf("LX/0hgO;->A00:I", "LX/0hgO;->A01:I"),
+            anchorBridge.implementation!!.instructions.filter { it.opcode == Opcode.IPUT }.map {
+                ((it as ReferenceInstruction).reference).toString()
+            })
+        assertTrue(anchorBridge.code().any { it.contains("RectF;->centerX()F") })
+        assertTrue(anchorBridge.code().any { it.contains("RectF;->centerY()F") })
         val primary = globalMutableClassDefBy(plan.primary.definingClass).methods.single { it.name == plan.primary.name }
         assertEquals(1, primary.implementation!!.instructions.count {
             ((it as? ReferenceInstruction)?.reference?.toString())?.contains("MessageMenuPosition;->remember(") == true
@@ -43,7 +50,17 @@ class NativePopupPresentationTest {
             val method = globalMutableClassDefBy(choice.method.definingClass).methods.single { it.toString() == choice.method.toString() }
             assertEquals(choice.method.implementation!!.registerCount, method.implementation!!.registerCount)
             val original = choice.method.implementation!!.instructions.toList()
-            val patched = method.implementation!!.instructions.filter { it.opcode != Opcode.NOP }
+            val patched = method.implementation!!.instructions.filter { it.opcode != Opcode.NOP }.toMutableList()
+            val anchorCalls = patched.indices.filter {
+                ((patched[it] as? ReferenceInstruction)?.reference?.toString())?.contains("->instaprimeInboxAnchor(") == true
+            }
+            assertEquals(if (choice.method == plan.inbox) 1 else 0, anchorCalls.size)
+            for (callAt in anchorCalls.asReversed()) {
+                assertEquals(Opcode.MOVE_OBJECT_FROM16, patched[callAt - 3].opcode)
+                assertEquals(Opcode.MOVE_OBJECT_FROM16, patched[callAt - 2].opcode)
+                assertEquals(Opcode.IF_EQZ, patched[callAt - 1].opcode)
+                repeat(4) { patched.removeAt(callAt - 3) }
+            }
             // dexlib may remove an alignment NOP before a switch payload when a
             // MOVE_RESULT becomes the wider CONST_16. Compare meaningful instructions.
             val expected = original.withIndex().filter { it.value.opcode != Opcode.NOP }.map { (at, instruction) ->
