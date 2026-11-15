@@ -179,6 +179,41 @@ final class SettingsNavigation {
         NewRowDots.opens(row, node);
         for (Preference setting : node.rows) destinations.put(setting, node);
         for (Node child : node.children) register(context, child, open, overview);
+        if (node.icon.equals(SettingsIcons.REELS)) {
+            childSections(node, keys("content", "words-sounds", "actions"),
+                    keys("playback", "skip-speed", "likes", "gestures"),
+                    keys("reels-header", "player", "buttons", "overlays"),
+                    keys("clear-mode", "appearance"));
+        } else if (node.icon.equals(SettingsIcons.STORIES)) {
+            childSections(node, keys("tray", "suggestions"),
+                    keys("playback", "story-buttons", "viewer-controls"),
+                    keys("fonts", "appearance"), keys("uploads", "privacy"));
+        }
+    }
+
+    /** Group navigation rows too, using the same untitled card gaps as settings rows. */
+    @SafeVarargs
+    private static void childSections(Node node, Set<String>... groups) {
+        if (node.children.isEmpty()) return;
+        List<Node> remaining = new ArrayList<>(node.children);
+        List<Node> ordered = new ArrayList<>();
+        for (Node child : remaining) sectionStarts.remove(child.opener);
+        for (Set<String> group : groups) {
+            List<Node> band = new ArrayList<>();
+            for (Node child : remaining) {
+                if (group.contains(child.id.substring(child.id.lastIndexOf("::") + 2))) band.add(child);
+            }
+            if (band.isEmpty()) continue;
+            if (!ordered.isEmpty()) sectionStarts.add(band.get(0).opener);
+            ordered.addAll(band);
+            remaining.removeAll(band);
+        }
+        if (!remaining.isEmpty()) {
+            if (!ordered.isEmpty()) sectionStarts.add(remaining.get(0).opener);
+            ordered.addAll(remaining);
+        }
+        node.children.clear();
+        node.children.addAll(ordered);
     }
 
     static CharSequence preview(List<Preference> rows) {
