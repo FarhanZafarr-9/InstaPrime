@@ -113,5 +113,6 @@ val settingsPatch = bytecodePatch(
         hookMergedLogoLongPress()
         styleNativeSnackbars(snackbars)
         applyNativePopupPlan(popupPlan)
+        installInboxHeaderButtons()
     }
 }

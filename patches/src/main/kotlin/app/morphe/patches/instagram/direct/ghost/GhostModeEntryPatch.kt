@@ -338,7 +338,8 @@ private fun BytecodePatchContext.entryAt(builder: Method, made: Int, controller:
     // A fresh configuration has no long press: nothing writes the field in the builder or in the
     // configuration's constructors, so the button has none until this hook gives it one.
     fun Method.writesLongPress() = code().any { it.opcode == Opcode.IPUT_OBJECT && it.reference().toString() == longPress }
-    if (builder.writesLongPress()) refuse("the header builder already sets the button's long press")
+    if (builder.writesLongPress() && builder.code().none { it.call()?.toString() == GHOST_LONG_PRESS })
+        refuse("the header builder already sets the button's long press")
     if (configClass.methods.any { it.name == "<init>" && it.writesLongPress() }) refuse("a new button configuration already has a long press")
     if (config > 15) refuse("the button configuration sits in a register past v15")
 
