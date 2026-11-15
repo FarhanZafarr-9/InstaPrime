@@ -129,6 +129,45 @@ public class PlusMenuTest {
         assertFalse(PlusMenu.empty(Collections.emptyList()));
     }
 
+    @Test public void configuredCountIncludesHiddenOptionsAndMovedGallery() {
+        android.view.View button = new android.view.View(org.robolectric.RuntimeEnvironment.getApplication());
+        menu = new ArrayList<>(Arrays.asList(byButton.get(Kind.CROSS_APP_SAVES),
+                byButton.get(Kind.IMAGINE), byButton.get(Kind.DOODLES),
+                byButton.get(Kind.META_AI_DISCOVERY), byButton.get(Kind.LOCATION)));
+        Settings.HIDE_PLUS_SAVED.save(true);
+        Settings.HIDE_PLUS_AI_IMAGES.save(true);
+        Settings.HIDE_PLUS_DRAW.save(true);
+        Settings.HIDE_PLUS_META_AI.save(true);
+        Settings.HIDE_PLUS_LOCATION.save(true);
+        assertFalse(Settings.HIDE_PLUS_BUTTON.get());
+        PlusMenu.configure(button, menu, byButton);
+        assertTrue(menu.isEmpty());
+        assertEquals(android.view.View.GONE, button.getVisibility());
+
+        Settings.MOVE_TO_PLUS_MENU.save(true);
+        button.getViewTreeObserver().dispatchOnPreDraw();
+        assertEquals("moved Gallery contributes an option", android.view.View.VISIBLE, button.getVisibility());
+        Settings.MOVE_TO_PLUS_MENU.save(false);
+        button.getViewTreeObserver().dispatchOnPreDraw();
+        assertEquals(android.view.View.GONE, button.getVisibility());
+        Settings.HIDE_EMPTY_PLUS_MENU.save(false);
+        button.getViewTreeObserver().dispatchOnPreDraw();
+        assertEquals(android.view.View.VISIBLE, button.getVisibility());
+        Settings.HIDE_PLUS_BUTTON.save(true);
+        button.getViewTreeObserver().dispatchOnPreDraw();
+        assertEquals("explicit hide wins", android.view.View.GONE, button.getVisibility());
+    }
+
+    @Test public void configuredCountPreservesUnrecognizedNativeOptions() {
+        android.view.View button = new android.view.View(org.robolectric.RuntimeEnvironment.getApplication());
+        Settings.HIDE_PLUS_SAVED.save(true);
+        Settings.HIDE_PLUS_AI_IMAGES.save(true);
+        Settings.HIDE_PLUS_DRAW.save(true);
+        PlusMenu.configure(button, menu, byButton);
+        assertEquals(Collections.singletonList(Kind.OTHER), kinds());
+        assertEquals(android.view.View.VISIBLE, button.getVisibility());
+    }
+
     @Test public void metaAiAndLocationFiltersAreIndependentAndLeaveAiImagesAlone() {
         menu.add(byButton.get(Kind.META_AI_DISCOVERY));
         menu.add(byButton.get(Kind.META_AI_INVOCATION));
