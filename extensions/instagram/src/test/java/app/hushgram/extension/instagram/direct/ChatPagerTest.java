@@ -1135,7 +1135,7 @@ public class ChatPagerTest {
         View ours = screen.actionBar.findViewWithTag(ChatPager.BUTTON_TAG);
 
         assertTrue(ours.performClick());
-        PopupMenu popup = ShadowPopupMenu.getLatestPopupMenu();
+        PopupMenu popup = ChatPopupMenu.latestForTests();
         assertEquals("Export chat", String.valueOf(popup.getMenu().getItem(0).getTitle()));
         assertEquals("Select messages", String.valueOf(popup.getMenu().getItem(1).getTitle()));
         assertNotNull(popup.getMenu().getItem(1).getIcon());
