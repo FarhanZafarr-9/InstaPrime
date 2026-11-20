@@ -13,11 +13,13 @@ import app.morphe.patches.instagram.misc.extension.classesReadingWide
 import app.morphe.patches.instagram.misc.extension.classesTouching
 import app.morphe.patches.instagram.misc.extension.stringLoadedAt
 import app.morphe.util.ControlFlow
+import app.morphe.util.reachingWrites
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.ClassDef
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
@@ -37,8 +39,22 @@ internal const val NEW_ROW_THEME_COLORS = 80
 /** Every composable on the Notifications page logs a trace label starting with this. */
 private const val NOTIFICATIONS_LABEL = "com.instagram.newsfeed."
 
-/** The avatar reads only the tint from the theme, which is how a build's Redex name for that field is found. */
+/** The avatar reads the tint from the theme, alone or on its new notification's arm, which is how a build's Redex name for that field is found. */
 private const val AVATAR_LABEL = "${NOTIFICATIONS_LABEL}compose.ui.StartAvatar."
+
+/**
+ * The keys of the Notifications traces that read the tint, with the labels they logged before 456.
+ * 456 starts a trace with its key alone (`LX/04nK;->A01(I)V` on 386214574), and a key stays put as
+ * long as its composable's source does: the avatar's ring (`LX/0R30;->invoke`), a new row's lambda
+ * (`LX/0OKO;->invoke`) and the row's text (`LX/0Qd2;->A01`) on 386214574.
+ */
+private val NOTIFICATIONS_TRACE_KEYS = mapOf(
+    0x676a129d to "${AVATAR_LABEL}<anonymous>.<anonymous> (NewsfeedStoryRow.kt:359)",
+    0xabc6d658.toInt() to "${NOTIFICATIONS_LABEL}fragment.NewsfeedRow.<anonymous> (NewsfeedYouComposeFragment.kt:3791)",
+    0x6b7b1e32 to "${NOTIFICATIONS_LABEL}ui.buildAnnotatedString (NewsfeedStoryMessageState.kt:59)",
+)
+
+private val TRACE_KEY_LOADS = setOf(Opcode.CONST, Opcode.CONST_HIGH16, Opcode.CONST_16, Opcode.CONST_4)
 
 private const val NEW_ROW_PATCH = "Pure black dark mode"
 
@@ -74,12 +90,12 @@ internal fun BytecodePatchContext.findNewRowTintReads(): List<NewRowTintRead> {
                 avatars.joinToString { "${it.type}->${it.method.name}" },
         )
     }
-    val colors = avatars.single().code.mapNotNull { it.wideFieldOf(theme) }.distinct()
-    if (colors.size != 1) {
-        throw PatchException("$NEW_ROW_PATCH: the Notifications avatar reads $colors, expected one color of $theme")
-    }
+    val avatar = avatars.single()
+    val colors = avatar.code.mapNotNull { it.wideFieldOf(theme) }.distinct()
+    val tint = colors.singleOrNull() ?: newArmColor(avatar, theme)
+        ?: throw PatchException("$NEW_ROW_PATCH: the Notifications avatar reads $colors, expected one color of $theme")
     return pages.flatMap { page ->
-        page.code.indices.filter { page.code[it].wideFieldOf(theme) == colors.single() }
+        page.code.indices.filter { page.code[it].wideFieldOf(theme) == tint }
             .map { NewRowTintRead(page.type, page.method, it) }
     }
 }
@@ -104,9 +120,40 @@ internal fun BytecodePatchContext.blackenNewRowTints(reads: List<NewRowTintRead>
 
 private class NewRowPage(val type: String, val method: Method, val code: List<Instruction>, val labels: List<String>)
 
-/** Each Notifications label [code] loads, with the index of its load. */
+/**
+ * The color an avatar reading more than one takes for a new notification. Its ring checks the
+ * lambda's own boolean with `if-eqz` and reads the tint where that falls through, another color
+ * where it branches. Some builds inline both arms into the invoke (`LX/0U2I;->invoke` reads `A1I`
+ * and `A0w` on 386113918), others call an outlined getter for the other one, so the avatar reads
+ * one color there. Null unless exactly one such check splits the colors and its new arm reads one.
+ */
+private fun newArmColor(avatar: NewRowPage, theme: String): String? {
+    val code = avatar.code
+    val flow = runCatching { ControlFlow.of(avatar.method) }.getOrNull() ?: return null
+    val reads = code.indices.filter { code[it].wideFieldOf(theme) != null }
+    val splits = code.indices.mapNotNull { at ->
+        val check = code[at]
+        if (check.opcode != Opcode.IF_EQZ || flow.normal[at].size != 2) return@mapNotNull null
+        val flags = reachingWrites(avatar.method, code, (check as OneRegisterInstruction).registerA, at)
+        if (flags.isEmpty() || flags.any { !code[it].readsFlagOf(avatar.type) }) return@mapNotNull null
+        val branch = flow.normal[at][0]
+        val newArm = reads.filter { flow.reaches(at + 1, it) && !flow.reaches(branch, it) }.mapNotNull { code[it].wideFieldOf(theme) }.distinct()
+        val oldArm = reads.filter { flow.reaches(branch, it) && !flow.reaches(at + 1, it) }.mapNotNull { code[it].wideFieldOf(theme) }.distinct()
+        if (oldArm.isEmpty() || newArm.size != 1 || newArm.single() in oldArm) null else newArm.single()
+    }
+    return splits.singleOrNull()
+}
+
+private fun Instruction.readsFlagOf(type: String): Boolean =
+    opcode == Opcode.IGET_BOOLEAN && ((this as ReferenceInstruction).reference as FieldReference).definingClass == type
+
+/** Each Notifications label [code] loads, or the trace key standing in for it, with the index of its load. */
 private fun BytecodePatchContext.notificationLabels(code: List<Instruction>): List<Pair<Int, String>> =
-    code.indices.mapNotNull { at -> stringLoadedAt(code, at)?.takeIf { it.startsWith(NOTIFICATIONS_LABEL) }?.let { at to it } }
+    code.indices.mapNotNull { at ->
+        val label = stringLoadedAt(code, at)?.takeIf { it.startsWith(NOTIFICATIONS_LABEL) }
+            ?: code[at].takeIf { it.opcode in TRACE_KEY_LOADS }?.let { NOTIFICATIONS_TRACE_KEYS[(it as NarrowLiteralInstruction).narrowLiteral] }
+        label?.let { at to it }
+    }
 
 /**
  * The Notifications labels of a lambda body Redex moved out of its invoke. The body becomes a static

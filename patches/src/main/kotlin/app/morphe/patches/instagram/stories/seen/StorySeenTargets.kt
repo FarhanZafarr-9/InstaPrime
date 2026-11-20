@@ -323,17 +323,25 @@ private fun requireByteRegister(where: String, register: Int) {
 
 /**
  * Refuses unless the send only reads the batch it's handed before the request: everything naming
- * the batch's register but the request's build is a null check, or a call of one of the batch's
- * own methods that changes nothing ([readOnly]) with the batch only as its receiver. The hook's
- * answer takes the batch's place before any of it, so nothing is added to it on the way.
+ * the batch's register but the request's build is a null check, a call of one of the batch's own
+ * methods that changes nothing ([readOnly]) with the batch only as its receiver, or that same kind
+ * of read written out in the send ([onlyAsked]). The hook's answer takes the batch's place before
+ * any of it, so nothing is added to it on the way.
  */
 private fun requireSendLeavesItsBatchAlone(send: Method, build: Int, batchClass: ClassDef) {
     val where = "${send.definingClass}->${send.name}"
     val register = send.parameterRegisterNumber(0)
-    send.code().forEachIndexed { index, instruction ->
+    val code = send.code()
+    code.forEachIndexed { index, instruction ->
         val named = instruction.namedRegisters()
         if (index == build || register !in named) return@forEachIndexed
         val called = instruction.methodReference()
+        if (instruction.opcode in IGETS) {
+            if (!onlyAsked(code, index, register)) {
+                refuse("$where reads ${instruction.fieldReference()} off its batch at instruction $index and does more with it than ask isEmpty() or size(), before the request, which may change what it sends")
+            }
+            return@forEachIndexed
+        }
         val reads = when {
             instruction.opcode == Opcode.IF_EQZ || instruction.opcode == Opcode.IF_NEZ -> true
             instruction.opcode in VIRTUAL_INVOKES && called != null && called.definingClass == batchClass.type &&
@@ -342,9 +350,26 @@ private fun requireSendLeavesItsBatchAlone(send: Method, build: Int, batchClass:
             else -> false
         }
         if (!reads) {
-            refuse("$where hands its batch to ${called ?: instruction.opcode.name} at instruction $index, before the request, which may change what it sends")
+            refuse("$where hands its batch to ${called ?: instruction.opcode.name} at instruction $index, before the request, which may change what it sends") // opcode-name-ok
         }
     }
+}
+
+/**
+ * Whether the field read at [index] off the batch in [batch] goes no further than a question: a
+ * value field read into a register other than the batch's, or a collection asked isEmpty() or
+ * size() of java.util on the very next instruction, with the answer written over the register that
+ * held it, so the collection itself goes nowhere. 456's 386214574 writes the batch's emptiness
+ * check out in the send this way, three fields each asked isEmpty(), where other builds call it.
+ */
+private fun onlyAsked(code: List<Instruction>, index: Int, batch: Int): Boolean {
+    val read = code[index] as? TwoRegisterInstruction ?: return false
+    if (read.registerB != batch || code[index].writes(batch)) return false
+    if (code[index].opcode != Opcode.IGET_OBJECT) return true
+    val asked = code.getOrNull(index + 1) ?: return false
+    val answer = code.getOrNull(index + 2) ?: return false
+    return asked.opcode in VIRTUAL_INVOKES && asked.methodReference()?.query() == true &&
+        asked.namedRegisters() == listOf(read.registerA) && answer.opcode == Opcode.MOVE_RESULT && answer.writes(read.registerA)
 }
 
 /**
@@ -681,7 +706,7 @@ private fun retryOf(method: Method, build: Int, store: String, batch: String): S
  * field it reads only has constants added to it, so nothing that batch sends names a story you
  * watched.
  */
-private fun freshRoute(method: Method, build: Int, batch: String, constructors: List<Method>): Boolean {
+private fun BytecodePatchContext.freshRoute(method: Method, build: Int, batch: String, constructors: List<Method>): Boolean {
     val code = method.code()
     val handed = code[build].namedRegisters()
     val receiver = handed.firstOrNull() ?: return false
@@ -713,7 +738,7 @@ private fun freshRoute(method: Method, build: Int, batch: String, constructors: 
  * constants put or added into it, each loaded after [from] on the same straight run, until the
  * register is written again.
  */
-private fun onlyConstantsInto(code: List<Instruction>, at: Int, register: Int, build: Int, from: Int): Boolean {
+private fun BytecodePatchContext.onlyConstantsInto(code: List<Instruction>, at: Int, register: Int, build: Int, from: Int): Boolean {
     for (index in at + 1 until build) {
         val instruction = code[index]
         val named = instruction.namedRegisters()
@@ -730,10 +755,16 @@ private fun onlyConstantsInto(code: List<Instruction>, at: Int, register: Int, b
     return register !in code[build].namedRegisters()
 }
 
-/** Whether [register] at [at] holds a constant loaded after [from], on the straight run between them. */
-private fun constantAt(code: List<Instruction>, at: Int, register: Int, from: Int): Boolean {
+/**
+ * Whether [register] at [at] holds a constant loaded after [from], on the straight run between them:
+ * a constant load, or the answer of a static pool asked for a string by a constant number, as 455's
+ * armeabi-v7a build 386113915 has the Reset NUX route's key.
+ */
+private fun BytecodePatchContext.constantAt(code: List<Instruction>, at: Int, register: Int, from: Int): Boolean {
     val loaded = (at - 1 downTo from + 1).firstOrNull { code[it].writes(register) } ?: return false
-    return code[loaded].opcode in CONSTANTS
+    if (code[loaded].opcode in CONSTANTS) return true
+    return code[loaded].opcode == Opcode.MOVE_RESULT_OBJECT && loaded - 2 > from &&
+        code[loaded - 1].opcode == Opcode.INVOKE_STATIC && stringLoadedAt(code, loaded - 1) != null
 }
 
 /**

@@ -16,8 +16,14 @@ import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -38,6 +44,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import app.hushgram.extension.instagram.direct.MessagesLock;
+import app.hushgram.extension.instagram.media.SettingsPause;
 import app.hushgram.extension.instagram.misc.Fonts;
 import app.hushgram.extension.shared.L10n;
 import app.hushgram.extension.shared.Logger;
@@ -69,6 +76,7 @@ public final class SettingsDialog extends DialogFragment {
     private ImageButton backButton;
     private String headingIcon;
     private View restart;
+    private boolean countedOpen;
     /** The lock's checks on this dialog's window while it's started. */
     private Window lockWindow;
     private ViewTreeObserver.OnPreDrawListener lockDraw;
@@ -76,6 +84,14 @@ public final class SettingsDialog extends DialogFragment {
     /** The picked font's check on this dialog's window while it's started. */
     private Window fontWindow;
     private FontDraw fontDraw;
+    /** The audio focus this screen holds while it's started, so the feed behind it goes quiet. */
+    private AudioManager quietAudio;
+    private AudioFocusRequest quietFocus;
+    private long quietSince;
+    private int quietRetakes;
+    static final long QUIET_RETAKE_WINDOW_MS = 6000;
+    static final long QUIET_RETAKE_DELAY_MS = 300;
+    static final int QUIET_RETAKES = 2;
 
     /**
      * The screen, expanding the section whose row has the key [page]. Null or a key no row
@@ -100,6 +116,8 @@ public final class SettingsDialog extends DialogFragment {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Before anything is built: Light settings page keeps to this screen (#762).
+        countOpen(true);
         failed = savedInstanceState != null && savedInstanceState.getBoolean(PAGE_FAILED);
         try {
             super.onCreate(savedInstanceState);
@@ -110,7 +128,13 @@ public final class SettingsDialog extends DialogFragment {
             failed = true;
             Logger.printException(() -> "Could not restore the preference list", failure);
         }
-        setStyle(STYLE_NO_TITLE, android.R.style.Theme_Material_NoActionBar);
+        setStyle(STYLE_NO_TITLE, ScreenColors.current().theme());
+    }
+
+    @Override
+    public void onDestroy() {
+        countOpen(false);
+        super.onDestroy();
     }
 
     @Override
@@ -296,6 +320,53 @@ public final class SettingsDialog extends DialogFragment {
         return card;
     }
 
+    /** The Back arrow in [palette]'s title colour, mirrored in a right-to-left language. */
+    private void paintBack(ImageButton back, ScreenColors palette) {
+        android.graphics.drawable.Drawable arrow = SettingsIcons.icon(getContext(), SettingsIcons.BACK, palette.title);
+        arrow.setBounds(0, 0, dp(24), dp(24));
+        arrow.setLayoutDirection(rightToLeft() ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        back.setImageDrawable(arrow);
+        back.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(ScreenColors.half(palette.heading)), null,
+                new android.graphics.drawable.ColorDrawable(Color.WHITE)));
+    }
+
+    /** Restart now's colours from [palette]. */
+    private void paintRestart(TextView bar, ScreenColors palette) {
+        bar.setTextColor(palette.title);
+        // A restart arrow and the heading blue's edge mark it as something to tap, not a notice.
+        android.graphics.drawable.Drawable arrow = SettingsIcons.icon(getContext(), SettingsIcons.TOOLS, palette.heading);
+        arrow.setBounds(0, 0, dp(24), dp(24));
+        bar.setCompoundDrawablesRelative(arrow, null, null, null);
+        android.graphics.drawable.GradientDrawable surface = new android.graphics.drawable.GradientDrawable();
+        surface.setColor(palette.card);
+        surface.setCornerRadius(dp(12));
+        surface.setStroke(dp(1), palette.heading);
+        bar.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(ScreenColors.half(palette.heading)), surface, surface));
+    }
+
+    /**
+     * Paints this screen's own parts again after Black or Light settings page flipped (#762): the
+     * page, the window under it, the bar icons, Back and Restart now. The rows repaint themselves.
+     */
+    void repaint() {
+        applyLook();
+        View root = getView();
+        if (closing || root == null) return;
+        ScreenColors palette = ScreenColors.current();
+        root.setBackgroundColor(palette.background);
+        Dialog dialog = getDialog();
+        Window window = dialog == null ? null : dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(palette.background));
+            palette.paintBars(window);
+        }
+        if (backButton != null) paintBack(backButton, palette);
+        if (restart instanceof TextView) paintRestart((TextView) restart, palette);
+        if (heading != null) heading.invalidate();
+    }
+
     private LinearLayout.LayoutParams restartBarSpace() {
         LinearLayout.LayoutParams space = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -426,20 +497,15 @@ public final class SettingsDialog extends DialogFragment {
 
     @Override
     public void onStart() {
+        countOpen(true);
         super.onStart();
         Dialog dialog = getDialog();
         Window window = dialog == null ? null : dialog.getWindow();
-        if (window != null) {
-            View decor = window.getDecorView();
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                WindowInsetsController bars = decor.getWindowInsetsController();
-                if (bars != null) bars.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
-            } else {
-                decor.setSystemUiVisibility(decor.getSystemUiVisibility() & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-            }
-        }
+        ScreenColors.current().paintBars(window);
         watchLock();
         watchFont();
+        quietFeed();
+        SettingsPause.opened();
         ShortcutCover.offOnceDrawn(dialog);
     }
 
@@ -447,7 +513,99 @@ public final class SettingsDialog extends DialogFragment {
     public void onStop() {
         unwatchLock();
         unwatchFont();
+        unquietFeed();
+        // The video under the settings plays again once they close (#762). A stop under them
+        // (Home, another app) keeps it paused for when they close, and a finishing screen has
+        // nothing left to play.
+        Activity activity = getActivity();
+        if (isRemoving()) SettingsPause.closed();
+        else if (activity == null || activity.isFinishing()) SettingsPause.dropped();
+        else SettingsPause.hidden();
         super.onStop();
+        countOpen(false);
+    }
+
+    /**
+     * Counts this screen as up for {@link ScreenColors#current()}, from onCreate, so the page
+     * builds in its own colours, until it stops or goes. A dialog over the Instagram screen that
+     * covers stopped settings keeps its own look (#762).
+     */
+    private void countOpen(boolean open) {
+        if (open == countedOpen) return;
+        countedOpen = open;
+        if (open) ScreenColors.settingsOpened();
+        else ScreenColors.settingsClosed();
+    }
+
+    /**
+     * A feed video kept playing its sound under this screen (#725): it's a dialog, so the feed
+     * behind it never pauses. Holding the audio focus while the screen shows quiets Instagram's
+     * players the way a call or another app does, and their sound comes back when it closes.
+     */
+    private void quietFeed() {
+        if (quietFocus != null) return;
+        try {
+            Activity activity = getActivity();
+            AudioManager audio = activity == null ? null
+                    : activity.getApplicationContext().getSystemService(AudioManager.class);
+            if (audio == null) return;
+            AudioFocusRequest request = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                    .setAudioAttributes(new AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_UNKNOWN)
+                            .build())
+                    .setOnAudioFocusChangeListener(this::quietFocusChanged, new Handler(Looper.getMainLooper()))
+                    .build();
+            if (audio.requestAudioFocus(request) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return;
+            quietAudio = audio;
+            quietFocus = request;
+            quietSince = SystemClock.uptimeMillis();
+            quietRetakes = 0;
+        } catch (Exception ex) {
+            Logger.printException(() -> "Settings: could not quiet the feed", ex);
+        }
+    }
+
+    /**
+     * When the page opens through an intent (the restart button lands back here), Instagram's
+     * activity pauses and resumes under it, and the feed starts its video again about a second and a
+     * half later, asking for the focus back with sound on. Taking it back once more right after quiets
+     * that video too. Only in the first seconds and only twice, so a music app the user starts while
+     * the page is open keeps playing.
+     */
+    private void quietFocusChanged(int change) {
+        if (change >= 0) return;
+        AudioManager audio = quietAudio;
+        AudioFocusRequest request = quietFocus;
+        if (audio == null || request == null) return;
+        if (!retakesQuiet(SystemClock.uptimeMillis() - quietSince, quietRetakes)) return;
+        quietRetakes++;
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (quietFocus != request) return;
+            try {
+                audio.requestAudioFocus(request);
+            } catch (Exception ex) {
+                Logger.printException(() -> "Settings: could not quiet the feed again", ex);
+            }
+        }, QUIET_RETAKE_DELAY_MS);
+    }
+
+    /** Whether a focus lost {@code sinceOpen} ms after the page took it, {@code retaken} times already, is taken back. */
+    static boolean retakesQuiet(long sinceOpen, int retaken) {
+        return sinceOpen >= 0 && sinceOpen <= QUIET_RETAKE_WINDOW_MS && retaken < QUIET_RETAKES;
+    }
+
+    private void unquietFeed() {
+        AudioManager audio = quietAudio;
+        AudioFocusRequest request = quietFocus;
+        quietAudio = null;
+        quietFocus = null;
+        if (audio == null || request == null) return;
+        try {
+            audio.abandonAudioFocusRequest(request);
+        } catch (Exception ex) {
+            Logger.printException(() -> "Settings: could not give the sound back", ex);
+        }
     }
 
     /**
@@ -600,6 +758,7 @@ public final class SettingsDialog extends DialogFragment {
         heading = null;
         backButton = null;
         restart = null;
+        backButton = null;
         super.onDestroyView();
     }
 

@@ -52,8 +52,17 @@ public final class ReelSeekBar {
      */
     static final long SHORTEST_SECONDS = 1L;
 
+    /**
+     * The shortest ordinary reel with a bar that always shows, in seconds, while Hide the seek bar on reels is on
+     * (#680): longer than any reel, and still an int once it's in milliseconds.
+     */
+    static final long NO_REEL_SECONDS = Integer.MAX_VALUE / 1000;
+
     /** The name of Instagram's kind of reel for a photo with a song. Redex keeps an enum's names. */
     static final String PHOTO_WITH_MUSIC = "PHOTO_WITH_MUSIC";
+
+    /** The same for several photos with a song, which state no length either (#10). */
+    static final String CAROUSEL_WITH_MUSIC = "CAROUSEL_WITH_MUSIC";
 
     /** How many of the latest photo reels are remembered: more than Instagram keeps loaded around the one showing. */
     private static final int PHOTOS_KEPT = 64;
@@ -80,13 +89,21 @@ public final class ReelSeekBar {
      * value when that's already shorter, and the server's value otherwise.
      */
     public static long minSeconds(long seconds) {
-        return minSeconds(seconds, ReelSeekBar::everyReel);
+        return minSeconds(seconds, ReelSeekBar::everyReel, ReelSeekBar::hidden);
     }
 
     static long minSeconds(long seconds, BooleanSupplier on) {
+        return minSeconds(seconds, on, () -> false);
+    }
+
+    /**
+     * As above, and while [on] doesn't keep the bar and [hidden] hides it (#680), no reel is long enough for
+     * the bar that always shows.
+     */
+    static long minSeconds(long seconds, BooleanSupplier on, BooleanSupplier hidden) {
         try {
             HookStatus.invoked(FamilyNames.REEL_SEEK_BAR);
-            if (!on.getAsBoolean()) return seconds;
+            if (!on.getAsBoolean()) return hidden.getAsBoolean() ? Math.max(seconds, NO_REEL_SECONDS) : seconds;
             if (!loggedLength) {
                 loggedLength = true;
                 Logger.printDebug(() -> "Reel seek bar: shortest reel with a bar answered "
@@ -105,17 +122,75 @@ public final class ReelSeekBar {
      * Answers no while the switch is on, and Instagram's answer otherwise.
      */
     public static boolean lazy(int enabled) {
-        return lazy(enabled, () -> everyReel() || rowIsPhoto());
+        return lazy(enabled, () -> everyReel() || rowIsPhoto(), ReelSeekBar::hidden);
     }
 
     static boolean lazy(int enabled, BooleanSupplier on) {
+        return lazy(enabled, on, () -> false);
+    }
+
+    /** As above, and while [on] doesn't keep the bar and [hidden] hides it (#680), every reel gets the hidden kind. */
+    static boolean lazy(int enabled, BooleanSupplier on, BooleanSupplier hidden) {
         try {
             HookStatus.invoked(FamilyNames.REEL_SEEK_BAR);
-            return !on.getAsBoolean() && enabled != 0;
+            if (on.getAsBoolean()) return false;
+            return hidden.getAsBoolean() || enabled != 0;
         } catch (Throwable failure) {
             HookStatus.threw(FamilyNames.REEL_SEEK_BAR, "hidden seek bar", failure);
             return enabled != 0;
         }
+    }
+
+    /**
+     * Injected after Instagram's reads of whether a sideways drag along a reel's bottom edge scrubs it, one for
+     * reels with the hidden kind of bar and one for the rest, with Instagram's answer as an int (non-zero is yes).
+     * That drag is the only thing that brings the hidden kind back, so while Hide the seek bar on reels
+     * hides every bar (#680) it answers yes, and Instagram's answer otherwise. Instagram reads both once a
+     * session.
+     */
+    public static boolean passThrough(int enabled) {
+        return passThrough(enabled, ReelSeekBar::everyReel, ReelSeekBar::hidden);
+    }
+
+    static boolean passThrough(int enabled, BooleanSupplier on, BooleanSupplier hidden) {
+        try {
+            HookStatus.invoked(FamilyNames.REEL_SEEK_BAR);
+            return enabled != 0 || (!on.getAsBoolean() && hidden.getAsBoolean());
+        } catch (Throwable failure) {
+            HookStatus.threw(FamilyNames.REEL_SEEK_BAR, "seek drag", failure);
+            return enabled != 0;
+        }
+    }
+
+    /**
+     * Asked first by the two hooks in the Reels progress controller below, so with Hide the seek bar on reels off
+     * they run this one check and nothing more. Whether that switch hides every ordinary reel's bar (#680), with no
+     * switch that keeps the bar winning. It's also the controller's answer to whether an ordinary reel gets the strip
+     * along the bottom that the drag lands on: Instagram goes by the reel's length there, no reel is long enough while
+     * the bars are hidden, and a reel without the strip had nothing to drag.
+     */
+    public static boolean barsHidden() {
+        return barsHidden(ReelSeekBar::everyReel, ReelSeekBar::hidden);
+    }
+
+    static boolean barsHidden(BooleanSupplier on, BooleanSupplier hidden) {
+        try {
+            HookStatus.invoked(FamilyNames.REEL_SEEK_BAR);
+            return !on.getAsBoolean() && hidden.getAsBoolean();
+        } catch (Throwable failure) {
+            HookStatus.threw(FamilyNames.REEL_SEEK_BAR, "hidden seek bar strip", failure);
+            return false;
+        }
+    }
+
+    /**
+     * Injected where the Reels progress controller answers whether a reel's bar shows only while you touch the reel,
+     * once {@link #barsHidden} said yes, with that answer and whether the reel is an ad, each as an int (non-zero is
+     * yes). Instagram goes by the reel's length there too, and says no to a short reel, which with the strip kept
+     * would put the bar back for good. Answers yes for an ordinary reel and Instagram's answer for an ad.
+     */
+    public static boolean hiddenTouchOnly(int touchOnly, int ad) {
+        return touchOnly != 0 || ad == 0;
     }
 
     /**
@@ -165,14 +240,27 @@ public final class ReelSeekBar {
         return switchedOn() || (Utils.settingsReady() && Settings.CLEAR_MODE_SEEK_BAR.get());
     }
 
+    /**
+     * Whether Hide the seek bar on reels has every ordinary reel's bar stay hidden until a sideways drag along the
+     * reel's bottom edge (#680).
+     * A switch that keeps the bar ({@link #everyReel}) wins.
+     */
+    static boolean hidden() {
+        return Utils.settingsReady() && Settings.HIDE_REEL_SEEK_BAR.get();
+    }
+
     /** Whether the bar gets a thumb: Round handle on the seek bar, or a restyled bar, which always has one. */
     static boolean thumbOn() {
         return Utils.settingsReady() && !shaped() && (Settings.REEL_SEEK_THUMB.get() || styled());
     }
 
-    /** Whether a {@code SeekShape} draws the bar, which takes the place of the handle and the thicker track. */
+    /**
+     * Whether a {@code SeekShape} draws the bar, which takes the place of the handle and the thicker
+     * track. The shape is one choice for every seek bar, so Instagram's own bar under a long reel takes
+     * it with no seek bar switch on (#689). It gives no reel a bar Instagram wouldn't.
+     */
     static boolean shaped() {
-        return switchedOn() && SeekShapes.changed();
+        return Utils.settingsReady() && SeekShapes.changed();
     }
 
     /**
@@ -255,6 +343,23 @@ public final class ReelSeekBar {
     }
 
     /**
+     * Injected where Instagram's Reels progress controller goes by a reel's length to decide whether the reel
+     * gets the strip you drag from, with the reel's kind and id, while {@link #photoBarOn}. Letting go of a hold
+     * on a reel shows its bar again only when that check says yes, and a photo's length is 0, so a hold hid a
+     * photo's bar until the next reel. Answers yes for a photo with a song, which the patch returns as the
+     * check's answer, and no to leave the check to Instagram.
+     */
+    public static boolean photoStrip(Object kind, String id) {
+        try {
+            HookStatus.invoked(FamilyNames.REEL_SEEK_BAR);
+            return note(kind, id);
+        } catch (Throwable failure) {
+            HookStatus.threw(FamilyNames.REEL_SEEK_BAR, "photo seek bar after a hold", failure);
+            return false;
+        }
+    }
+
+    /**
      * Injected first thing where Instagram works out a reel's seek bar row, with the reel's kind and
      * id, while {@link #photoBarOn}. Tells {@link #lazy}, a few lines later in that method on the
      * same thread, which reel it's answering for: with no length, a photo counts as a short reel, and
@@ -291,9 +396,11 @@ public final class ReelSeekBar {
         return tag != null && photoBarOn() && isPhoto(tag);
     }
 
-    /** Notes the reel when its kind is a photo with a song, and says whether it is. */
+    /** Notes the reel when its kind is one or several photos with a song, and says whether it is. */
     private static boolean note(Object kind, String id) {
-        if (!(kind instanceof Enum) || !PHOTO_WITH_MUSIC.equals(((Enum<?>) kind).name())) return false;
+        if (!(kind instanceof Enum)) return false;
+        String name = ((Enum<?>) kind).name();
+        if (!PHOTO_WITH_MUSIC.equals(name) && !CAROUSEL_WITH_MUSIC.equals(name)) return false;
         if (id != null) {
             synchronized (PHOTOS) {
                 PHOTOS.put(ReelTimeLabel.REEL_TAG_PREFIX + id, Boolean.TRUE);

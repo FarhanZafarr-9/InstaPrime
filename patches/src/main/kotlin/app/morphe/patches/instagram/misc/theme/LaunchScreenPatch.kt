@@ -306,7 +306,7 @@ val launchScreenPatch = bytecodePatch(
         "Android 13 and newer, and can fill that screen with your accent color. Starts off. Turn it on in InstaPrime settings > Layout.",
     default = true,
 ) {
-    category("Interface")
+    category("Settings")
     dependsOn(settingsPatch, instagramExtensionPatch, launchThemePatch)
     compatibleWith(*AppCompatibilities.instagram())
 

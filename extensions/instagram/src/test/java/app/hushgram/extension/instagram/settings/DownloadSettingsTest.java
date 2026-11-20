@@ -45,6 +45,7 @@ import app.hushgram.extension.shared.L10n;
 import app.hushgram.extension.shared.SettingsContextRule;
 import app.hushgram.extension.shared.Utils;
 import app.hushgram.extension.shared.settings.PauseForTests;
+import app.hushgram.extension.shared.settings.Setting;
 
 import org.junit.After;
 import org.junit.Rule;
@@ -88,9 +89,11 @@ public class DownloadSettingsTest {
         Settings.DOWNLOAD_REELS.resetToDefault();
         Settings.DOWNLOAD_REEL_COVER.resetToDefault();
         Settings.DOWNLOAD_REEL_AUDIO.resetToDefault();
+        Settings.DOWNLOAD_REEL_SONG.resetToDefault();
         Settings.DOWNLOAD_VIDEOS.resetToDefault();
         Settings.DOWNLOAD_FEED_COVER.resetToDefault();
         Settings.DOWNLOAD_PHOTOS.resetToDefault();
+        Settings.SAVE_PHOTOS_AT_FULL_SIZE.resetToDefault();
         Settings.DOWNLOAD_CHOOSE_PAGES.resetToDefault();
         Settings.FEED_DOWNLOAD_BUTTON.resetToDefault();
         Settings.FEED_DOWNLOAD_ALL_PAGES.resetToDefault();
@@ -489,6 +492,26 @@ public class DownloadSettingsTest {
             ShadowLooper.idleMainLooper();
             assertTrue(audio.isEnabled());
             assertTrue(ConfigurationBackup.eligible().containsKey(Settings.DOWNLOAD_REEL_AUDIO.key));
+
+            Preference song = reels.findPreference(Settings.DOWNLOAD_REEL_SONG.key);
+            assertTrue("Download full song isn't in Reels", song instanceof SwitchPreference);
+            assertEquals("Download full song", String.valueOf(song.getTitle()));
+            assertTrue(String.valueOf(song.getSummary()), String.valueOf(song.getSummary()).contains("not only the part the reel plays"));
+            int audioAt = -1;
+            int songAt = -1;
+            for (int i = 0; i < reels.getPreferenceCount(); i++) {
+                if (reels.getPreference(i) == audio) audioAt = i;
+                if (reels.getPreference(i) == song) songAt = i;
+            }
+            assertEquals("Download full song sits right after Download audio", audioAt + 1, songAt);
+            assertFalse("Download full song starts off", ((SwitchPreference) song).isChecked());
+            ((SwitchPreference) row).setChecked(false);
+            ShadowLooper.idleMainLooper();
+            assertFalse("Download full song waits for Download on reels", song.isEnabled());
+            ((SwitchPreference) row).setChecked(true);
+            ShadowLooper.idleMainLooper();
+            assertTrue(song.isEnabled());
+            assertTrue(ConfigurationBackup.eligible().containsKey(Settings.DOWNLOAD_REEL_SONG.key));
         }
 
         PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.HIDE_ADS);
@@ -558,6 +581,12 @@ public class DownloadSettingsTest {
             assertEquals("Saves videos as .mkv files instead of .mp4, for galleries that show no thumbnail for VP9 "
                     + "or AV1 videos. Nothing is re-encoded. A video Instagram sends as one file stays .mp4.",
                     String.valueOf(mkvRow.getSummary()));
+
+            // A settings backup carries all three, like the compatible and convert switches above them.
+            for (Setting<?> kept : Arrays.<Setting<?>>asList(Settings.DOWNLOAD_COMPATIBLE, Settings.DOWNLOAD_CONVERT,
+                    Settings.DOWNLOAD_NO_AV1, Settings.DOWNLOAD_NO_HDR, Settings.SAVE_VIDEOS_AS_MKV)) {
+                assertTrue(kept.key + " left out of a settings backup", ConfigurationBackup.eligible().containsKey(kept.key));
+            }
         }
 
         PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.HIDE_ADS);
@@ -573,6 +602,37 @@ public class DownloadSettingsTest {
                     -1, indexOfKey(rows, Settings.DOWNLOAD_NO_HDR.key));
             assertEquals("an MKV row with no download in the build",
                     -1, indexOfKey(rows, Settings.SAVE_VIDEOS_AS_MKV.key));
+        }
+    }
+
+    /**
+     * With Ask for VP9 instead of AV1 in the build, its switch sits between Never save AV1 video and
+     * Never save HDR video, starts off and goes into a settings backup. Without it, no row (#546).
+     */
+    @Test
+    public void theVp9SwitchSitsUnderTheAv1One() {
+        PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.REEL_DOWNLOAD, PatchFamily.VP9_VIDEO);
+        try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {
+            List<Preference> rows = rowsOf(pageIn(controller));
+            int noAv1 = indexOfKey(rows, Settings.DOWNLOAD_NO_AV1.key);
+            int vp9 = indexOfKey(rows, Settings.ASK_FOR_VP9.key);
+            assertEquals("the VP9 switch isn't right under the AV1 one", noAv1 + 1, vp9);
+            assertEquals("the HDR switch isn't right under the VP9 one", vp9 + 1, indexOfKey(rows, Settings.DOWNLOAD_NO_HDR.key));
+            Preference row = rows.get(vp9);
+            assertTrue(row instanceof SwitchPreference);
+            assertFalse(((SwitchPreference) row).isChecked());
+            assertEquals("Ask for VP9 instead of AV1", String.valueOf(row.getTitle()));
+            assertEquals("Tells Instagram your phone has no AV1 decoder, which takes a restart. A post or reel that "
+                    + "still comes as AV1 is saved as VP9 from Instagram's website when it offers one. Stories can "
+                    + "still be AV1, and Convert to keep the full size turns those into H.264.",
+                    String.valueOf(row.getSummary()));
+            assertTrue(ConfigurationBackup.eligible().containsKey(Settings.ASK_FOR_VP9.key));
+        }
+
+        PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.REEL_DOWNLOAD);
+        try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {
+            assertEquals("a VP9 row without its patch", -1, indexOfKey(rowsOf(pageIn(controller)), Settings.ASK_FOR_VP9.key));
+            assertFalse(ConfigurationBackup.eligible().containsKey(Settings.ASK_FOR_VP9.key));
         }
     }
 
@@ -701,6 +761,70 @@ public class DownloadSettingsTest {
     }
 
     /**
+     * Block and Playback speed for a feed post's menu (#743) follow Details, start off, belong to
+     * the feed video patch and go in a settings file. A build with no feed menu has neither row.
+     */
+    @Test
+    public void thePostMenuRowsFollowDetails() {
+        PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.VIDEO_DOWNLOAD);
+        try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {
+            List<Preference> rows = rowsOf(pageIn(controller));
+            int details = indexOfKey(rows, Settings.POST_DETAILS.key);
+            assertEquals(details + 1, indexOfKey(rows, Settings.POST_MENU_BLOCK.key));
+            assertEquals(details + 2, indexOfKey(rows, Settings.POST_MENU_SPEED.key));
+            assertEquals("Block in a post's menu", String.valueOf(rows.get(details + 1).getTitle()));
+            assertEquals("Speed in a post's menu", String.valueOf(rows.get(details + 2).getTitle()));
+            assertFalse(((SwitchPreference) rows.get(details + 1)).isChecked());
+            assertFalse(((SwitchPreference) rows.get(details + 2)).isChecked());
+            assertTrue(PatchFamily.VIDEO_DOWNLOAD.switches.contains(Settings.POST_MENU_BLOCK));
+            assertTrue(PatchFamily.VIDEO_DOWNLOAD.switches.contains(Settings.POST_MENU_SPEED));
+            assertTrue(ConfigurationBackup.eligible().containsKey(Settings.POST_MENU_BLOCK.key));
+            assertTrue(ConfigurationBackup.eligible().containsKey(Settings.POST_MENU_SPEED.key));
+        }
+        PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.REEL_DOWNLOAD);
+        try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {
+            List<Preference> rows = rowsOf(pageIn(controller));
+            assertEquals(-1, indexOfKey(rows, Settings.POST_MENU_BLOCK.key));
+            assertEquals(-1, indexOfKey(rows, Settings.POST_MENU_SPEED.key));
+        }
+    }
+
+    /**
+     * Save photos at full size (#500) sits right under Download feed photos when the full resolution
+     * patch is in the build too, since that patch reports the larger screen the original needs. It
+     * starts on, waits for Download feed photos, asks for a restart and goes in a settings file. A
+     * build without either patch has no row.
+     */
+    @Test
+    public void savePhotosAtFullSizeSitsUnderDownloadFeedPhotos() {
+        PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.VIDEO_DOWNLOAD, PatchFamily.FULL_RESOLUTION);
+        try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {
+            HushgramPreferenceFragment page = pageIn(controller);
+            List<Preference> rows = rowsOf(page);
+            int full = indexOfKey(rows, Settings.SAVE_PHOTOS_AT_FULL_SIZE.key);
+            assertEquals(indexOfKey(rows, Settings.DOWNLOAD_PHOTOS.key) + 1, full);
+            assertEquals(full + 1, indexOfKey(rows, Settings.POST_DETAILS.key));
+            SwitchPreference row = (SwitchPreference) rows.get(full);
+            assertEquals("Save photos at full size", String.valueOf(row.getTitle()));
+            assertTrue(String.valueOf(row.getSummary()), String.valueOf(row.getSummary()).endsWith("Restart Instagram to see the change."));
+            assertTrue("it starts on", row.isChecked());
+            assertFalse("it waits for Download feed photos", row.isEnabled());
+            ((SwitchPreference) page.findPreference(Settings.DOWNLOAD_PHOTOS.key)).setChecked(true);
+            ShadowLooper.idleMainLooper();
+            assertTrue(row.isEnabled());
+            assertTrue(Settings.SAVE_PHOTOS_AT_FULL_SIZE.rebootApp);
+            assertTrue(ConfigurationBackup.eligible().containsKey(Settings.SAVE_PHOTOS_AT_FULL_SIZE.key));
+        }
+        for (EnumSet<PatchFamily> build : Arrays.asList(EnumSet.of(PatchFamily.VIDEO_DOWNLOAD), EnumSet.of(PatchFamily.REEL_DOWNLOAD,
+                PatchFamily.FULL_RESOLUTION))) {
+            PatchFamily.inBuildForTests = build;
+            try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {
+                assertEquals(build.toString(), -1, indexOfKey(rowsOf(pageIn(controller)), Settings.SAVE_PHOTOS_AT_FULL_SIZE.key));
+            }
+        }
+    }
+
+    /**
      * Download video covers sits right below Download feed videos, which it waits for, with the
      * feed video download in the build (#94). It starts off and goes in a settings file. A build
      * with only reel downloads has no feed menu for it, so no row.
@@ -744,7 +868,7 @@ public class DownloadSettingsTest {
         try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {
             List<Preference> rows = rowsOf(pageIn(controller));
             int choose = indexOfKey(rows, Settings.DOWNLOAD_CHOOSE_PAGES.key);
-            assertEquals(indexOfKey(rows, Settings.POST_DETAILS.key) + 1, choose);
+            assertEquals(indexOfKey(rows, Settings.POST_MENU_SPEED.key) + 1, choose);
             SwitchPreference row = (SwitchPreference) rows.get(choose);
             assertEquals("Choose carousel pages", String.valueOf(row.getTitle()));
             assertFalse("Choose carousel pages starts off", row.isChecked());
@@ -1056,18 +1180,30 @@ public class DownloadSettingsTest {
             PreferenceGroup downloads = section(pageIn(controller).getPreferenceScreen(), "Downloads");
             int byPost = -1;
             int metadata = -1;
+            int scrub = -1;
             int skip = -1;
             int clear = -1;
             for (int i = 0; i < downloads.getPreferenceCount(); i++) {
                 String key = downloads.getPreference(i).getKey();
                 if (Settings.SAVE_NAME_BY_POST.key.equals(key)) byPost = i;
                 if (Settings.SAVE_PHOTO_METADATA.key.equals(key)) metadata = i;
+                if (Settings.SAVE_PHOTO_SCRUB.key.equals(key)) scrub = i;
                 if (Settings.DOWNLOAD_SKIP_SAVED.key.equals(key)) skip = i;
                 if (HushgramPreferenceFragment.CLEAR_DOWNLOAD_HISTORY.equals(key)) clear = i;
             }
             assertEquals(byPost + 1, metadata);
-            assertEquals(metadata + 1, skip);
+            assertEquals(metadata + 1, scrub);
+            assertEquals(scrub + 1, skip);
             assertEquals(skip + 1, clear);
+
+            // Remove hidden data from saved photos (#699) sits right under Add the source, off at first.
+            Preference scrubRow = downloads.getPreference(scrub);
+            assertTrue(scrubRow instanceof SwitchPreference);
+            assertEquals("Remove hidden data from saved photos", String.valueOf(scrubRow.getTitle()));
+            assertTrue(String.valueOf(scrubRow.getSummary()), String.valueOf(scrubRow.getSummary()).contains("FBMD"));
+            assertFalse(((SwitchPreference) scrubRow).isChecked());
+            assertTrue(ConfigurationBackup.eligible().containsKey(Settings.SAVE_PHOTO_SCRUB.key));
+            assertTrue(ConfigurationBackup.eligible().containsKey(Settings.SAVE_PHOTO_METADATA.key));
 
             Preference row = downloads.getPreference(skip);
             assertTrue(row instanceof SwitchPreference);

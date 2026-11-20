@@ -12,6 +12,8 @@ import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.smali.ExternalLabel
 import app.morphe.patches.instagram.direct.preview.DEBUG_LABEL
+import app.morphe.patches.instagram.direct.preview.PREVIEW_OFFER
+import app.morphe.patches.instagram.direct.preview.chatMenuBuilder
 import app.morphe.patches.instagram.direct.seen.ChatMenuActionsFingerprint
 import app.morphe.patches.instagram.direct.seen.THREAD_KEY
 import app.morphe.patches.instagram.direct.seen.visualCode
@@ -37,7 +39,8 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 /** Hide chat and Unhide chat in a chat's long press menu (#661). */
 internal const val HIDDEN_CHATS_MENU = "$EXTENSION_PACKAGE/direct/HiddenChatsMenu;"
-internal const val MENU_SHOWN = "$HIDDEN_CHATS_MENU->shown(Ljava/util/List;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)V"
+internal const val MENU_OFFER = "$HIDDEN_CHATS_MENU->offer(Ljava/util/List;Ljava/lang/Object;)V"
+internal const val MENU_SHOWN = "$HIDDEN_CHATS_MENU->shown(Ljava/lang/Object;Ljava/lang/String;)V"
 internal const val MENU_LABEL = "$HIDDEN_CHATS_MENU->label(Ljava/util/List;[Ljava/lang/String;)V"
 internal const val MENU_TAP = "$HIDDEN_CHATS_MENU->tap(Ljava/lang/Object;Ljava/lang/Object;)Z"
 
@@ -58,9 +61,13 @@ private fun Method.isStatic() = AccessFlags.STATIC.isSet(accessFlags)
 
 internal class HiddenChatMenuTargets(
     val menu: String,
-    /** The method that shows a chat's menu, with its rows, the chat's key, the name over it and the locals the hook borrows. */
+    /** The builder of a chat's menu, its list of rows, where the offer goes in and the locals it borrows there. */
+    val builder: MutableMethod,
+    val builderRows: Int,
+    val builderAt: Int,
+    val builderLocals: List<Int>,
+    /** The method that shows a chat's menu, with the chat's key, the name over it and the locals the hook borrows. */
     val show: MutableMethod,
-    val showRows: Int,
     val showKey: Int,
     val showTitle: Int,
     val showLocals: List<Int>,
@@ -96,6 +103,18 @@ internal fun BytecodePatchContext.findHiddenChatMenu(): HiddenChatMenuTargets {
     val menu = menuInit.definingClass
     requireUnofferedRow(menuInit, menu)
 
+    val methods = mutableListOf<Method>()
+    classDefForEach { owner -> owner.methods.filterTo(methods) { it.implementation != null } }
+
+    // The builder, where the row goes in: Instagram's own list of a chat's rows, the one Preview
+    // chats offers its row in. The menu that shows them gets a read-only copy. Preview's offer stays
+    // the builder's first call, so when Preview chats went first the row goes in straight after it.
+    val builder = mutable(chatMenuBuilder(LOCK_PATCH, menuInit, methods))
+    val builderRows = builder.parameters().indexOf(LIST)
+    val builderAt = builder.visualCode().indexOfFirst { it.visualReference()?.toString() == PREVIEW_OFFER } + 1
+    if (builderAt in builder.jumpTargets()) refuseMenu("a jump reaches the start of the chat menu builder")
+    val builderLocals = builder.freeLocalsAt(LOCK_PATCH, builderAt, 2)
+
     // The labels: the static method handing back the menu's labels for its rows, the one that
     // labels the debug row.
     val labelsRef = classesLoadingString(DEBUG_LABEL).flatMap { owner ->
@@ -114,9 +133,6 @@ internal fun BytecodePatchContext.findHiddenChatMenu(): HiddenChatMenuTargets {
         refuseMenu("the chat menu label builder keeps its rows or labels past v15")
     }
 
-    val methods = mutableListOf<Method>()
-    classDefForEach { owner -> owner.methods.filterTo(methods) { it.implementation != null } }
-
     // The menu itself: the static method taking the chat's key, its rows and the name over the menu,
     // which labels its rows through the label builder. The name is its first String.
     val labelsCall = labelsRef.signature()
@@ -129,7 +145,7 @@ internal fun BytecodePatchContext.findHiddenChatMenu(): HiddenChatMenuTargets {
     val show = mutable(showRef)
     val showParameters = show.parameters()
     if (0 in show.jumpTargets()) refuseMenu("a jump reaches the start of the chat menu")
-    val showLocals = show.freeLocalsAt(LOCK_PATCH, 0, 4)
+    val showLocals = show.freeLocalsAt(LOCK_PATCH, 0, 2)
 
     // The tap handler: the one instance method handed one row of the menu enum and the chat's key.
     val actionRef = methods.filter { method ->
@@ -150,14 +166,16 @@ internal fun BytecodePatchContext.findHiddenChatMenu(): HiddenChatMenuTargets {
         it.name == name && it.parameters() == parameters && it.returnType == returns &&
             AccessFlags.STATIC.isSet(it.accessFlags) && AccessFlags.PUBLIC.isSet(it.accessFlags)
     }.one("extension's public static $name")
-    hook("shown", listOf(LIST, OBJECT, OBJECT, STRING), "V")
+    hook("offer", listOf(LIST, OBJECT), "V")
+    hook("shown", listOf(OBJECT, STRING), "V")
     hook("label", listOf(LIST, LABELS), "V")
     hook("tap", listOf(OBJECT, OBJECT), "Z")
     val threadId = hook(MENU_THREAD_ID, listOf(OBJECT), STRING)
 
     return HiddenChatMenuTargets(
         menu,
-        show, showParameters.indexOf(LIST), showParameters.indexOf(THREAD_KEY), showParameters.indexOf(STRING), showLocals,
+        builder, builderRows, builderAt, builderLocals,
+        show, showParameters.indexOf(THREAD_KEY), showParameters.indexOf(STRING), showLocals,
         labels, labelRows, labelAt, labelArray,
         action, actionParameters.indexOf(menu), actionParameters.indexOf(THREAD_KEY), actionLocals,
         threadId, idField,
@@ -166,7 +184,9 @@ internal fun BytecodePatchContext.findHiddenChatMenu(): HiddenChatMenuTargets {
 
 /**
  * Refuses unless the menu enum builds a [DETAILS_ROW] row and doesn't keep it in a field: a row the
- * app can't name is one it never offers, so the patch can have it.
+ * app can't name is one it never offers, so the patch can have it. Up to 455 the enum builds each
+ * row with its constructor; 456 builds them through a static factory on the enum that takes the
+ * row's name and ordinal and answers the row.
  */
 private fun requireUnofferedRow(init: Method, menu: String) {
     val code = init.visualCode()
@@ -174,10 +194,19 @@ private fun requireUnofferedRow(init: Method, menu: String) {
     if (named < 0) refuseMenu("the chat menu enum has no $DETAILS_ROW row")
     val built = (named + 1 until code.size).firstOrNull { at ->
         val call = code[at].visualReference() as? MethodReference
-        (code[at].opcode == Opcode.INVOKE_DIRECT || code[at].opcode == Opcode.INVOKE_DIRECT_RANGE) &&
-            call?.definingClass == menu && call.name == "<init>"
+        call?.definingClass == menu && (
+            (code[at].opcode == Opcode.INVOKE_DIRECT || code[at].opcode == Opcode.INVOKE_DIRECT_RANGE) && call.name == "<init>" ||
+                (code[at].opcode == Opcode.INVOKE_STATIC || code[at].opcode == Opcode.INVOKE_STATIC_RANGE) &&
+                call.returnType == menu && call.parameterTypes.map { it.toString() } == listOf(STRING, "I")
+            )
     } ?: refuseMenu("the chat menu enum never builds its $DETAILS_ROW row")
-    if (code.getOrNull(built + 1)?.opcode == Opcode.SPUT_OBJECT) {
+    val kept = if (code[built].opcode == Opcode.INVOKE_STATIC || code[built].opcode == Opcode.INVOKE_STATIC_RANGE) {
+        if (code.getOrNull(built + 1)?.opcode != Opcode.MOVE_RESULT_OBJECT) refuseMenu("the chat menu enum drops its $DETAILS_ROW row")
+        built + 2
+    } else {
+        built + 1
+    }
+    if (code.getOrNull(kept)?.opcode == Opcode.SPUT_OBJECT) {
         refuseMenu("the chat menu enum keeps its $DETAILS_ROW row in a field, so Instagram may offer it")
     }
 }
@@ -188,21 +217,29 @@ private fun BytecodePatchContext.mutable(method: Method): MutableMethod =
     }
 
 /**
- * Hands the menu's rows, the chat's key and its name to the extension first thing as a chat's menu
- * opens, relabels the row as the labels are handed back, and takes its tap first thing in the tap
- * handler: a yes returns before Instagram's own code for the row. Preview chats hooks the same label
- * return and tap handler for its own row, in either order. Then writes the key reader's body.
+ * Offers the row first thing in the menu builder (straight after Preview's offer, when that's there),
+ * hands the chat's key and its name to the extension first thing as a chat's menu opens, relabels the
+ * row as the labels are handed back, and takes its tap first thing in the tap handler: a yes returns
+ * before Instagram's own code for the row. Preview chats hooks the same builder, label return and tap
+ * handler for its own row, in either order. Then writes the key reader's body.
  */
 internal fun hookHiddenChatMenu(found: HiddenChatMenuTargets) {
-    val (menuClass, rows, key, title) = found.showLocals
+    val (menuClass, rows) = found.builderLocals
+    found.builder.addInstructions(
+        found.builderAt,
+        """
+            const-class v$menuClass, ${found.menu}
+            move-object/from16 v$rows, ${found.builder.parameterRegister(found.builderRows)}
+            invoke-static { v$rows, v$menuClass }, $MENU_OFFER
+        """,
+    )
+    val (key, title) = found.showLocals
     found.show.addInstructions(
         0,
         """
-            const-class v$menuClass, ${found.menu}
-            move-object/from16 v$rows, ${found.show.parameterRegister(found.showRows)}
             move-object/from16 v$key, ${found.show.parameterRegister(found.showKey)}
             move-object/from16 v$title, ${found.show.parameterRegister(found.showTitle)}
-            invoke-static { v$rows, v$menuClass, v$key, v$title }, $MENU_SHOWN
+            invoke-static { v$key, v$title }, $MENU_SHOWN
         """,
     )
     found.labels.addInstructionsAtControlFlowLabel(

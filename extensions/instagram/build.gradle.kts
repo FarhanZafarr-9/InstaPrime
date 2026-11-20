@@ -327,7 +327,7 @@ tasks.register("verifyAndroidBoundaries") {
             "app.hushgram.extension.instagram.direct.CallButtonsTest" to listOf(
                 "withTheSwitchOnEveryCallKindGoesGone", "otherKindsAndOngoingCallsStay", "offToStartLeavesTheButtonsAlone",
                 "turningItOffOrPausingGivesTheButtonBackOnTheNextBind", "aViewInstagramHidSelfIsNotShownByTheSwitchOff",
-                "nothingThrowsIntoInstagram"
+                "nothingThrowsIntoInstagram", "blendGoesOnlyWithItsOwnSwitch", "theBackArrowIsLeftOutOnlyWithItsSwitchOn"
             ).flatMap { listOf("$it[28]", "$it[37]") },
             "app.hushgram.extension.instagram.direct.InstantsTest" to listOf(
                 "withTheSwitchOnTheCheckAnswersNo[28]", "withTheSwitchOnTheCheckAnswersNo[37]",
@@ -949,10 +949,18 @@ tasks.register("verifyAndroidBoundaries") {
                 "otherPagersAreLeftAlone[28]", "otherPagersAreLeftAlone[37]",
                 "aPagerSetUpWhileOffIsHeldOnceOn[28]", "aPagerSetUpWhileOffIsHeldOnceOn[37]",
                 "offPausedAndUnreadyKeepReelsScrolling[28]", "offPausedAndUnreadyKeepReelsScrolling[37]",
-                "aThrowingSwitchKeepsReelsScrollingAndIsReported[28]", "aThrowingSwitchKeepsReelsScrollingAndIsReported[37]"),
+                "aThrowingSwitchKeepsReelsScrollingAndIsReported[28]", "aThrowingSwitchKeepsReelsScrollingAndIsReported[37]",
+                "playOneReelHoldsViewersFromHomeChatsAndSuggestedUnits[28]", "playOneReelHoldsViewersFromHomeChatsAndSuggestedUnits[37]",
+                "playOneReelHoldsItsOwnViewersBesideTheStop[28]", "playOneReelHoldsItsOwnViewersBesideTheStop[37]",
+                "theReelsTabsAutoScrollIsLeftAlone[28]", "theReelsTabsAutoScrollIsLeftAlone[37]",
+                "aChatsReelsKeepTheirSwipeWhileSwipeThroughAChatsReelsIsOn[28]", "aChatsReelsKeepTheirSwipeWhileSwipeThroughAChatsReelsIsOn[37]",
+                "playOneReelPullsOnlyAroundItsOwnViewers[28]", "playOneReelPullsOnlyAroundItsOwnViewers[37]",
+                "playOneReelOffPausedAndUnreadyHoldsNothing[28]", "playOneReelOffPausedAndUnreadyHoldsNothing[37]",
+                "aThrowingAutoScrollCheckLetsInstagramDecideAndIsReported[28]", "aThrowingAutoScrollCheckLetsInstagramDecideAndIsReported[37]"),
             "app.hushgram.extension.instagram.settings.ReelScrollingSettingsTest" to listOf(
                 "missingPatchHasNoReelScrollingSwitch[28]", "missingPatchHasNoReelScrollingSwitch[37]",
-                "reelScrollingSwitchStartsOffPersistsAndHonorsPause[28]", "reelScrollingSwitchStartsOffPersistsAndHonorsPause[37]"),
+                "reelScrollingSwitchStartsOffPersistsAndHonorsPause[28]", "reelScrollingSwitchStartsOffPersistsAndHonorsPause[37]",
+                "playOnlyTheReelYouOpenedIsItsOwnSwitchAfterTheThree[28]", "playOnlyTheReelYouOpenedIsItsOwnSwitchAfterTheThree[37]"),
             "app.hushgram.extension.instagram.reels.ReelOriginTest" to listOf(
                 "aReelOnTheFirstScreenIsShownAndOutlined[28]", "aReelOnTheFirstScreenIsShownAndOutlined[37]",
                 "aReelFurtherDownIsScrolledToAsPagesLoad[28]", "aReelFurtherDownIsScrolledToAsPagesLoad[37]",
@@ -1110,6 +1118,21 @@ tasks.register("verifyAndroidBoundaries") {
             ).flatMap { listOf("$it[28]", "$it[37]") },
             "app.hushgram.extension.instagram.settings.FeedAudioIconSettingsTest" to listOf(
                 "missingPatchHasNoSwitch", "aloneItStillGetsFeed", "switchStartsOffUnderFeedAndHonorsPause"
+            ).flatMap { listOf("$it[28]", "$it[37]") },
+            "app.hushgram.extension.instagram.feed.FeedAutoScrollTest" to listOf(
+                "theSwitchStartsOffAndNeedsNoRestart", "aPhotoMovesOnOnceItSatStillForTheTimePicked",
+                "aVideoPostWaitsForItsVideo", "theHeadersSayWhichPostIsShownAndWhereTheNextStarts",
+                "aMoveGoesToTheNextHeaderOrMostOfAScreen", "onlyWhatDrawsCountsAsCovering", "offTheHooksOnlyCount",
+                "pausedAndUnreadyReadAsOff", "aTouchHoldsUntilTheFingerLifts", "aPhotoPostMovesOnToTheNextHeader",
+                "aLongerTimeWaitsLonger", "aVideoPostMovesOnWhenItsVideoStartsOverOrEnds",
+                "withTapToPlayAnUntouchedVideoWaitsTheTimePicked", "somethingOverHomeHoldsIt",
+                "withoutTheFocusNothingMoves", "turningItOnNeedsNoRestart", "theLastPostStays",
+                "withoutTheHeaderIdNothingMoves", "aListIsTakenOnceAndLetGoWhenItLeavesTheWindow",
+                "aHiddenWindowHoldsIt"
+            ).flatMap { listOf("$it[28]", "$it[37]") },
+            "app.hushgram.extension.instagram.settings.FeedAutoScrollSettingsTest" to listOf(
+                "missingPatchHasNoSwitch", "aloneItStillGetsFeed", "switchStartsOffUnderFeed",
+                "timeOnEachPostSitsUnderTheSwitch"
             ).flatMap { listOf("$it[28]", "$it[37]") },
             "app.hushgram.extension.instagram.feed.HomeTopBarTest" to listOf(
                 "theSwitchStartsOffAndAsksForARestart", "offToStartHandsOverInstagramsList",

@@ -140,6 +140,7 @@ public class ReelDownloadButtonTest {
         final Set<Object> carousels = new HashSet<>();
         final Set<Object> covers = new HashSet<>();
         final Set<Object> sounds = new HashSet<>();
+        final Set<Object> songs = new HashSet<>();
         Runnable video;
         Runnable photo;
         List<String> labels;
@@ -178,6 +179,10 @@ public class ReelDownloadButtonTest {
 
         @Override public boolean audio(Object media) {
             return sounds.contains(media);
+        }
+
+        @Override public boolean song(Object media) {
+            return songs.contains(media);
         }
 
         @Override public void pick(View anchor, List<CharSequence> labels, List<Runnable> runs) {
@@ -457,15 +462,27 @@ public class ReelDownloadButtonTest {
         assertEquals(Collections.singletonList("choose"), recorder.calls);
     }
 
-    /** A single photo with music isn't a carousel, so the switch leaves its choice alone. */
+    /** #190: a single photo with music in Reels or Explore skips the choice too and saves as a photo. */
     @Test
-    public void saveEveryPageLeavesASinglePhotoWithMusicAlone() {
+    public void saveEveryPageTakesASinglePhotoWithMusicAsAPhoto() {
         Settings.FEED_DOWNLOAD_ALL_PAGES.save(true);
         recorder.music.add("song");
         Column column = new Column(new Item(Kind.ORGANIC, "song"));
         ReelDownloadButton.litho(column, null, 120, 30);
         bridge.click.invoke(new View(activity));
-        assertEquals(Collections.singletonList("choose"), recorder.calls);
+        assertEquals(Collections.singletonList("save " + ReelDownload.PHOTO_OPTION + " song"), recorder.calls);
+    }
+
+    /** The switch leaves a single reel with no music to Ask what to save, since it has no pages to take. */
+    @Test
+    public void saveEveryPageStillLetsASingleReelAsk() {
+        Settings.FEED_DOWNLOAD_ALL_PAGES.save(true);
+        Settings.REEL_DOWNLOAD_BUTTON_ASKS.save(true);
+        recorder.covers.add("one");
+        Column column = new Column(new Item(Kind.ORGANIC, "one"));
+        ReelDownloadButton.litho(column, null, 120, 30);
+        bridge.click.invoke(new View(activity));
+        assertEquals(Collections.singletonList("pick"), recorder.calls);
     }
 
     /** Ask what to save doesn't stop a carousel either, and it goes the way a plain tap does. */
@@ -523,6 +540,19 @@ public class ReelDownloadButtonTest {
         assertEquals("each row saves through the menu's own row", java.util.Arrays.asList("pick", "save null reel",
                 "save " + ReelDownload.COVER_OPTION + " reel", "save " + ReelDownload.AUDIO_OPTION + " reel"),
                 recorder.calls);
+    }
+
+    /** A reel playing a song from Instagram's music offers its whole song last (#735). */
+    @Test
+    public void askWhatToSaveOffersTheWholeSongLast() {
+        Settings.REEL_DOWNLOAD_BUTTON_ASKS.save(true);
+        recorder.sounds.add("reel");
+        recorder.songs.add("reel");
+        ReelDownloadButton.litho(new Column(new Item(Kind.ORGANIC, "reel")), null, 120, 30);
+        bridge.click.invoke(new View(activity));
+        assertEquals(java.util.Arrays.asList("Download", "Download audio", "Download full song"), recorder.labels);
+        recorder.runs.get(2).run();
+        assertEquals(java.util.Arrays.asList("pick", "save " + ReelDownload.SONG_OPTION + " reel"), recorder.calls);
     }
 
     @Test

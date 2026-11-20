@@ -45,7 +45,7 @@ import app.hushgram.extension.shared.settings.PauseForTests;
 @Config(sdk = {28, 37})
 public class ReelPhotoSeekBarTest {
     /** Instagram's kinds of reel keep their names through its build, as this enum's do. */
-    private enum Kind { CLIPS, CAROUSEL_WITH_MUSIC, PHOTO_WITHOUT_MUSIC, PHOTO_WITH_MUSIC }
+    private enum Kind { CLIPS, CAROUSEL_WITH_MUSIC, CAROUSEL_WITH_PHOTO_IN_FIRST_POSITION, PHOTO_WITHOUT_MUSIC, PHOTO_WITH_MUSIC }
 
     @Rule public final SettingsContextRule settings = new SettingsContextRule();
     private ActivityController<Activity> activity;
@@ -77,7 +77,9 @@ public class ReelPhotoSeekBarTest {
         assertTrue("without an id it still gets the bar", ReelSeekBar.photoReel(0, Kind.PHOTO_WITH_MUSIC, null));
         assertFalse(ReelSeekBar.photoReel(0, Kind.CLIPS, "video"));
         assertFalse(ReelSeekBar.photoReel(0, Kind.PHOTO_WITHOUT_MUSIC, "silent"));
-        assertFalse(ReelSeekBar.photoReel(0, Kind.CAROUSEL_WITH_MUSIC, "carousel"));
+        assertTrue("several photos with a song (#10)", ReelSeekBar.photoReel(0, Kind.CAROUSEL_WITH_MUSIC, "carousel"));
+        assertTrue(ReelSeekBar.photoShown("clips_scrubber_carousel"));
+        assertFalse("several photos with no song", ReelSeekBar.photoReel(0, Kind.CAROUSEL_WITH_PHOTO_IN_FIRST_POSITION, "silent2"));
         assertFalse("no kind", ReelSeekBar.photoReel(0, null, "none"));
         assertFalse("not a kind at all", ReelSeekBar.photoReel(0, "PHOTO_WITH_MUSIC", "text"));
         assertTrue("Instagram's own yes stands", ReelSeekBar.photoReel(1, Kind.CLIPS, "video"));
@@ -95,11 +97,30 @@ public class ReelPhotoSeekBarTest {
         assertFalse(ReelSeekBar.photoTouchOnly(1, Kind.PHOTO_WITH_MUSIC, "touch"));
         assertTrue("noted for its length and time", ReelSeekBar.photoShown("clips_scrubber_touch"));
         assertFalse(ReelSeekBar.photoTouchOnly(0, Kind.PHOTO_WITH_MUSIC, "touch"));
+        assertFalse("several photos with a song", ReelSeekBar.photoTouchOnly(1, Kind.CAROUSEL_WITH_MUSIC, "touch2"));
         assertTrue("a short video reel", ReelSeekBar.photoTouchOnly(1, Kind.CLIPS, "short"));
         assertFalse(ReelSeekBar.photoTouchOnly(0, Kind.CLIPS, "long"));
         assertTrue(ReelSeekBar.photoTouchOnly(1, Kind.PHOTO_WITHOUT_MUSIC, "silent"));
         assertTrue("no kind", ReelSeekBar.photoTouchOnly(1, null, null));
         assertTrue("not a kind at all", ReelSeekBar.photoTouchOnly(1, "PHOTO_WITH_MUSIC", "text"));
+    }
+
+    /**
+     * Letting go of a hold on a reel shows its bar again only when the controller's check of the strip you drag
+     * from says yes, and it goes by the reel's length, 0 for a photo. A photo with a song is answered yes, and
+     * every other reel goes on to Instagram's own check.
+     */
+    @Test public void aPhotosBarComesBackAfterAHold() {
+        assertTrue(ReelSeekBar.photoStrip(Kind.PHOTO_WITH_MUSIC, "held"));
+        assertTrue("noted for its length and time", ReelSeekBar.photoShown("clips_scrubber_held"));
+        assertTrue("without an id too", ReelSeekBar.photoStrip(Kind.PHOTO_WITH_MUSIC, null));
+        assertFalse("a video reel", ReelSeekBar.photoStrip(Kind.CLIPS, "video"));
+        assertFalse(ReelSeekBar.photoStrip(Kind.PHOTO_WITHOUT_MUSIC, "silent"));
+        assertTrue("several photos with a song", ReelSeekBar.photoStrip(Kind.CAROUSEL_WITH_MUSIC, "carousel"));
+        assertFalse(ReelSeekBar.photoStrip(Kind.CAROUSEL_WITH_PHOTO_IN_FIRST_POSITION, "silent2"));
+        assertFalse("no kind", ReelSeekBar.photoStrip(null, null));
+        assertFalse("not a kind at all", ReelSeekBar.photoStrip("PHOTO_WITH_MUSIC", "text"));
+        assertFalse(ReelSeekBar.photoShown("clips_scrubber_video"));
     }
 
     /** With no length, a photo counts as a short reel; other short reels keep Instagram's hidden kind on this switch alone. */

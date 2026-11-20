@@ -12,6 +12,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
+import android.preference.EditTextPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.SwitchPreference;
@@ -21,6 +22,7 @@ import java.util.EnumSet;
 import app.hushgram.extension.instagram.media.PlaybackQuality;
 import app.hushgram.extension.instagram.stories.StoryRingColor;
 import app.hushgram.extension.instagram.stories.StoryRingSize;
+import app.hushgram.extension.instagram.stories.StoryRingThickness;
 import app.hushgram.extension.instagram.stories.StoryTimeMode;
 import app.hushgram.extension.shared.L10n;
 import app.hushgram.extension.shared.SettingsContextRule;
@@ -55,11 +57,17 @@ public class ChildControlAvailabilityTest {
         Settings.STORY_RING.resetToDefault();
         Settings.STORY_RING_SCALE.resetToDefault();
         Settings.STORY_RING_COLOR.resetToDefault();
+        Settings.STORY_RING_CUSTOM.resetToDefault();
+        Settings.STORY_RING_CUSTOM_END.resetToDefault();
+        Settings.STORY_RING_THICKNESS.resetToDefault();
         Settings.DEFAULT_PLAYBACK_QUALITY.resetToDefault();
         Settings.PLAYBACK_QUALITY.resetToDefault();
         Settings.DOWNLOAD_REELS.resetToDefault();
         Settings.SHOW_STORY_TIME.resetToDefault();
         Settings.STORY_TIME_MODE.resetToDefault();
+        Settings.FULL_SCREEN_REELS.resetToDefault();
+        Settings.FILL_REEL_SCREEN.resetToDefault();
+        Settings.FIT_REEL_SCREEN.resetToDefault();
     }
 
     @Test public void followingKeepsItsSavedChoiceAcrossParentChanges() {
@@ -78,6 +86,21 @@ public class ChildControlAvailabilityTest {
         Settings.STORY_RING_COLOR.save(StoryRingColor.GOLD);
         checkParent(Settings.STORY_RING, Settings.STORY_RING_COLOR, PatchFamily.STORY_RING,
                 "Turn on Story ring size to use this choice.", "GOLD");
+    }
+
+    @Test public void ringThicknessKeepsItsSavedChoiceAcrossParentChanges() {
+        Settings.STORY_RING_THICKNESS.save(StoryRingThickness.PERCENT_75);
+        checkParent(Settings.STORY_RING, Settings.STORY_RING_THICKNESS, PatchFamily.STORY_RING,
+                "Turn on Story ring size to use this choice.", "PERCENT_75");
+    }
+
+    @Test public void customRingColorsKeepWhatWasTypedAcrossParentChanges() {
+        Settings.STORY_RING_CUSTOM.save("#4A6B82");
+        Settings.STORY_RING_CUSTOM_END.save("#FF8A00");
+        checkParent(Settings.STORY_RING, Settings.STORY_RING_CUSTOM, PatchFamily.STORY_RING,
+                "Turn on Story ring size to use this choice.", "#4A6B82");
+        checkParent(Settings.STORY_RING, Settings.STORY_RING_CUSTOM_END, PatchFamily.STORY_RING,
+                "Turn on Story ring size to use this choice.", "#FF8A00");
     }
 
     @Test public void followLabelKeepsItsSavedChoiceAcrossChipChanges() {
@@ -152,10 +175,74 @@ public class ChildControlAvailabilityTest {
         }
     }
 
+    @Test public void captionLinesKeepItsSavedChoiceAcrossParentChanges() {
+        Settings.CAPTION_LINES.save(app.hushgram.extension.instagram.feed.CaptionLines.FOUR);
+        try {
+            checkParent(Settings.EXPAND_CAPTIONS, Settings.CAPTION_LINES, PatchFamily.EXPAND_CAPTIONS,
+                    "Turn on Expand captions to use this choice.", "FOUR");
+        } finally {
+            Settings.EXPAND_CAPTIONS.resetToDefault();
+            Settings.CAPTION_LINES.resetToDefault();
+        }
+    }
+
+    @Test public void captionLinesSummaryNamesThePickedCount() {
+        // Every count shares one explanation, so without the count the row never said which one was picked (#771).
+        PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.EXPAND_CAPTIONS);
+        Settings.EXPAND_CAPTIONS.save(true);
+        Settings.CAPTION_LINES.save(app.hushgram.extension.instagram.feed.CaptionLines.FOUR);
+        try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {
+            HushgramPreferenceFragment page = DownloadSettingsTest.pageIn(controller);
+            ListPreference row = (ListPreference) page.findPreference(Settings.CAPTION_LINES.key);
+            assertNotNull(row);
+            String cut = L10n.t("Captions longer than that end with \"more\", which opens the rest.");
+            assertEquals(L10n.t("4 lines") + "\n" + cut, String.valueOf(row.getSummary()));
+            row.setValue("TEN");
+            assertEquals(L10n.t("10 lines") + "\n" + cut, String.valueOf(row.getSummary()));
+            row.setValue("WHOLE");
+            assertEquals(L10n.t("The whole caption shows, with no \"more\" to tap."), String.valueOf(row.getSummary()));
+        } finally {
+            Settings.EXPAND_CAPTIONS.resetToDefault();
+            Settings.CAPTION_LINES.resetToDefault();
+        }
+    }
+
     @Test public void playbackKeepsItsSavedChoiceAcrossParentChanges() {
         Settings.PLAYBACK_QUALITY.save(PlaybackQuality.HIGHEST);
         checkParent(Settings.DEFAULT_PLAYBACK_QUALITY, Settings.PLAYBACK_QUALITY, PatchFamily.PLAYBACK_QUALITY,
                 "Turn on Default playback quality to use this choice.", "HIGHEST");
+    }
+
+    @Test public void fillTheScreenRestsWhileShowTheWholeReelIsOn() {
+        // Show the whole reel wins over Fill the screen, so with both on Fill did nothing and nothing said why (#755).
+        PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.FULL_SCREEN_BARS);
+        Settings.FULL_SCREEN_REELS.save(true);
+        Settings.FILL_REEL_SCREEN.save(true);
+        Settings.FIT_REEL_SCREEN.save(true);
+        String reason = L10n.t("Turn off Show the whole reel to use this choice.");
+        try (ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup()) {
+            HushgramPreferenceFragment page = DownloadSettingsTest.pageIn(controller);
+            SwitchPreference fill = (SwitchPreference) page.findPreference(Settings.FILL_REEL_SCREEN.key);
+            SwitchPreference fit = (SwitchPreference) page.findPreference(Settings.FIT_REEL_SCREEN.key);
+            assertNotNull(fill);
+            assertFalse(fill.isEnabled());
+            assertEquals(reason, String.valueOf(fill.getSummary()));
+            assertTrue(fill.isChecked());
+            fit.setChecked(false);
+            ShadowLooper.idleMainLooper();
+            assertTrue(fill.isEnabled());
+            assertEquals(ReelsCategory.fillSummary(), String.valueOf(fill.getSummary()));
+            assertTrue(Settings.FILL_REEL_SCREEN.savedValue());
+            fit.setChecked(true);
+            ShadowLooper.idleMainLooper();
+            assertFalse(fill.isEnabled());
+            assertEquals(reason, String.valueOf(fill.getSummary()));
+            assertTrue(Settings.FILL_REEL_SCREEN.savedValue());
+            ((SwitchPreference) page.findPreference(Settings.FULL_SCREEN_REELS.key)).setChecked(false);
+            fit.setChecked(false);
+            ShadowLooper.idleMainLooper();
+            assertFalse(fill.isEnabled());
+        }
     }
 
     @Test @Config(qualifiers = "es")
@@ -182,6 +269,9 @@ public class ChildControlAvailabilityTest {
             assertNull(page.findPreference(Settings.ONLY_FOLLOWING.key));
             assertNull(page.findPreference(Settings.STORY_RING_SCALE.key));
             assertNull(page.findPreference(Settings.STORY_RING_COLOR.key));
+            assertNull(page.findPreference(Settings.STORY_RING_THICKNESS.key));
+            assertNull(page.findPreference(Settings.STORY_RING_CUSTOM.key));
+            assertNull(page.findPreference(Settings.STORY_RING_CUSTOM_END.key));
             assertNull(page.findPreference(Settings.PLAYBACK_QUALITY.key));
             assertTrue(page.findPreference(BaseSettings.PAUSED.key).isEnabled());
             assertTrue(page.findPreference(Settings.DOWNLOAD_QUALITY.key).isEnabled());
@@ -205,6 +295,7 @@ public class ChildControlAvailabilityTest {
             assertNotEquals(L10n.t(explanation), String.valueOf(row.getSummary()));
             assertEquals(saved, child.savedValue().toString());
             if (row instanceof ListPreference) assertEquals(saved, ((ListPreference) row).getValue());
+            else if (row instanceof EditTextPreference) assertEquals(saved, ((EditTextPreference) row).getText());
             else assertTrue(((SwitchPreference) row).isChecked());
             ((SwitchPreference) page.findPreference(parent.key)).setChecked(false);
             ShadowLooper.idleMainLooper();

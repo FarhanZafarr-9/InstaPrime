@@ -61,6 +61,28 @@ class FriendshipStatusHookTest {
         assertLabelled("stand-in", context.mutableClassDefBy(BINDER).methods.single { it.name == "bind" }, found.header)
     }
 
+    /**
+     * 456 reads the slot and then checks for pronouns, so a profile with a name and no pronouns hides
+     * the slot where that check lands, away from the read the nameless path hides it after. Only the
+     * nameless place had the label, which took it off every named profile without pronouns (#727).
+     */
+    @Test
+    fun aNamedProfileWithoutPronounsGetsTheLabelToo() {
+        val context = PatchContexts.of(standIns(named = true))
+
+        val found = context.findProfileName()
+        context.labelProfileName(found)
+
+        assertLabelled("named stand-in", context.mutableClassDefBy(BINDER).methods.single { it.name == "bind" }, found.header, hides = 2)
+    }
+
+    /** A check for pronouns landing anywhere but on the hide leaves those profiles unlabelled, so it's refused. */
+    @Test
+    fun aPronounsCheckThatDoesNotHideTheSlotFailsThePatch() {
+        val context = PatchContexts.of(standIns(named = true, checkHides = false))
+        assertThrows(PatchException::class.java) { context.findProfileName() }
+    }
+
     @Test
     fun theStubsReachTheUserAndTheSlot() {
         val context = PatchContexts.of(standIns())
@@ -84,6 +106,37 @@ class FriendshipStatusHookTest {
         ))
         assertTrue("$SLOT->getView()Landroid/view/View;" in calls("slotView"))
         assertTrue("$SLOT->setVisibility(I)V" in calls("setSlotVisibility"))
+    }
+
+    /**
+     * The flag list reads every flag the status kept on the user has (#698) through one stub that
+     * asks the getter the status's dump asks right after each key, told apart by the key's hash. A
+     * key the dump asks two getters after is left out, since which one it means can't be told.
+     */
+    @Test
+    fun theUserFlagStubAsksEachKeysGetterByItsHash() {
+        val context = PatchContexts.of(standIns())
+        val found = context.findProfileName()
+        assertEquals(mapOf(FOLLOWED_BY to "followedBy", FOLLOWING to "following", "muting" to "muting"), found.relationshipFlags)
+
+        context.friendshipStubs().fill(found)
+
+        val stub = context.mutableClassDefBy(FRIENDSHIP_STATUS).methods.single { it.name == "userFlag" }
+        assertEquals("a register of its own and the two parameters", 3, stub.implementation!!.registerCount)
+        val code = stub.implementation!!.instructions.toList()
+        assertEquals(
+            listOf(
+                USER, "$USER->friendship()$RELATIONSHIP", "$RELATIONSHIP->followedBy()Ljava/lang/Boolean;",
+                "$RELATIONSHIP->following()Ljava/lang/Boolean;", "$RELATIONSHIP->muting()Ljava/lang/Boolean;",
+            ),
+            code.mapNotNull { (it as? ReferenceInstruction)?.reference?.toString() },
+        )
+        val hashes = code.filter { it.opcode == Opcode.CONST }.map { (it as NarrowLiteralInstruction).narrowLiteral }
+        assertEquals(listOf(FOLLOWED_BY.hashCode(), FOLLOWING.hashCode(), "muting".hashCode()), hashes)
+        // Each compare is against the key's own hash in p1, the stub's second parameter.
+        val compares = code.filter { it.opcode == Opcode.IF_NE }.map { it as TwoRegisterInstruction }
+        assertEquals(3, compares.size)
+        compares.forEach { assertEquals(2, it.registerA) }
     }
 
     /**
@@ -175,10 +228,10 @@ class FriendshipStatusHookTest {
         val narrow = context.mutableClassDefBy(FRIENDSHIP_STATUS).methods.filter {
             it.name in setOf(
                 "friendshipFollowedBy", "friendshipFollowing", "followedBy", "userId", "viewerId", "slotView", "statusFlag",
-                "screenFriendship",
+                "screenFriendship", "userFlag",
             )
         }
-        assertEquals(8, narrow.size)
+        assertEquals(9, narrow.size)
         for (stub in narrow) {
             val code = stub.implementation!!.instructions.toList()
             val addresses = code.runningFold(0) { address, instruction -> address + instruction.codeUnits }
@@ -258,10 +311,14 @@ class FriendshipStatusHookTest {
                 val asked = context.mutableClassDefBy(FRIENDSHIP_STATUS).methods.single { it.name == "friendshipFollowing" }
                     .implementation!!.instructions.mapNotNull { (it as? ReferenceInstruction)?.reference?.toString() }
                 assertTrue("${bundle.name}: $asked", "$RELATIONSHIP->$following()Ljava/lang/Boolean;" in asked)
+                // The flag list's keys (#698), each told by the status's dump on every declared build,
+                // save the supervision pair, which the user's status doesn't carry on 454.
+                val unknown = LISTED_FLAGS.filter { it !in SCREEN_ONLY_FLAGS && it !in found.relationshipFlags }
+                assertTrue("${bundle.name}: no getter for $unknown in ${found.relationshipFlags}", unknown.isEmpty())
                 val method = context.mutableClassDefBy(found.type).methods.single {
                     it.name == found.name && it.parameterTypes.map(CharSequence::toString) == found.parameters
                 }
-                assertLabelled("${bundle.name} ${found.type}->${found.name}", method, found.header)
+                assertLabelled("${bundle.name} ${found.type}->${found.name}", method, found.header, hides = 2)
                 checked++
             }
         }
@@ -379,49 +436,58 @@ class FriendshipStatusHookTest {
     }
 
     /**
-     * Each hook once: a range call on two registers side by side, the first moved from the slot the
-     * call three before shows or hides, the second from the header parameter. The beside hook follows
-     * the slot being given its text, the other the slot's field being read. No branch lands on the
-     * hook's code, so only the binder's own way through runs it.
+     * The beside hook once and the other at each of the [hides] places the slot is hidden: a range
+     * call on two registers side by side, the first moved from the slot the call three before shows
+     * or hides, the second from the header parameter. The beside hook follows the slot being given
+     * its text. A hide follows the slot's field being read, or is where the check for pronouns lands
+     * with the slot already read. No branch lands on a hook's code, so only the binder's own way
+     * through runs it.
      */
-    private fun assertLabelled(what: String, method: Method, header: Int) {
+    private fun assertLabelled(what: String, method: Method, header: Int, hides: Int = 1) {
         val code = method.implementation!!.instructions.toList()
         val locals = method.implementation!!.registerCount - method.parameterTypes.size -
             (if (AccessFlags.STATIC.isSet(method.accessFlags)) 0 else 1)
         val headerRegister = locals + header
         val addresses = code.runningFold(0) { address, instruction -> address + instruction.codeUnits }
+        val targets = code.indices.mapNotNull { index ->
+            (code[index] as? OffsetInstruction)?.let { addresses[index] + it.codeOffset }
+        }.toSet()
         for (hook in listOf(BESIDE_PRONOUNS, IN_PLACE_OF_PRONOUNS)) {
             val calls = code.withIndex().filter { (it.value as? ReferenceInstruction)?.reference?.toString() == hook }
-            assertEquals("$what: calls of $hook", 1, calls.size)
-            val (at, call) = calls.single()
-            val range = call as RegisterRangeInstruction
-            assertEquals("$what: $hook takes two registers", 2, range.registerCount)
+            assertEquals("$what: calls of $hook", if (hook == BESIDE_PRONOUNS) 1 else hides, calls.size)
+            for ((at, call) in calls) {
+                val range = call as RegisterRangeInstruction
+                assertEquals("$what: $hook takes two registers", 2, range.registerCount)
 
-            val shows = code[at - 3]
-            val shown = (shows as ReferenceInstruction).reference as MethodReference
-            assertEquals("$what: the slot settled three before $hook", "setVisibility", shown.name)
-            val slot = (shows as FiveRegisterInstruction).registerC
-            val slotMove = code[at - 2] as TwoRegisterInstruction
-            val headerMove = code[at - 1] as TwoRegisterInstruction
-            assertEquals("$what: slot moved", Opcode.MOVE_OBJECT_FROM16, code[at - 2].opcode)
-            assertEquals("$what: slot into the first", range.startRegister, slotMove.registerA)
-            assertEquals("$what: from the slot", slot, slotMove.registerB)
-            assertEquals("$what: header into the second", range.startRegister + 1, headerMove.registerA)
-            assertEquals("$what: from the header", headerRegister, headerMove.registerB)
+                val shows = code[at - 3]
+                val shown = (shows as ReferenceInstruction).reference as MethodReference
+                assertEquals("$what: the slot settled three before $hook", "setVisibility", shown.name)
+                val slot = (shows as FiveRegisterInstruction).registerC
+                val slotMove = code[at - 2] as TwoRegisterInstruction
+                val headerMove = code[at - 1] as TwoRegisterInstruction
+                assertEquals("$what: slot moved", Opcode.MOVE_OBJECT_FROM16, code[at - 2].opcode)
+                assertEquals("$what: slot into the first", range.startRegister, slotMove.registerA)
+                assertEquals("$what: from the slot", slot, slotMove.registerB)
+                assertEquals("$what: header into the second", range.startRegister + 1, headerMove.registerA)
+                assertEquals("$what: from the header", headerRegister, headerMove.registerB)
 
-            val before = code[at - 4]
-            if (hook == BESIDE_PRONOUNS) {
-                assertEquals("$what: the pronouns set before it's shown", "setText",
-                    ((before as ReferenceInstruction).reference as MethodReference).name)
-            } else {
-                // 450 copies the slot through up to two plain moves between its read and the hide.
-                val read = (at - 4 downTo maxOf(0, at - 6)).first { code[it].opcode !in PLAIN_MOVES }
-                assertEquals("$what: the slot read right before it's hidden", Opcode.IGET_OBJECT, code[read].opcode)
-            }
-            for ((index, instruction) in code.withIndex()) {
-                if (instruction !is OffsetInstruction) continue
-                val target = addresses[index] + instruction.codeOffset
-                assertTrue("$what: the branch at $index lands in $hook's code", target !in (addresses[at - 2]..addresses[at]))
+                val before = code[at - 4]
+                if (hook == BESIDE_PRONOUNS) {
+                    assertEquals("$what: the pronouns set before it's shown", "setText",
+                        ((before as ReferenceInstruction).reference as MethodReference).name)
+                } else {
+                    // 450 copies the slot through up to two plain moves between its read and the hide.
+                    val read = (at - 4 downTo maxOf(0, at - 6)).first { code[it].opcode !in PLAIN_MOVES }
+                    assertTrue(
+                        "$what: the hide at ${at - 3} neither follows a read of the slot nor is where a branch lands",
+                        code[read].opcode == Opcode.IGET_OBJECT || addresses[at - 3] in targets,
+                    )
+                }
+                for ((index, instruction) in code.withIndex()) {
+                    if (instruction !is OffsetInstruction) continue
+                    val target = addresses[index] + instruction.codeOffset
+                    assertTrue("$what: the branch at $index lands in $hook's code", target !in (addresses[at - 2]..addresses[at]))
+                }
             }
         }
     }
@@ -432,6 +498,20 @@ class FriendshipStatusHookTest {
 
     internal companion object {
         val PLAIN_MOVES = setOf(Opcode.MOVE, Opcode.MOVE_FROM16, Opcode.MOVE_16)
+
+        /** The keys the extension's flag list names (FriendshipFlags.KNOWN and OTHER). */
+        val LISTED_FLAGS = listOf(
+            "followed_by", "following", "incoming_request", "outgoing_request", "is_bestie", "is_feed_favorite",
+            "is_restricted", "blocking", "is_blocking_reel", "muting", "is_muting_reel", "is_muting_notes",
+            "is_muting_media_notes", "is_muting_media_reposts", "is_muting_quick_snap", "is_private", "subscribed",
+            "is_viewer_unconnected", "is_eligible_to_subscribe", "is_supervised_by_viewer", "is_guardian_of_viewer",
+        )
+
+        /**
+         * Listed keys the user's status has no getter for on 454's builds, so the list takes them from the
+         * profile screen's answer alone and names them as not sent when it lacks them.
+         */
+        val SCREEN_ONLY_FLAGS = setOf("is_supervised_by_viewer", "is_guardian_of_viewer")
 
         const val BINDER = "Lfixture/ProfileBinder;"
         const val HOLDER = "Lfixture/ProfileHolder;"
@@ -457,7 +537,10 @@ class FriendshipStatusHookTest {
          * takes the header, whose view model keeps the user, whose getter loads [key]. As on 450, the
          * view model also keeps the screen's answer, which the profile fragment's getter answers and
          * [sheets] options sheets read as Instagram's does, with a client it loads as a string or,
-         * without [clientKnown], gets from a call the patch can't read.
+         * without [clientKnown], gets from a call the patch can't read. With [named] the binder is
+         * shaped as on 456: a profile with a name reads the slot before checking for pronouns, and
+         * that check lands on the slot being hidden (or, without [checkHides], on nothing of the kind),
+         * while a profile with no name reads the slot again and hides it.
          */
         fun standIns(
             traceName: String = BIND_FULL_NAME,
@@ -468,6 +551,8 @@ class FriendshipStatusHookTest {
             dumpsFollowing: Boolean = true,
             sheets: Int = 1,
             clientKnown: Boolean = true,
+            named: Boolean = false,
+            checkHides: Boolean = true,
         ): List<ClassDef> {
             val hide = if (hides) {
                 """
@@ -478,8 +563,32 @@ class FriendshipStatusHookTest {
             } else {
                 ""
             }
-            val bind = method(
-                BINDER, "bind", listOf(HEADER, HOLDER, "Ljava/lang/String;"), "V", 8,
+            val bindBody = if (named) {
+                """
+                    const-string v0, "$traceName"
+                    invoke-static { v0 }, $TRACE->begin(Ljava/lang/String;)V
+                    const/16 v4, 0x8
+                    if-eqz p0, :nameless
+                    const/4 v3, 0x0
+                    iget-object v1, p1, $HOLDER->pronouns:$SLOT
+                    if-eqz p2, :no_pronouns
+                    invoke-interface { v1 }, $SLOT->getView()Landroid/view/View;
+                    move-result-object v2
+                    check-cast v2, Landroid/widget/TextView;
+                    invoke-virtual { v2, p2 }, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+                    invoke-interface { v1, v3 }, $SLOT->setVisibility(I)V
+                    goto :done
+                    :no_pronouns
+                    ${if (checkHides) "invoke-interface { v1, v4 }, $SLOT->setVisibility(I)V" else "nop"}
+                    goto :done
+                    :nameless
+                    iget-object v1, p1, $HOLDER->pronouns:$SLOT
+                    invoke-interface { v1, v4 }, $SLOT->setVisibility(I)V
+                    :done
+                    invoke-static { v0 }, $TRACE->begin(Ljava/lang/String;)V
+                    return-void
+                """
+            } else {
                 """
                     const-string v0, "$traceName"
                     invoke-static { v0 }, $TRACE->begin(Ljava/lang/String;)V
@@ -497,8 +606,9 @@ class FriendshipStatusHookTest {
                     :done
                     invoke-static { v0 }, $TRACE->begin(Ljava/lang/String;)V
                     return-void
-                """,
-            )
+                """
+            }
+            val bind = method(BINDER, "bind", listOf(HEADER, HOLDER, "Ljava/lang/String;"), "V", 8, bindBody)
             val getter = method(
                 USER, "follows", emptyList(), "Ljava/lang/Boolean;", 2,
                 """
@@ -552,6 +662,15 @@ class FriendshipStatusHookTest {
                     invoke-interface { p0 }, $RELATIONSHIP->following()Ljava/lang/Boolean;
                     move-result-object v0
                     const-string v0, "$FOLLOWED_BY"
+                    invoke-interface { p0 }, $RELATIONSHIP->followedBy()Ljava/lang/Boolean;
+                    move-result-object v0
+                    const-string v0, "muting"
+                    invoke-interface { p0 }, $RELATIONSHIP->muting()Ljava/lang/Boolean;
+                    move-result-object v0
+                    const-string v0, "is_private"
+                    invoke-interface { p0 }, $RELATIONSHIP->muting()Ljava/lang/Boolean;
+                    move-result-object v0
+                    const-string v0, "is_private"
                     invoke-interface { p0 }, $RELATIONSHIP->followedBy()Ljava/lang/Boolean;
                     move-result-object v0
                     return-void
@@ -625,6 +744,7 @@ class FriendshipStatusHookTest {
                     RELATIONSHIP,
                     abstract(RELATIONSHIP, "following", emptyList(), "Ljava/lang/Boolean;"),
                     abstract(RELATIONSHIP, "followedBy", emptyList(), "Ljava/lang/Boolean;"),
+                    abstract(RELATIONSHIP, "muting", emptyList(), "Ljava/lang/Boolean;"),
                 ),
                 classOf(PROFILE_FRAGMENT, listOf(field(PROFILE_FRAGMENT, "model", VIEW_MODEL)), listOf(answer)),
                 interfaceOf(FLOW, abstract(FLOW, "getValue", emptyList(), "Ljava/lang/Object;")),

@@ -35,7 +35,8 @@ public class ReelsSuggestionsTest {
     /** Named like Instagram 450's clips item kinds, which is all the hook goes by. */
     enum Kind {
         ORGANIC, AD, AD_PREVIEW, MULTI_ADS, NETEGO, TYA_IN_REELS, QPMIDCARD, SCROLL_PIVOT, SUGGESTED_USERS,
-        CREATORS_YOU_MAY_FOLLOW, NETEGO_SUGGESTED_USERS, NETEGO_SUGGESTED_CREATORS
+        CREATORS_YOU_MAY_FOLLOW, NETEGO_SUGGESTED_USERS, NETEGO_SUGGESTED_CREATORS, STORIES_IN_REELS,
+        NETEGO_THREADS_IN_REELS_UNIT_ACQUISITION
     }
 
     /** A clips item: one enum field holding its kind. */
@@ -65,6 +66,8 @@ public class ReelsSuggestionsTest {
     @After
     public void restore() {
         Settings.HIDE_REELS_SUGGESTIONS.resetToDefault();
+        Settings.HIDE_REELS_STORIES.resetToDefault();
+        Settings.HIDE_REELS_THREADS.resetToDefault();
         BaseSettings.PAUSED.save(false);
         PauseForTests.resume();
         HookStatus.clear();
@@ -126,6 +129,61 @@ public class ReelsSuggestionsTest {
         assertEquals(report.toString(), 1, report.size());
         assertEquals(ReelsSuggestions.KEPT_ROUTE + ": 0 lists, 0 items, 0 removed. Kinds: SCROLL_PIVOT 2, "
                 + "netego suggested_users 2, QPMIDCARD 1, netego untyped 1", report.get(0));
+    }
+
+    /**
+     * The Catch up with friends page of stories (#730) goes by its own switch. The suggestions switch
+     * alone keeps it, the stories switch alone takes it out and keeps suggested accounts, and it's
+     * counted on its own line either way, never as a suggestion or a kept unit.
+     */
+    @Test
+    public void storiesGoByTheirOwnSwitch() {
+        Item stories = new Item(Kind.STORIES_IN_REELS);
+        assertSame(stories, ReelsSuggestions.filter(stories));
+
+        Settings.HIDE_REELS_STORIES.save(true);
+        Settings.HIDE_REELS_SUGGESTIONS.save(false);
+        assertNull(ReelsSuggestions.filter(new Item(Kind.STORIES_IN_REELS)));
+        Item suggested = new Item(Kind.SUGGESTED_USERS);
+        assertSame(suggested, ReelsSuggestions.filter(suggested));
+
+        String storiesLine = null;
+        for (String line : FeedFilterCounters.report()) {
+            if (line.startsWith(ReelsSuggestions.STORIES_ROUTE + ":")) storiesLine = line;
+            else assertTrue(line, !line.contains("STORIES_IN_REELS"));
+        }
+        assertTrue(String.valueOf(storiesLine), storiesLine != null && storiesLine.contains("1 removed")
+                && storiesLine.contains("STORIES_IN_REELS 2"));
+    }
+
+    /**
+     * The Threads cards between reels (#765) go by their own switch too. Off by default, kept by the
+     * suggestions and stories switches, taken out by the Threads switch alone, and counted on a line
+     * of their own.
+     */
+    @Test
+    public void threadsCardsGoByTheirOwnSwitch() {
+        Item threads = new Item(Kind.NETEGO_THREADS_IN_REELS_UNIT_ACQUISITION);
+        assertSame(threads, ReelsSuggestions.filter(threads));
+        Settings.HIDE_REELS_STORIES.save(true);
+        assertSame(threads, ReelsSuggestions.filter(threads));
+
+        Settings.HIDE_REELS_THREADS.save(true);
+        Settings.HIDE_REELS_SUGGESTIONS.save(false);
+        Settings.HIDE_REELS_STORIES.save(false);
+        assertNull(ReelsSuggestions.filter(new Item(Kind.NETEGO_THREADS_IN_REELS_UNIT_ACQUISITION)));
+        Item suggested = new Item(Kind.SUGGESTED_USERS);
+        assertSame(suggested, ReelsSuggestions.filter(suggested));
+        Item stories = new Item(Kind.STORIES_IN_REELS);
+        assertSame(stories, ReelsSuggestions.filter(stories));
+
+        String threadsLine = null;
+        for (String line : FeedFilterCounters.report()) {
+            if (line.startsWith(ReelsSuggestions.THREADS_ROUTE + ":")) threadsLine = line;
+            else assertTrue(line, !line.contains("NETEGO_THREADS_IN_REELS_UNIT_ACQUISITION"));
+        }
+        assertTrue(String.valueOf(threadsLine), threadsLine != null && threadsLine.contains("1 removed")
+                && threadsLine.contains("NETEGO_THREADS_IN_REELS_UNIT_ACQUISITION 3"));
     }
 
     /** On, a netego unit of friends or creators to follow is answered null, and any other type stays. */

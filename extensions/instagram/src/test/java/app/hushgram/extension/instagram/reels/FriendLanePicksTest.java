@@ -82,6 +82,7 @@ public class FriendLanePicksTest {
         PauseForTests.resume();
         Settings.PICK_FRIENDS_TAB.save(true);
         Settings.FRIENDS_TAB_PICKS.save("ana\nbo");
+        Settings.FRIENDS_TAB_SEEN.resetToDefault();
         HookStatus.clear();
         FeedFilterCounters.clear();
         FriendLanePicks.forgetSeen();
@@ -99,6 +100,7 @@ public class FriendLanePicksTest {
         HookStatus.clear();
         FeedFilterCounters.clear();
         FriendLanePicks.forgetSeen();
+        Settings.FRIENDS_TAB_SEEN.resetToDefault();
     }
 
     private static List<?> page(List<?> items, String module) {
@@ -153,6 +155,66 @@ public class FriendLanePicksTest {
         assertSame(items, page(items, LANE));
     }
 
+    private static List<?> added(List<?> items, String module, int held) {
+        return FriendLanePicks.added(items, module, held, READER);
+    }
+
+    /** #503: the reel a pick-less page kept showed between the picked ones, so the tab never looked filtered. */
+    @Test
+    public void onceTheViewerHoldsReelsTheReelAPagelessPickKeptGoesToo() {
+        Clip card = new Clip((String[]) null);
+        Clip zed = new Clip("zed");
+        assertEquals("the reel the page kept goes, the card stays", Collections.singletonList(card), added(Arrays.asList(card, zed), LANE, 5));
+        assertEquals("nothing left is fine once the viewer holds reels", Collections.emptyList(), added(Collections.singletonList(zed), LANE, 2));
+        Clip ana = new Clip("ana");
+        assertEquals(Collections.singletonList(ana), added(Arrays.asList(zed, ana, new Clip()), LANE, 3));
+        assertTrue(FeedFilterCounters.report().toString().contains(FriendLanePicks.ADDED_ROUTE));
+    }
+
+    @Test
+    public void aViewerHoldingOneItemOrNoneKeepsTheReelItsGiven() {
+        List<Clip> items = Collections.singletonList(new Clip("zed"));
+        assertSame(items, added(items, LANE, 0));
+        assertSame(items, added(items, LANE, 1));
+    }
+
+    @Test
+    public void addedListsAreLeftAloneElsewhereOffPausedUnpickedOrNamingNobody() {
+        List<Clip> items = Arrays.asList(new Clip("zed"), new Clip("yan"));
+        assertSame(items, added(items, "clips_viewer_clips_tab", 5));
+        assertSame(items, added(items, null, 5));
+        List<Clip> nobody = Arrays.asList(new Clip(), new Clip());
+        assertSame(nobody, added(nobody, LANE, 5));
+        Settings.PICK_FRIENDS_TAB.save(false);
+        assertSame(items, added(items, LANE, 5));
+        Settings.PICK_FRIENDS_TAB.save(true);
+        PauseForTests.pause(HushgramPause.Reason.SWITCH);
+        assertSame(items, added(items, LANE, 5));
+        PauseForTests.resume();
+        Settings.FRIENDS_TAB_PICKS.save("");
+        assertSame(items, added(items, LANE, 5));
+    }
+
+    @Test
+    public void addedNullEmptyAndAReaderThatThrowsAreSafe() {
+        assertNull(added(null, LANE, 5));
+        List<Clip> none = Collections.emptyList();
+        assertSame(none, added(none, LANE, 5));
+        List<Clip> items = Arrays.asList(new Clip("zed"), new Clip("ana"));
+        List<?> answer = FriendLanePicks.added(items, LANE, 5, new FriendLanePicks.Reader() {
+            @Override
+            public Object media(Object item) {
+                throw new IllegalStateException("no");
+            }
+
+            @Override
+            public Collection<String> friends(Object media) {
+                return null;
+            }
+        });
+        assertSame(items, answer);
+    }
+
     @Test
     public void anyOtherViewerIsLeftAlone() {
         List<Clip> items = Arrays.asList(new Clip("zed"), new Clip("ana"));
@@ -204,6 +266,47 @@ public class FriendLanePicksTest {
         Settings.FRIENDS_TAB_PICKS.save("");
         page(Collections.singletonList(new Clip("dee")), LANE);
         assertEquals("picking nothing still fills the list", Arrays.asList("bo", "cy", "dee", "zed"), FriendLanePicks.roster());
+    }
+
+    /** #503: a tab Instagram brings back from its own store only passes through the add. */
+    @Test
+    public void theAddFillsTheListEvenWithNothingPickedOrNothingHeld() {
+        Settings.FRIENDS_TAB_PICKS.save("");
+        List<Clip> items = Arrays.asList(new Clip("zed"), new Clip("Yan"), new Clip((String[]) null));
+        assertSame(items, added(items, LANE, 5));
+        assertEquals(Arrays.asList("yan", "zed"), FriendLanePicks.roster());
+
+        Settings.FRIENDS_TAB_PICKS.save("ana");
+        List<Clip> first = Collections.singletonList(new Clip("cy"));
+        assertSame(first, added(first, LANE, 0));
+        assertEquals(Arrays.asList("ana", "cy", "yan", "zed"), FriendLanePicks.roster());
+
+        added(Collections.singletonList(new Clip("dee")), "clips_viewer_clips_tab", 5);
+        Settings.PICK_FRIENDS_TAB.save(false);
+        added(Collections.singletonList(new Clip("eve")), LANE, 5);
+        Settings.PICK_FRIENDS_TAB.save(true);
+        assertEquals("another viewer or the switch off adds nobody",
+                Arrays.asList("ana", "cy", "yan", "zed"), FriendLanePicks.roster());
+    }
+
+    /** #503: the list the hold opens still has everyone after the app restarts. */
+    @Test
+    public void theFriendsNamedOutlastARestart() {
+        Settings.FRIENDS_TAB_PICKS.save("");
+        page(Arrays.asList(new Clip("cy"), new Clip("dee")), LANE);
+        FriendLanePicks.forgetSeen();
+        assertEquals(Arrays.asList("cy", "dee"), FriendLanePicks.roster());
+
+        View tab = tab();
+        tab.setSelected(true);
+        assertTrue(tab.performLongClick());
+        ShadowLooper.idleMainLooper();
+        AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
+        assertTrue("the kept friends open the list", dialog != null && dialog.isShowing());
+
+        added(Collections.singletonList(new Clip("eve")), LANE, 1);
+        FriendLanePicks.forgetSeen();
+        assertEquals(Arrays.asList("cy", "dee", "eve"), FriendLanePicks.roster());
     }
 
     @Test

@@ -8,8 +8,14 @@ package app.hushgram.extension.instagram.settings;
 
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.blockedWordsRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.keptLanguagesRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.commentsPerThousandRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.likesPerThousandRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.longestReelRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.maxViewsRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.minLikesRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.minViewsRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.oldestReelRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.shortestReelRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.burnInGuardRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.burnInWaitRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.category;
@@ -38,6 +44,12 @@ import app.hushgram.extension.shared.L10n;
 final class ReelsCategory {
     private ReelsCategory() { }
 
+    /** What Fill the screen does, which its row shows again once Show the whole reel goes off (#755). */
+    static String fillSummary() {
+        return L10n.t("Reels that are nearly the screen's shape fill it, cut a little at the sides, instead of "
+                + "showing black bars above and below. Square and wide videos still fit.");
+    }
+
     static void add(HushgramPreferenceFragment page, PreferenceScreen screen, Context context, Set<PatchFamily> build) {
         List<Preference> reels = new ArrayList<>();
         if (build.contains(PatchFamily.FEED_REELS)) {
@@ -49,6 +61,11 @@ final class ReelsCategory {
             reels.add(toggle(context, Settings.HIDE_REELS_SUGGESTIONS, L10n.t("Hide suggested accounts"),
                     L10n.t("The cards of people and creators to follow that Instagram puts between reels. "
                             + "Every reel still plays.")));
+            reels.add(toggle(context, Settings.HIDE_REELS_STORIES, L10n.t("Hide stories in Reels"),
+                    L10n.t("The Catch up with friends pages of stories that Instagram puts between reels. "
+                            + "Stories stay at the top of Home.")));
+            reels.add(toggle(context, Settings.HIDE_REELS_THREADS, L10n.t("Hide Threads posts"),
+                    L10n.t("The cards that Instagram puts between reels to get you onto Threads.")));
         }
         if (build.contains(PatchFamily.PAID_PARTNERSHIP_REELS)) {
             reels.add(toggle(context, Settings.HIDE_PAID_PARTNERSHIP_REELS, L10n.t("Hide paid partnership Reels"),
@@ -87,10 +104,37 @@ final class ReelsCategory {
         }
         if (build.contains(PatchFamily.LOW_VIEW_REELS)) {
             reels.add(toggle(context, Settings.HIDE_LOW_VIEW_REELS, L10n.t("Hide reels with few views"),
-                    L10n.t("Leaves out reels in the Reels tab with fewer views or likes than the numbers below. "
-                            + "Reels from accounts you follow, reels sent to you and reels with no count still play.")));
+                    L10n.t("Leaves out reels in the Reels tab outside the numbers below. Reels from accounts you "
+                            + "follow, reels sent to you and reels that don't show a number still play.")));
             reels.add(minViewsRow(context));
+            reels.add(maxViewsRow(context));
             reels.add(minLikesRow(context));
+            reels.add(likesPerThousandRow(context));
+            reels.add(commentsPerThousandRow(context));
+            reels.add(shortestReelRow(context));
+            reels.add(longestReelRow(context));
+            reels.add(oldestReelRow(context));
+            reels.add(toggle(context, Settings.REELS_NEWEST_FIRST, L10n.t("Newest first"),
+                    L10n.t("Puts each page of reels in the order they were posted, newest on top.")));
+            if (PatchFamily.feedTypesInBuild()) {
+                reels.add(toggle(context, Settings.HIDE_LOW_VIEW_HOME, L10n.t("Also on Home"),
+                        L10n.t("Leaves out suggested posts on Home outside the same numbers too. "
+                                + "Pull down on Home to refresh after changing it.")));
+            }
+        }
+        if (build.contains(PatchFamily.EXPAND_CAPTIONS)) {
+            reels.add(toggle(context, Settings.EXPAND_REEL_CAPTIONS, L10n.t("Expand captions on reels"),
+                    L10n.t("Reels show their whole caption, with no \"more\" to tap. A long caption covers more of the video.")));
+        }
+        if (build.contains(PatchFamily.FEED_HEADER_LINE)) {
+            reels.add(toggle(context, Settings.HIDE_REEL_HEADER_LINE, L10n.t("Hide the line under names on reels"),
+                    L10n.t("Takes the song, the place and the other labels off the line under the name on reels. "
+                            + "Sponsored and Paid partnership stay. Reels already on screen change when they load again.")));
+        }
+        if (build.contains(PatchFamily.FEED_SUGGESTIONS)) {
+            reels.add(toggle(context, Settings.HIDE_REEL_INTEREST, L10n.t("Hide Not interested and Interested"),
+                    L10n.t("Hides the Not interested and Interested buttons at the bottom of a reel. Nothing is "
+                            + "answered for you.")));
         }
         if (build.contains(PatchFamily.REEL_DECLUTTER)) {
             reels.add(toggle(context, Settings.HIDE_REEL_FOLLOW_BUTTON, L10n.t("Hide the Follow button"),
@@ -115,8 +159,9 @@ final class ReelsCategory {
                     L10n.t("The Add a comment bar under every reel, including the ones in the Reels tab. The comment "
                             + "button still opens the comments.")));
             reels.add(toggle(context, Settings.KEEP_REEL_COMMENT_BAR_SPACE, L10n.t("Keep the comment bar's space"),
-                    L10n.t("Leaves an empty band where a hidden comment bar was on reels you open from a post or a "
-                            + "profile, so the reel, its buttons and the seek bar don't move down.")));
+                    L10n.t("Leaves an empty black band where a hidden comment bar was on reels outside the Reels tab, "
+                            + "like the ones you open from Explore or a profile, so the reel, its buttons and the seek "
+                            + "bar don't move down.")));
             reels.add(toggle(context, Settings.HIDE_REEL_REPLY_BAR, L10n.t("Hide the reply bar on reels from chats"),
                     L10n.t("The Reply to box under a reel you open from a chat, with its reactions and plus button. "
                             + "The chat's own message box stays.")));
@@ -124,6 +169,9 @@ final class ReelsCategory {
                     L10n.t("Takes away the row at the top of the Reels tab, with the Reels title, the camera button and "
                             + "anything else Instagram puts there. Reels you open from a profile, a post or a chat keep "
                             + "theirs. The camera still opens from Home.")));
+            reels.add(toggle(context, Settings.HIDE_OTHER_REELS_TOP_BAR, L10n.t("Hide the top bar on other reels"),
+                    L10n.t("Takes the back arrow and the title off the top of reels you open from Explore, a profile, "
+                            + "a post, Saved or a chat. Your phone's back button or gesture still goes back.")));
             reels.add(toggle(context, Settings.HIDE_REELS_CREATE_BUTTON, L10n.t("Hide the Create button on reels"),
                     L10n.t("Takes the plus button that opens the camera off the top of reels, on the Reels tab and "
                             + "everywhere else, and closes up the gap. The rest of the bar stays.")));
@@ -141,8 +189,7 @@ final class ReelsCategory {
                             + "it still comes from Instagram, so it can be empty. Hide the Friends tab wins.")));
             reels.add(toggle(context, Settings.PICK_FRIENDS_TAB, L10n.t("Hold the Friends tab to pick friends"),
                     L10n.t("Hold the Friends tab on Reels and pick from the friends it has shown you. It then keeps "
-                            + "only reels they liked or shared. A page with none of them keeps one reel so the next "
-                            + "page can load.")));
+                            + "only reels they liked or shared.")));
             reels.add(toggle(context, Settings.HIDE_REEL_LIKE_BUTTON, L10n.t("Hide the Like button on reels"),
                     L10n.t("Takes the heart out of the column of buttons beside a reel, and the like count under it. "
                             + "Double tap still likes a reel.")));
@@ -152,6 +199,19 @@ final class ReelsCategory {
             reels.add(toggle(context, Settings.HIDE_REEL_SAVE_BUTTON, L10n.t("Hide the Save button on reels"),
                     L10n.t("Takes the Save button out of the column of buttons beside a reel, and the count under it. "
                             + "Posts in your feed keep theirs.")));
+            reels.add(toggle(context, Settings.HIDE_REEL_LIKE_COUNT, L10n.t("Hide like counts on reels"),
+                    L10n.t("Takes away the number under the heart beside a reel. The heart stays.")));
+            reels.add(toggle(context, Settings.HIDE_REEL_COMMENT_COUNT, L10n.t("Hide comment counts on reels"),
+                    L10n.t("Takes away the number under the Comment button beside a reel. The button stays.")));
+            reels.add(toggle(context, Settings.HIDE_REEL_REPOST_COUNT, L10n.t("Hide repost counts on reels"),
+                    L10n.t("Takes away the number under the Repost button beside a reel. The button stays.")));
+            reels.add(toggle(context, Settings.HIDE_REEL_SHARE_COUNT, L10n.t("Hide share counts on reels"),
+                    L10n.t("Takes away the number under the Share button beside a reel. The button stays.")));
+            reels.add(toggle(context, Settings.HIDE_REEL_SAVE_COUNT, L10n.t("Hide save counts on reels"),
+                    L10n.t("Takes away the number under the Save button beside a reel. The button stays.")));
+            reels.add(toggle(context, Settings.HIDE_REEL_PAUSE_ICON, L10n.t("Hide the pause icon on reels"),
+                    L10n.t("A paused reel shows just its frame, without the big pause icon and the sound button over "
+                            + "it. Tap the reel to play it again.")));
             reels.add(burnInGuardRow(context));
             reels.add(burnInWaitRow(context));
             reels.add(toggle(context, Settings.BURN_IN_STAY_DIM, L10n.t("Stay dim when I tap"),
@@ -178,6 +238,12 @@ final class ReelsCategory {
             reels.add(toggle(context, Settings.CLEAR_MODE_SEEK_BAR, L10n.t("Always show seek bar in clear mode"),
                     L10n.t("Keeps the seek bar on a reel in clear mode, and you can still drag it, while the other "
                             + "buttons stay hidden. Short reels get a bar too, in clear mode or not.")));
+            reels.add(toggle(context, Settings.PINCH_CLEAR_MODE, L10n.t("Pinch for clear mode"),
+                    L10n.t("Pinch a reel with two fingers to turn clear mode on, and pinch again to leave it. While "
+                            + "Pinch to zoom is on, two fingers zoom instead.")));
+            reels.add(toggle(context, Settings.HIDE_CLEAR_MODE_EXIT_BUTTON, L10n.t("Hide the exit button in clear mode"),
+                    L10n.t("Takes away the round button a reel shows in clear mode, so a pinch is how you leave it. "
+                            + "The button stays while Pinch to zoom is on.")));
         }
         if (build.contains(PatchFamily.KEEP_REELS_TOP_BAR)) {
             reels.add(toggle(context, Settings.KEEP_REELS_TOP_BAR, L10n.t("Keep the Reels top bar"),
@@ -198,6 +264,10 @@ final class ReelsCategory {
                             + "plays, at its largest size.")));
             reels.add(toggle(context, Settings.DOWNLOAD_REEL_AUDIO, L10n.t("Download audio"),
                     L10n.t("Adds Download audio under Download. It saves the sound of the reel as an audio file.")));
+            reels.add(toggle(context, Settings.DOWNLOAD_REEL_SONG, L10n.t("Download full song"),
+                    L10n.t("Adds Download full song under Download on reels that use a song from Instagram's music, "
+                            + "and a Download icon beside Save on a song's page. Both save the whole song as an audio "
+                            + "file, not only the part the reel plays.")));
         }
         if (build.contains(PatchFamily.DOUBLE_TAP_LIKE)) {
             reels.add(toggle(context, Settings.TURN_OFF_DOUBLE_TAP_LIKE, L10n.t("Turn off double tap to like"),
@@ -226,9 +296,7 @@ final class ReelsCategory {
                     L10n.t("Hides the status bar and the navigation bar while Reels shows. Swipe in from the edge to "
                             + "bring them back for a moment. Back and the keyboard work as usual.")));
             reels.add(hiddenBarsRow(context));
-            reels.add(toggle(context, Settings.FILL_REEL_SCREEN, L10n.t("Fill the screen"),
-                    L10n.t("Reels that are nearly the screen's shape fill it, cut a little at the sides, instead of "
-                            + "showing black bars above and below. Square and wide videos still fit.")));
+            reels.add(toggle(context, Settings.FILL_REEL_SCREEN, L10n.t("Fill the screen"), fillSummary()));
             reels.add(toggle(context, Settings.FIT_REEL_SCREEN, L10n.t("Show the whole reel"),
                     L10n.t("Every reel fits inside the screen, with black bars where its shape differs, so nothing is "
                             + "cut off at the sides. Works without Full screen Reels and wins over Fill the screen.")));
@@ -238,10 +306,20 @@ final class ReelsCategory {
                     L10n.t("Lock a reel at 2x (hold its edge, then slide down) and the next reels play at 2x too. "
                             + "Slide the lock off, or hold the edge and let go, to go back to normal speed.")));
         }
+        if (build.contains(PatchFamily.REEL_ABOVE_COMMENTS)) {
+            reels.add(toggle(context, Settings.REEL_ABOVE_COMMENTS, L10n.t("Control the reel above comments"),
+                    L10n.t("With a reel's comments open, tap the reel above them to pause or play it, "
+                            + "or hold it to play at 2x. The comments stay open.")));
+        }
         if (build.contains(PatchFamily.REEL_LINKS)) {
             reels.add(toggle(context, Settings.OPEN_REEL_LINKS_FIRST, L10n.t("Open reel links on that reel"),
                     L10n.t("A reel link opens on the reel it points to. Instagram doesn't play another reel "
                             + "it kept on your phone while that one loads.")));
+        }
+        if (build.contains(PatchFamily.REEL_SCREEN_SLEEP)) {
+            reels.add(toggle(context, Settings.REEL_SCREEN_SLEEP, L10n.t("Let the screen sleep when a reel stops"),
+                    L10n.t("Instagram keeps the screen on while Reels is open. With this on, a paused reel "
+                            + "lets your phone's screen timeout run, and a playing one keeps it on.")));
         }
         if (build.contains(PatchFamily.REEL_POST_TIME)) {
             reels.add(toggle(context, Settings.SHOW_REEL_POST_TIME, L10n.t("Show a reel's exact time"),
@@ -268,6 +346,10 @@ final class ReelsCategory {
             reels.add(toggle(context, Settings.PHOTO_REEL_SEEK_BAR, L10n.t("Seek bar on photos with music"),
                     L10n.t("Reels that are a photo with a song get the same seek bar and time as a video reel, "
                             + "following the song. Drag it to seek.")));
+            reels.add(toggle(context, Settings.HIDE_REEL_SEEK_BAR, L10n.t("Hide the seek bar on reels"),
+                    L10n.t("Takes the seek bar off the bottom of every reel, long ones too. Drag sideways along "
+                            + "the bottom edge of a reel to bring it back and seek. Keep a seek bar and the seek bar looks above win over it. "
+                            + "Restart Instagram to see the change.")));
         }
         if (build.contains(PatchFamily.REEL_ZOOM)) {
             reels.add(toggle(context, Settings.PINCH_ZOOM_REELS, L10n.t("Pinch to zoom"),
@@ -280,10 +362,16 @@ final class ReelsCategory {
                             + "as Skip length says. A double tap in the middle still likes it. Reels no longer than that "
                             + "don't skip.")));
             reels.add(reelSkipLengthRow(context));
+            reels.add(toggle(context, Settings.REEL_SKIP_ARROWS, L10n.t("Show the skip arrows"),
+                    L10n.t("Two arrows flash on the side you double tapped, with the seconds skipped under them, "
+                            + "like on feed videos.")));
         }
         if (build.contains(PatchFamily.HIDE_REEL_2X_POPUP)) {
             reels.add(toggle(context, Settings.HIDE_REEL_2X_POPUP, L10n.t("Hide the 2x popup"),
                     L10n.t("Takes the 2x label off a reel while you hold it to play faster. The speed-up still works.")));
+            reels.add(toggle(context, Settings.HIDE_REEL_LOCK_MESSAGE, L10n.t("Hide the speed lock message"),
+                    L10n.t("Keeps the message Instagram shows when you lock a reel's speed, and when the lock ends, "
+                            + "off the screen. The lock still works.")));
         }
         if (build.contains(PatchFamily.REEL_BLUR_BARS)) {
             reels.add(toggle(context, Settings.BLUR_REEL_BARS, L10n.t("Blur the bars around a reel"),
@@ -301,6 +389,12 @@ final class ReelsCategory {
                             + "Instagram's own auto scroll, even on accounts where Instagram doesn't offer it. "
                             + "While it's on, Instagram's own Auto scroll switch can't turn it off. "
                             + "Restart Instagram to see the change.")));
+            if (build.contains(PatchFamily.REEL_DOWNLOAD)) {
+                reels.add(toggle(context, Settings.AUTO_SCROLL_IN_REEL_MENU, L10n.t("Auto scroll in the reel menu"),
+                        L10n.t("Adds Turn on auto scroll or Turn off auto scroll to the menu a reel's three dots open, "
+                                + "so one tap changes it from the next reel on. It works on accounts where Instagram "
+                                + "doesn't offer auto scroll too. Restart Instagram to see the change.")));
+            }
         }
         if (build.contains(PatchFamily.REEL_SCROLLING)) {
             reels.add(toggle(context, Settings.STOP_REELS_SCROLLING, L10n.t("Stop Reels scrolling"),
@@ -314,6 +408,11 @@ final class ReelsCategory {
             reels.add(toggle(context, Settings.REEL_SCROLL_FROM_AUDIO, L10n.t("Still scroll reels from a song page"),
                     L10n.t("With Stop Reels scrolling on, reels you open from a song or audio page still move on "
                             + "when you swipe.")));
+            reels.add(toggle(context, Settings.PLAY_ONE_REEL, L10n.t("Play only the reel you opened"),
+                    L10n.t("A reel you open from a post on Home, a suggested reels row or a message plays on its own. "
+                            + "Swiping, pulling down and auto scroll won't move on to another reel, so it plays again "
+                            + "when it ends. The Reels tab scrolls as usual. With Swipe through a chat's reels on, a "
+                            + "chat's reels still swipe.")));
             reels.add(toggle(context, Settings.REEL_CAP, L10n.t("Stop after a set number of reels"),
                     L10n.t("After the reels you pick below, swiping in Reels stops until Instagram has been in the "
                             + "background for the time you pick. A reel you open from a message or a post still "
@@ -336,8 +435,8 @@ final class ReelsCategory {
         if (build.contains(PatchFamily.REEL_ORIGIN)) {
             reels.add(toggle(context, Settings.FIND_REEL_ORIGIN, L10n.t("Find the reel you came from"),
                     L10n.t("Open a creator's profile from a reel, then their Reels tab, and it scrolls to that reel "
-                            + "and outlines it for a moment. A photo reel is found in their posts. Stop looking ends "
-                            + "the search where it is.")));
+                            + "and labels it You just watched for a few seconds. A photo reel is found in their posts. "
+                            + "Stop looking ends the search where it is.")));
             reels.add(toggle(context, Settings.FIND_REEL_ORIGIN_ON_TAP, L10n.t("Wait for a tap to find it"),
                     L10n.t("When the reel isn't on the first screen, the profile shows a Find the reel button "
                             + "instead of scrolling on its own.")));

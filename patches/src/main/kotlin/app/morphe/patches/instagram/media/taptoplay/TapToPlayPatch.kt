@@ -95,16 +95,16 @@ private const val USER_SESSION = "Lcom/instagram/common/session/UserSession;"
  * so the extension's choice of where Tap to play holds starts can leave Reels out, or everything else.
  *
  * Everything is found before anything changes, so a build that differs stops the patch naming
- * what it couldn't find, and nothing is half done. The one exception is a build with no auto
- * scroller marker at all, which gets every other hook and a warning in the patch log
+ * what it couldn't find, and nothing is half done. The one exception is a build where nothing
+ * loads the auto scroller's event, which gets every other hook and a warning in the patch log
  * ([findAutoScroll] says why).
  */
 @Suppress("unused")
 val tapToPlayPatch = bytecodePatch(
     name = "Tap to play",
     description = "Makes videos, reels and stories wait for your tap instead of starting by themselves, like " +
-        "Instagram does when it saves mobile data. A choice under the switch can leave Reels out or hold only " +
-        "Reels. Starts off. Turn it on in HushGram settings > Playback.",
+        "Instagram does when it saves mobile data. A choice under the switch picks where: Reels, Explore, both, " +
+        "or everything but them. Starts off. Turn it on in HushGram settings > Playback.",
 ) {
     category("Playback")
     dependsOn(settingsPatch)

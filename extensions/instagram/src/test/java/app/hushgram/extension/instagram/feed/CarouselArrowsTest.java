@@ -14,6 +14,7 @@ import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Rect;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.view.Gravity;
@@ -185,6 +186,7 @@ public class CarouselArrowsTest {
         CarouselArrows.resetForTests();
         FeedSeekBar.resetForTests();
         Settings.FEED_SEEK_BAR.resetToDefault();
+        Settings.FEED_SEEK_TIME.resetToDefault();
         Settings.CAROUSEL_ARROWS.resetToDefault();
         Settings.CAROUSEL_DOTS_PILL.resetToDefault();
         Settings.CAROUSEL_PILL_LOOK.resetToDefault();
@@ -626,6 +628,118 @@ public class CarouselArrowsTest {
         assertNull("the bar hides with its switch", FeedSeekBar.shownBar());
         assertEquals(Math.round(HEADER + HEIGHT - (CarouselArrows.PILL_MARGIN + CarouselArrows.PILL_HEIGHT) * d),
                 pill().getTop() + pill().getTranslationY(), 1f);
+    }
+
+    /** #711: the time over the feed seek bar's middle is part of the bar, so the pill goes above the time too. */
+    @Test
+    public void thePillGoesAboveTheTimeOverTheFeedSeekBar() {
+        FrameLayout photo = (FrameLayout) ((ViewGroup) ((ViewGroup) pager.getChildAt(0)).getChildAt(0)).getChildAt(0);
+        View cover = new View(activity);
+        photo.addView(cover, new FrameLayout.LayoutParams(WIDTH, HEIGHT));
+        Object player = new Object();
+        FeedSeekBar.playerForTests(new FeedSeekBar.Player() {
+            @Override public View view(Object of) { return of == player ? cover : null; }
+            @Override public boolean seekTo(Object of, int positionMs) { return true; }
+            @Override public boolean pause(Object of) { return true; }
+            @Override public boolean play(Object of) { return true; }
+        });
+        Settings.FEED_SEEK_BAR.save(true);
+        Settings.FEED_SEEK_TIME.save(true);
+        FeedSeekBar.progress(player, 1000, 5000);
+        pillOn();
+        settle();
+
+        View time = FeedSeekBar.shownTime();
+        assertNotNull(time);
+        assertTrue("the time sits in the carousel's photo frame", time.getParent() == photo);
+        Rect at = new Rect(0, 0, time.getWidth(), time.getHeight());
+        root.offsetDescendantRectToMyCoords(time, at);
+        float d = density();
+        float barTop = HEADER + HEIGHT - Math.round(FeedSeekBar.HEIGHT_DP * d);
+        assertTrue("the time has a size", at.height() > 0 && at.width() > 0);
+        assertTrue("the time sits over the bar", at.bottom <= barTop);
+        assertEquals(at.top - (CarouselArrows.PILL_OVER_BAR + CarouselArrows.PILL_HEIGHT) * d,
+                pill().getTop() + pill().getTranslationY(), 1f);
+
+        Settings.FEED_SEEK_TIME.save(false);
+        FeedSeekBar.progress(player, 2000, 5000);
+        settle();
+        assertNull("the time goes with its switch", FeedSeekBar.shownTime());
+        assertEquals("and the pill sits just over the bar again", barTop - (CarouselArrows.PILL_OVER_BAR + CarouselArrows.PILL_HEIGHT) * d,
+                pill().getTop() + pill().getTranslationY(), 1f);
+    }
+
+    /**
+     * #450: Peek shrinks each page about its middle, which leaves room under the pages. The pill sits in
+     * that room, so the seek bar on a video, drawn shrunk with its page, no longer lifts it, and it stays
+     * at one height on the carousel's photos and videos. It jumped up on every video page before.
+     */
+    @Test
+    public void underPeekThePillSitsBelowThePagesAtOneHeightOnPhotosAndVideos() {
+        pillUnderPeek(HEIGHT);
+    }
+
+    /**
+     * #450: a square carousel's room under its pages is just the pill's height plus its gaps, and the rounding
+     * in Peek's page width and the drawn bounds left it a fraction short at densities like tvdpi, 420 and 440
+     * dpi, so the pill went back over the pages and jumped above the seek bar on videos.
+     */
+    @Test
+    @Config(qualifiers = "tvdpi")
+    public void aSquareCarouselUnderPeekKeepsThePillUnderThePages() {
+        pager.getLayoutParams().height = WIDTH;
+        for (int i = 0; i < pager.getChildCount(); i++) pager.getChildAt(i).getLayoutParams().height = WIDTH;
+        column.getLayoutParams().height = HEADER + WIDTH;
+        root.getLayoutParams().height = HEADER + WIDTH;
+        root.requestLayout();
+        shadowOf(Looper.getMainLooper()).idle();
+        float d = density();
+        float scale = Math.round(WIDTH - (CarouselPeek.INSET + CarouselPeek.GAP + CarouselPeek.PEEK) * d) / (float) WIDTH;
+        assertTrue("the room is a fraction short of the pill's at this density",
+                (1 - scale) * WIDTH / 2 < (CarouselArrows.PILL_HEIGHT + 2 * CarouselArrows.PILL_OVER_BAR) * d);
+        pillUnderPeek(WIDTH);
+    }
+
+    /** Peek's pages over a carousel [tall] pixels high: the pill sits in the room under them on a video and a photo alike. */
+    private void pillUnderPeek(int tall) {
+        float d = density();
+        float scale = Math.round(WIDTH - (CarouselPeek.INSET + CarouselPeek.GAP + CarouselPeek.PEEK) * d) / (float) WIDTH;
+        for (int i = 0; i < pager.getChildCount(); i++) {
+            View page = pager.getChildAt(i);
+            page.setPivotX(CarouselPeek.INSET * d / (1 - scale));
+            page.setPivotY(tall / 2f);
+            page.setScaleX(scale);
+            page.setScaleY(scale);
+        }
+        FrameLayout photo = (FrameLayout) ((ViewGroup) ((ViewGroup) pager.getChildAt(0)).getChildAt(0)).getChildAt(0);
+        View cover = new View(activity);
+        photo.addView(cover, new FrameLayout.LayoutParams(WIDTH, tall));
+        Object player = new Object();
+        FeedSeekBar.playerForTests(new FeedSeekBar.Player() {
+            @Override public View view(Object of) { return of == player ? cover : null; }
+            @Override public boolean seekTo(Object of, int positionMs) { return true; }
+            @Override public boolean pause(Object of) { return true; }
+            @Override public boolean play(Object of) { return true; }
+        });
+        Settings.FEED_SEEK_BAR.save(true);
+        FeedSeekBar.progress(player, 1000, 5000);
+        pillOn();
+        settle();
+
+        assertNotNull("a video page shows its seek bar", FeedSeekBar.shownBar());
+        float bottom = HEADER + tall;
+        float room = (1 - scale) * tall / 2;
+        float onVideo = pill().getTop() + pill().getTranslationY();
+        assertEquals("centered in the room under the pages", bottom - (room + CarouselArrows.PILL_HEIGHT * d) / 2, onVideo, 1f);
+        assertTrue("under the bar as drawn", onVideo >= bottom - room - 0.5f);
+        assertTrue("inside the carousel", onVideo + pill().getHeight() <= bottom + 0.5f);
+
+        Settings.FEED_SEEK_BAR.save(false);
+        FeedSeekBar.progress(player, 2000, 5000);
+        settle();
+        assertNull(FeedSeekBar.shownBar());
+        assertEquals("a photo page's pill sits where a video page's does", onVideo,
+                pill().getTop() + pill().getTranslationY(), 0f);
     }
 
     @Test

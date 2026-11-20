@@ -37,6 +37,7 @@ import app.hushgram.extension.instagram.download.DownloadQuality;
 import app.hushgram.extension.instagram.media.PlaybackQuality;
 import app.hushgram.extension.instagram.stories.StoryRingColor;
 import app.hushgram.extension.instagram.stories.StoryRingSize;
+import app.hushgram.extension.instagram.stories.StoryRingThickness;
 import app.hushgram.extension.shared.SettingsContextRule;
 import app.hushgram.extension.shared.Utils;
 import app.hushgram.extension.shared.settings.BaseSettings;
@@ -111,6 +112,19 @@ public class ConfigurationBackupTest {
         assertFalse(Settings.HIDE_ADS.savedValue());
     }
 
+    /**
+     * With every patch in the build, the backup holds every setting there is and still has room under the
+     * entry cap for the ones to come, so exporting never fails as the settings grow.
+     */
+    @Test public void aFullBuildsBackupHoldsEverySettingWithRoomToGrow() throws Exception {
+        int settings = ConfigurationBackup.eligible().size();
+        assertTrue(settings + " settings against a cap of " + ConfigurationBackup.MAX_ENTRIES,
+                settings + 128 <= ConfigurationBackup.MAX_ENTRIES);
+        JSONObject values = new JSONObject(new String(ConfigurationBackup.export(), StandardCharsets.UTF_8)).getJSONObject("settings");
+        assertEquals(settings, values.length());
+        assertNotNull("the file it wrote opens again", ConfigurationBackup.restore(ConfigurationBackup.export()));
+    }
+
     @Test public void exportUsesSavedChoicesAndOnlyInstalledControls() throws Exception {
         Settings.HIDE_ADS.save(true);
         Settings.SIGN_IN_NOTICE_HIDDEN.save(true);
@@ -119,6 +133,7 @@ public class ConfigurationBackupTest {
         PatchFamily.inBuildForTests = EnumSet.of(PatchFamily.HIDE_ADS);
         JSONObject values = new JSONObject(new String(ConfigurationBackup.export(), StandardCharsets.UTF_8)).getJSONObject("settings");
         assertEquals(14, values.length());
+        assertFalse(values.getJSONObject(Settings.SETTINGS_LIGHT_LOOK.key).getBoolean("value"));
         assertTrue(values.getJSONObject(Settings.CATEGORY_OWN_PAGE.key).getBoolean("value"));
         assertFalse(values.getJSONObject(Settings.DATE_SETTINGS_EXPORT.key).getBoolean("value"));
         assertFalse(values.getJSONObject(Settings.DESCRIPTIONS_BEHIND_INFO.key).getBoolean("value"));
@@ -328,7 +343,14 @@ public class ConfigurationBackupTest {
         }
     }
 
-    @Test public void byteAndEntryBoundsRejectOversizeAndAcceptTheExactEntryLimit() throws Exception {
+    // A full build passed 512 settings with Sort reels on profiles (#679), and every export threw.
+    @Test public void aFullBuildExportsWithRoomToGrow() throws Exception {
+        assertTrue(ConfigurationBackup.eligible().size() > 512);
+        assertNotNull(ConfigurationBackup.export());
+    }
+
+    @Test public void byteAndEntryBoundsRejectOversizeAndAcceptExactlyTheCapsEntries() throws Exception {
+        assertEquals(1024, ConfigurationBackup.MAX_ENTRIES);
         StringBuilder entries = new StringBuilder();
         for (int i = 0; i < ConfigurationBackup.MAX_ENTRIES; i++) {
             if (i != 0) entries.append(',');
@@ -380,6 +402,85 @@ public class ConfigurationBackupTest {
         assertEquals(1, unknown.skipped);
         assertEquals(StoryRingColor.BLUE, Settings.STORY_RING_COLOR.savedValue());
         assertEquals(StoryRingSize.SMALLER, Settings.STORY_RING_SCALE.savedValue());
+    }
+
+    // The ring's thickness (#528) travels by name beside the color, and a name this build has no
+    // thickness for is skipped while the color beside it applies.
+    @Test public void ringThicknessIsCarriedAndRestoredBesideTheColor() throws Exception {
+        assertTrue(ConfigurationBackup.eligible().containsKey(Settings.STORY_RING_THICKNESS.key));
+        Settings.STORY_RING_THICKNESS.save(StoryRingThickness.PERCENT_150);
+        JSONObject values = new JSONObject(new String(ConfigurationBackup.export(), StandardCharsets.UTF_8)).getJSONObject("settings");
+        assertEquals("PERCENT_150", values.getJSONObject(Settings.STORY_RING_THICKNESS.key).getString("value"));
+        Settings.STORY_RING_THICKNESS.resetToDefault();
+
+        ConfigurationBackup.Result restored = ConfigurationBackup.restore(file(
+                entry(Settings.STORY_RING_THICKNESS.key, "enum", "PERCENT_50") + "," + entry(Settings.STORY_RING_COLOR.key, "enum", "TEAL")));
+        assertEquals(2, restored.applied);
+        assertTrue("a new thickness shows after a restart", restored.restart);
+        assertEquals(StoryRingThickness.PERCENT_50, Settings.STORY_RING_THICKNESS.savedValue());
+        ConfigurationBackup.forgetUndo();
+
+        ConfigurationBackup.Result unknown = ConfigurationBackup.restore(file(
+                entry(Settings.STORY_RING_THICKNESS.key, "enum", "PERCENT_300") + "," + entry(Settings.STORY_RING_COLOR.key, "enum", "RED")));
+        assertEquals(1, unknown.applied);
+        assertEquals(1, unknown.skipped);
+        assertEquals(StoryRingThickness.PERCENT_50, Settings.STORY_RING_THICKNESS.savedValue());
+        assertEquals(StoryRingColor.RED, Settings.STORY_RING_COLOR.savedValue());
+
+        Settings.STORY_RING_THICKNESS.resetToDefault();
+        Settings.STORY_RING_COLOR.resetToDefault();
+        PatchFamily.inBuildForTests = EnumSet.complementOf(EnumSet.of(PatchFamily.STORY_RING));
+        assertFalse(ConfigurationBackup.eligible().containsKey(Settings.STORY_RING_THICKNESS.key));
+    }
+
+    // The colors typed for Custom (#696) travel as #RRGGBB beside the ring color, and anything else
+    // in a file (a word, small letters, a color with no #) is skipped while the rest applies.
+    @Test public void customRingColorsAreCarriedAndRestoredAsHexColors() throws Exception {
+        try {
+            assertTrue(ConfigurationBackup.eligible().containsKey(Settings.STORY_RING_CUSTOM.key));
+            assertTrue(ConfigurationBackup.eligible().containsKey(Settings.STORY_RING_CUSTOM_END.key));
+            Settings.STORY_RING_COLOR.save(StoryRingColor.CUSTOM);
+            Settings.STORY_RING_CUSTOM.save("#4A6B82");
+            Settings.STORY_RING_CUSTOM_END.save("#FF8A00");
+            JSONObject values = new JSONObject(new String(ConfigurationBackup.export(), StandardCharsets.UTF_8)).getJSONObject("settings");
+            assertEquals("CUSTOM", values.getJSONObject(Settings.STORY_RING_COLOR.key).getString("value"));
+            assertEquals("#4A6B82", values.getJSONObject(Settings.STORY_RING_CUSTOM.key).getString("value"));
+            assertEquals("#FF8A00", values.getJSONObject(Settings.STORY_RING_CUSTOM_END.key).getString("value"));
+            Settings.STORY_RING_COLOR.resetToDefault();
+            Settings.STORY_RING_CUSTOM.resetToDefault();
+            Settings.STORY_RING_CUSTOM_END.resetToDefault();
+
+            ConfigurationBackup.Result restored = ConfigurationBackup.restore(file(
+                    entry(Settings.STORY_RING_COLOR.key, "enum", "CUSTOM") + ","
+                            + entry(Settings.STORY_RING_CUSTOM.key, "string", "#4A6B82") + ","
+                            + entry(Settings.STORY_RING_CUSTOM_END.key, "string", "")));
+            assertEquals(3, restored.applied);
+            assertTrue("a new color shows after a restart", restored.restart);
+            assertEquals(StoryRingColor.CUSTOM, Settings.STORY_RING_COLOR.savedValue());
+            assertEquals("#4A6B82", Settings.STORY_RING_CUSTOM.savedValue());
+            assertEquals("", Settings.STORY_RING_CUSTOM_END.savedValue());
+            ConfigurationBackup.forgetUndo();
+
+            ConfigurationBackup.Result refused = ConfigurationBackup.restore(file(
+                    entry(Settings.STORY_RING_CUSTOM.key, "string", "teal") + ","
+                            + entry(Settings.STORY_RING_CUSTOM_END.key, "string", "#ff8a00") + ","
+                            + entry(Settings.STORY_RING_COLOR.key, "enum", "GOLD")));
+            assertEquals(1, refused.applied);
+            assertEquals(2, refused.skipped);
+            assertEquals("#4A6B82", Settings.STORY_RING_CUSTOM.savedValue());
+            assertEquals("", Settings.STORY_RING_CUSTOM_END.savedValue());
+            assertEquals(StoryRingColor.GOLD, Settings.STORY_RING_COLOR.savedValue());
+            ConfigurationBackup.forgetUndo();
+            assertFalse(ConfigurationBackup.textAllowed(Settings.STORY_RING_CUSTOM, "4A6B82"));
+
+            PatchFamily.inBuildForTests = EnumSet.complementOf(EnumSet.of(PatchFamily.STORY_RING));
+            assertFalse(ConfigurationBackup.eligible().containsKey(Settings.STORY_RING_CUSTOM.key));
+            assertFalse(ConfigurationBackup.eligible().containsKey(Settings.STORY_RING_CUSTOM_END.key));
+        } finally {
+            Settings.STORY_RING_COLOR.resetToDefault();
+            Settings.STORY_RING_CUSTOM.resetToDefault();
+            Settings.STORY_RING_CUSTOM_END.resetToDefault();
+        }
     }
 
     // The glass sliders (#391) travel as whole numbers and come back without a restart. A number outside
@@ -498,9 +599,56 @@ public class ConfigurationBackupTest {
         assertFalse("standard saves nothing", original.contains(Settings.GLASS_TAB_BAR_OPACITY.key));
     }
 
+    // Hide 'Are you interested?' covered reels too before the Reels page got its own switch, so the
+    // first load of this build turns the Reels one on for anyone who had it on, once (#769).
+    @Test public void interestSwitchSavedByAnOlderBuildCarriesOverOnceToReels() {
+        try {
+            original.edit().remove(Settings.REEL_INTEREST_CARRIED_KEY).commit();
+            Settings.HIDE_FEED_INTEREST.save(true);
+            Settings.carryOverReelInterest();
+            assertTrue(Settings.HIDE_REEL_INTEREST.savedValue());
+            assertTrue(original.getBoolean(Settings.REEL_INTEREST_CARRIED_KEY, false));
+
+            Settings.HIDE_REEL_INTEREST.save(false);
+            Settings.carryOverReelInterest();
+            assertFalse("turned off on the Reels page, it stays off", Settings.HIDE_REEL_INTEREST.savedValue());
+
+            Settings.HIDE_FEED_INTEREST.resetToDefault();
+            original.edit().remove(Settings.REEL_INTEREST_CARRIED_KEY).commit();
+            Settings.carryOverReelInterest();
+            assertFalse(Settings.HIDE_REEL_INTEREST.savedValue());
+            assertTrue("nothing to carry still marks it done", original.getBoolean(Settings.REEL_INTEREST_CARRIED_KEY, false));
+        } finally {
+            Settings.HIDE_FEED_INTEREST.resetToDefault();
+            Settings.HIDE_REEL_INTEREST.resetToDefault();
+            original.edit().putBoolean(Settings.REEL_INTEREST_CARRIED_KEY, true).commit();
+        }
+    }
+
+    // A file exported before the Reels switch has only the Feed one, so Reels takes its answer. Every
+    // export now writes both, and a file with both keeps each as it was (#769).
+    @Test public void aFileFromBeforeTheReelsSwitchGivesReelsTheHomeAnswer() throws Exception {
+        JSONObject values = new JSONObject(new String(ConfigurationBackup.export(), StandardCharsets.UTF_8)).getJSONObject("settings");
+        assertTrue(values.has(Settings.HIDE_FEED_INTEREST.key));
+        assertTrue(values.has(Settings.HIDE_REEL_INTEREST.key));
+
+        ConfigurationBackup.Result old = ConfigurationBackup.restore(file(entry(Settings.HIDE_FEED_INTEREST.key, "boolean", true)));
+        assertEquals(2, old.applied);
+        assertTrue(Settings.HIDE_FEED_INTEREST.savedValue());
+        assertTrue(Settings.HIDE_REEL_INTEREST.savedValue());
+        ConfigurationBackup.forgetUndo();
+
+        ConfigurationBackup.restore(file(entry(Settings.HIDE_FEED_INTEREST.key, "boolean", true)
+                + "," + entry(Settings.HIDE_REEL_INTEREST.key, "boolean", false)));
+        assertTrue(Settings.HIDE_FEED_INTEREST.savedValue());
+        assertFalse(Settings.HIDE_REEL_INTEREST.savedValue());
+    }
+
     @Test public void documentedRestartChoicesShareMetadataWithRowAndImportFeedback() throws Exception {
         Setting<?>[] choices = {Settings.START_ON_FOLLOWING, Settings.ONLY_FOLLOWING,
-                Settings.STORY_RING, Settings.STORY_RING_SCALE, Settings.STORY_RING_COLOR, Settings.HIDE_META_AI_SEARCH,
+                Settings.STORY_RING, Settings.STORY_RING_SCALE, Settings.STORY_RING_COLOR, Settings.STORY_RING_THICKNESS,
+                Settings.STORY_RING_CUSTOM, Settings.STORY_RING_CUSTOM_END,
+                Settings.HIDE_META_AI_SEARCH,
                 Settings.REMOVE_BOTTOM_SPACE};
         for (Setting<?> setting : choices) assertTrue(setting.key, setting.rebootApp);
         assertFalse(Settings.HIDE_ADS.rebootApp);

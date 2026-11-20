@@ -82,6 +82,8 @@ public class GlassChatTest {
     private ImageView video;
     private LinearLayout textArea;
     private View sendButton;
+    /** The message bar's row laid over its pill picture. */
+    private LinearLayout pillRow;
 
     @Before
     public void prepare() {
@@ -131,7 +133,10 @@ public class GlassChatTest {
 
     private static void resetAll() {
         Settings.GLASS_CHAT.resetToDefault();
+        Settings.GLASS_CHAT_TOP_BAR.resetToDefault();
         Settings.GLASS_STORY_REPLY_BOX.resetToDefault();
+        Settings.GLASS_CHAT_TOP_BAR_OPACITY.resetToDefault();
+        Settings.GLASS_CHAT_BOX_OPACITY.resetToDefault();
         BaseSettings.PAUSED.save(false);
         PauseForTests.resume();
         HookStatus.clear();
@@ -166,6 +171,7 @@ public class GlassChatTest {
         pill.setId(PILL_ID);
         pill.setBackgroundColor(Color.GRAY);
         LinearLayout row = new LinearLayout(activity);
+        pillRow = row;
         textArea = new LinearLayout(activity);
         textArea.setBackground(greyFill());
         sendButton = new View(activity);
@@ -225,6 +231,39 @@ public class GlassChatTest {
     public void theSwitchesStartOff() {
         assertEquals(Boolean.FALSE, Settings.GLASS_CHAT.defaultValue);
         assertEquals(Boolean.FALSE, Settings.GLASS_STORY_REPLY_BOX.defaultValue);
+        assertEquals("the top bar's glass comes with Glass in chats", Boolean.TRUE, Settings.GLASS_CHAT_TOP_BAR.defaultValue);
+    }
+
+    /**
+     * #670: with the top bar's glass off, the header keeps Instagram's own fill while the round buttons and the
+     * message bar keep their glass, and turning it back on brings the header's glass back.
+     */
+    @Test
+    public void theTopBarSwitchLeavesTheButtonsAndMessageBarTheirGlass() {
+        Drawable fill = new ColorDrawable(Color.BLACK);
+        header.setBackground(fill);
+        Settings.GLASS_CHAT.save(true);
+        Settings.GLASS_CHAT_TOP_BAR.save(false);
+        ImageView pill = messageBar();
+        frame();
+
+        assertFalse("no glass band behind the top bar", GlassTopBar.showing(header));
+        assertSame("Instagram's own fill stays", fill, header.getBackground());
+        assertTrue(hasDisc(back));
+        assertTrue(hasDisc(call));
+        assertTrue(hasDisc(video));
+        assertTrue(GlassTopBar.boxShowing(pill));
+
+        Settings.GLASS_CHAT_TOP_BAR.save(true);
+        frame();
+        assertTrue(GlassTopBar.showing(header));
+
+        Settings.GLASS_CHAT_TOP_BAR.save(false);
+        frame();
+        assertFalse(GlassTopBar.showing(header));
+        assertSame(fill, header.getBackground());
+        assertTrue(hasDisc(back));
+        assertTrue(GlassTopBar.boxShowing(pill));
     }
 
     /**
@@ -259,6 +298,134 @@ public class GlassChatTest {
         assertNull(pill.getForeground());
         assertEquals(Color.GRAY, ((ColorDrawable) pill.getBackground()).getColor());
         assertSame("the text area has its fill back", fill, textArea.getBackground());
+    }
+
+    /**
+     * #759: Instagram 456's message bar with its pill picture hidden draws the pill on the row after it. The glass
+     * goes on that row in place of its fill, the hidden picture gets none, and the row has its fill back when off.
+     */
+    @Test
+    public void aHiddenPillPictureLeavesTheGlassToTheRowDrawingThePill() {
+        Settings.GLASS_CHAT.save(true);
+        ImageView pill = messageBar();
+        Drawable rowFill = greyFill();
+        pillRow.setBackground(rowFill);
+        Drawable textFill = textArea.getBackground();
+        pill.setVisibility(View.GONE);
+        layout();
+        frame();
+
+        assertFalse("nothing on the hidden picture", GlassTopBar.boxShowing(pill));
+        assertNull(pill.getForeground());
+        assertTrue("the glass is on the row", GlassTopBar.boxShowing(pillRow));
+        assertNull("the text area's fill is off the glass", textArea.getBackground());
+
+        Settings.GLASS_CHAT.save(false);
+        frame();
+
+        assertFalse(GlassTopBar.boxShowing(pillRow));
+        assertSame("the row has its pill back", rowFill, pillRow.getBackground());
+        assertSame(textFill, textArea.getBackground());
+    }
+
+    /**
+     * #759: a pill picture Instagram hides once it has the glass gives back the fills it took off, the row takes
+     * the glass, and the picture has it again when Instagram shows it again.
+     */
+    @Test
+    public void thePillsGlassFollowsThePictureAsInstagramHidesAndShowsIt() {
+        Settings.GLASS_CHAT.save(true);
+        ImageView pill = messageBar();
+        Drawable rowFill = greyFill();
+        pillRow.setBackground(rowFill);
+        Drawable textFill = textArea.getBackground();
+        layout();
+        frame();
+        assertTrue(GlassTopBar.boxShowing(pill));
+        assertNull(pillRow.getBackground());
+
+        pill.setVisibility(View.GONE);
+        layout();
+        frame();
+        assertNull("the glass is off the hidden picture", pill.getForeground());
+        assertSame("the row has its fill back", rowFill, pillRow.getBackground());
+        assertSame(textFill, textArea.getBackground());
+
+        ShadowLooper.idleMainLooper(GlassChat.SEARCH_EVERY_MS + 100, TimeUnit.MILLISECONDS);
+        frame();
+        assertTrue("the row takes the glass", GlassTopBar.boxShowing(pillRow));
+        assertNull(textArea.getBackground());
+
+        pill.setVisibility(View.VISIBLE);
+        layout();
+        ShadowLooper.idleMainLooper(GlassChat.SEARCH_EVERY_MS + 100, TimeUnit.MILLISECONDS);
+        frame();
+        frame();
+        assertTrue("the picture has it back", GlassTopBar.boxShowing(pill));
+        assertFalse("and the row gives it up", GlassTopBar.boxShowing(pillRow));
+        assertNull(pillRow.getBackground());
+
+        Settings.GLASS_CHAT.save(false);
+        frame();
+        assertNull(pill.getForeground());
+        assertSame(rowFill, pillRow.getBackground());
+        assertSame(textFill, textArea.getBackground());
+    }
+
+    /** #759: a hidden picture by the pill's name ahead of the one showing doesn't take the glass from it. */
+    @Test
+    public void theShowingPillPictureTakesTheGlassOverAHiddenOne() {
+        Settings.GLASS_CHAT.save(true);
+        ImageView pill = messageBar();
+        ImageView stale = new ImageView(activity);
+        stale.setId(PILL_ID);
+        stale.setVisibility(View.GONE);
+        ((ViewGroup) pill.getParent()).addView(stale, 0, new FrameLayout.LayoutParams(MATCH, BAR));
+        layout();
+        frame();
+
+        assertFalse(GlassTopBar.boxShowing(stale));
+        assertTrue(GlassTopBar.boxShowing(pill));
+    }
+
+    /** #759: a hidden chat's messages ahead of the ones showing keep their pill, and the showing bar gets the glass. */
+    @Test
+    public void aHiddenChatsMessageBarIsPassedOverForTheOneShowing() {
+        Settings.GLASS_CHAT.save(true);
+        ImageView pill = messageBar();
+        FrameLayout gone = new FrameLayout(activity);
+        gone.setId(MESSAGES_ID);
+        gone.setVisibility(View.GONE);
+        ImageView stale = new ImageView(activity);
+        stale.setId(PILL_ID);
+        gone.addView(stale, new FrameLayout.LayoutParams(MATCH, BAR));
+        root.addView(gone, 1, new FrameLayout.LayoutParams(MATCH, MATCH));
+        layout();
+        frame();
+
+        assertFalse(GlassTopBar.boxShowing(stale));
+        assertTrue(GlassTopBar.boxShowing(pill));
+    }
+
+    /**
+     * #759: the row's glass follows the message bar's tint slider down to clear, with the row's own grey fill
+     * nowhere over it.
+     */
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(sdk = 33)
+    public void theRowsGlassFollowsTheMessageBarsTintSlider() {
+        Settings.GLASS_CHAT.save(true);
+        ImageView pill = messageBar();
+        pillRow.setBackground(greyFill());
+        pill.setVisibility(View.GONE);
+        layout();
+        frame();
+        assertTrue(GlassTopBar.boxShowing(pillRow));
+        assertTrue(middleAlpha(pillRow.getBackground()) > 0);
+
+        Settings.GLASS_CHAT_BOX_OPACITY.save(0);
+        assertEquals("the row is clear", 0, middleAlpha(pillRow.getBackground()));
     }
 
     /** A view by the pill's name that isn't in the chat's messages isn't the message bar, and is left alone. */
@@ -334,6 +501,44 @@ public class GlassChatTest {
         int edge = bitmap.getPixel(150, 1);
         assertTrue("the outline over the glass: " + Integer.toHexString(edge) + " against " + Integer.toHexString(middle),
                 Color.red(edge) > Color.red(middle) + 60);
+    }
+
+    /**
+     * #688: a chat's top bar and message bar each follow their own tint slider, down to clear at 0%, and a
+     * story's reply box, which has no slider, keeps the standard look.
+     */
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(sdk = 33)
+    public void theTintSlidersReachTheChatsTopBarAndMessageBarOnly() {
+        Settings.GLASS_CHAT.save(true);
+        Settings.GLASS_STORY_REPLY_BOX.save(true);
+        ImageView pill = messageBar();
+        FrameLayout box = storyBox(storyViewer());
+        layout();
+        frame();
+        assertTrue(GlassTopBar.showing(header));
+        assertTrue(GlassTopBar.boxShowing(pill));
+        assertTrue(GlassTopBar.boxShowing(box));
+        int story = middleAlpha(box.getBackground());
+        assertTrue(middleAlpha(header.getBackground()) > 0);
+        assertTrue(middleAlpha(pill.getForeground()) > 0);
+        assertTrue(story > 0);
+
+        Settings.GLASS_CHAT_TOP_BAR_OPACITY.save(0);
+        assertEquals("the top bar is clear", 0, middleAlpha(header.getBackground()));
+        assertTrue("the message bar keeps its tint", middleAlpha(pill.getForeground()) > 0);
+
+        Settings.GLASS_CHAT_BOX_OPACITY.save(0);
+        assertEquals("the message bar is clear", 0, middleAlpha(pill.getForeground()));
+        assertEquals("a story's reply box has no slider of its own", story, middleAlpha(box.getBackground()));
+    }
+
+    private static int middleAlpha(Drawable glass) {
+        Bitmap bitmap = Bitmap.createBitmap(300, 100, Bitmap.Config.ARGB_8888);
+        glass.setBounds(0, 0, 300, 100);
+        glass.draw(new Canvas(bitmap));
+        return Color.alpha(bitmap.getPixel(150, 50));
     }
 
     @Test

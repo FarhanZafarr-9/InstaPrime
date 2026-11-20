@@ -59,10 +59,10 @@ internal const val HIDE_CREATE = "$THREADS_BUTTON->hideCreateInBar()Z"
 internal const val USER_DETAIL = "Lcom/instagram/profile/fragment/UserDetailFragment;"
 
 /**
- * Instagram 454's id/profile_header_create_button (0x7f0b3077 on 453), the view id of the plus on your own profile,
- * the same in all ten 454 builds (aapt2).
+ * Instagram 456's id/profile_header_create_button (0x7f0b308b on 455, 0x7f0b3054 on 454), the view id of the plus on
+ * your own profile, the same in all four 456 builds (aapt2).
  */
-internal const val CREATE_BUTTON_ID = 0x7f0b3054
+internal const val CREATE_BUTTON_ID = 0x7f0b3092
 
 /** The events only the Threads chip under a profile's bio logs, loaded by its constructor. */
 internal const val BANNER_TAP = "tap_threads_banner"
@@ -109,14 +109,16 @@ private const val ITERATOR = "Ljava/util/List;->iterator()Ljava/util/Iterator;"
  * the profile screen's action bar instead, so the action bar asks the extension before adding it.
  * And the methods building the row of action buttons under the bio, as text, as icons and as the
  * arrow at its end, hand each button and its model to the extension, which hides Share profile's
- * (#253), Subscribe's and the arrow's (#248), and lets the others take their space.
+ * (#253), Subscribe's and the arrow's (#248), and lets the others take their space. The grid's
+ * empty-state controller's answer to whether it shows "Create your first post" goes through the
+ * extension too, which says no on your own profile (#762).
  */
 @Suppress("unused")
 val hideThreadsButtonPatch = bytecodePatch(
     name = "Hide the Threads button",
-    description = "Takes the Threads button off the top of profiles, with switches for the Create button and Share " +
-        "profile on your own, and Subscribe and the arrow after the buttons on creators' profiles. The menu and " +
-        "the other buttons stay. Each starts off. Turn them on in HushGram settings > Profiles.",
+    description = "Takes the Threads button off the top of profiles, with switches for the Create button, Share " +
+        "profile and the empty profile prompt on your own, and Subscribe and the arrow after the buttons on creators' " +
+        "profiles. The menu and the other buttons stay. Each starts off. Turn them on in HushGram settings > Profiles.",
     default = true,
 ) {
     category("Profiles")
@@ -129,10 +131,12 @@ val hideThreadsButtonPatch = bytecodePatch(
         val banner = findThreadsBanner()
         val create = findCreateInBar()
         val share = findShareButton()
+        val prompt = findEmptyProfilePrompt()
         hideThreadsButton(button)
         hideThreadsBanner(banner)
         hideCreateInBar(create)
         hideShareButton(share)
+        hideEmptyProfilePrompt(prompt)
         enableStatus("threadsButton")
     }
 }

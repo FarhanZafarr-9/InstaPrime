@@ -14,6 +14,7 @@ import android.content.ContextWrapper;
 import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
+import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
@@ -58,6 +59,7 @@ public class AccentThemeTest {
         Settings.ACCENT_RINGS.resetToDefault();
         Settings.ACCENT_RINGS_SOLID.resetToDefault();
         Settings.ACCENT_BACKGROUNDS.resetToDefault();
+        Settings.CLASSIC_COLORS.resetToDefault();
         BaseSettings.PAUSED.save(false);
         PauseForTests.resume();
         HookStatus.clear();
@@ -337,6 +339,202 @@ public class AccentThemeTest {
                 + AccentTheme.BACKGROUNDS_MISSING + " 1"), HookStatus.report());
     }
 
+    /**
+     * Classic colors' style goes on with Accent color off, in the theme's own shade, and after the picked
+     * color's backgrounds when both are on, so it wins over them (#639).
+     */
+    @Test
+    public void theClassicStyleGoesOnWithItsSwitchInTheThemesShade() {
+        assertEquals("HushGramClassicBackgrounds_light", AccentTheme.classicStyle(false));
+        assertEquals("HushGramClassicBackgrounds_dark", AccentTheme.classicStyle(true));
+        List<String> asked = new ArrayList<>();
+        Ids ids = (name, type) -> {
+            if (type.equals("style") && name.equals(AccentTheme.paletteStyle(AccentHue.TEAL))) return android.R.style.TextAppearance;
+            if (type.equals("style") && (name.startsWith("HushGramClassicBackgrounds_") || name.startsWith("HushGramAccentBackgrounds_"))) {
+                asked.add(name);
+                return android.R.style.TextAppearance_Small;
+            }
+            if (type.equals("attr") && name.equals(AccentTheme.ICON_ATTRIBUTE)) return android.R.attr.colorForeground;
+            if (type.equals("attr") && name.equals(AccentTheme.BACKGROUND_ATTRIBUTE)) return android.R.attr.colorBackground;
+            return type.equals("attr") ? 0x7f990005 : 0;
+        };
+        Context light = new ContextThemeWrapper(themed(THEMED + ".classic.light", ids), android.R.style.Theme_Material_Light);
+        AccentTheme.apply(light, "igds_color_link");
+        assertEquals("off", List.of(), asked);
+        assertEquals(List.of(), HookStatus.report());
+
+        Settings.CLASSIC_COLORS.save(true);
+        AccentTheme.apply(light, "igds_color_link");
+        assertEquals("with Accent color off", List.of(AccentTheme.classicStyle(false)), asked);
+        assertEquals(List.of(FamilyNames.ACCENT_COLOR + ": invoked 1, 0 found, 0 missing. Counted: " + AccentTheme.CLASSIC + " 1"),
+                HookStatus.report());
+
+        asked.clear();
+        Settings.ACCENT_COLOR.save(true);
+        Settings.ACCENT_HUE.save(AccentHue.TEAL);
+        Settings.ACCENT_BACKGROUNDS.save(true);
+        HookStatus.clear();
+        Context dark = new ContextThemeWrapper(themed(THEMED + ".classic.dark", ids), android.R.style.Theme_Material);
+        AccentTheme.apply(dark, "igds_color_link");
+        assertEquals("the classic style goes on last", List.of(AccentTheme.backgroundStyle(AccentHue.TEAL, true),
+                AccentTheme.classicStyle(true)), asked);
+        assertEquals(List.of(FamilyNames.ACCENT_COLOR + ": invoked 1, 0 found, 0 missing. Counted: " + AccentTheme.NO_BLUE + " 1, "
+                + AccentTheme.BACKGROUNDS + " 1, " + AccentTheme.CLASSIC + " 1"), HookStatus.report());
+    }
+
+    /**
+     * Classic colors lays nothing on a theme painting no solid background of its own, says so on a build
+     * without its styles, and looks nothing up while HushGram is paused (#639).
+     */
+    @Test
+    public void theClassicStyleKeepsAViewersBackgroundAndStaysOffWhilePaused() {
+        Settings.CLASSIC_COLORS.save(true);
+        Context viewer = new ContextThemeWrapper(themed(THEMED + ".classic.viewer", (name, type) -> {
+            if (type.equals("style") && name.startsWith("HushGramClassicBackgrounds_")) return android.R.style.TextAppearance_Small;
+            if (type.equals("attr") && name.equals(AccentTheme.ICON_ATTRIBUTE)) return android.R.attr.colorForeground;
+            return type.equals("attr") && name.equals(AccentTheme.BACKGROUND_ATTRIBUTE) ? android.R.attr.windowFrame : 0;
+        }), android.R.style.Theme_Material);
+        AccentTheme.apply(viewer, null);
+        assertEquals(List.of(FamilyNames.ACCENT_COLOR + ": invoked 1, 0 found, 0 missing. Counted: " + AccentTheme.BACKGROUNDS_KEPT + " 1"),
+                HookStatus.report());
+
+        HookStatus.clear();
+        AccentTheme.apply(themed(THEMED + ".classic.missing", (name, type) -> 0), null);
+        assertEquals(List.of(FamilyNames.ACCENT_COLOR + ": invoked 1, 0 found, 0 missing. Counted: " + AccentTheme.CLASSIC_MISSING + " 1"),
+                HookStatus.report());
+
+        HookStatus.clear();
+        List<String> asked = new ArrayList<>();
+        Context light = new ContextThemeWrapper(themed(THEMED + ".classic.paused", (name, type) -> {
+            asked.add(type + "/" + name);
+            if (type.equals("style")) return android.R.style.TextAppearance_Small;
+            if (type.equals("attr") && name.equals(AccentTheme.ICON_ATTRIBUTE)) return android.R.attr.colorForeground;
+            return type.equals("attr") && name.equals(AccentTheme.BACKGROUND_ATTRIBUTE) ? android.R.attr.colorBackground : 0;
+        }), android.R.style.Theme_Material_Light);
+        BaseSettings.PAUSED.save(true);
+        PauseForTests.pause(HushgramPause.Reason.SWITCH);
+        AccentTheme.apply(light, null);
+        assertEquals(List.of(), asked);
+        assertEquals(List.of(), HookStatus.report());
+
+        BaseSettings.PAUSED.save(false);
+        PauseForTests.resume();
+        AccentTheme.apply(light, null);
+        assertTrue("resumed, " + asked, asked.contains("style/" + AccentTheme.classicStyle(false)));
+    }
+
+    /**
+     * With Accent color off, Classic colors on a dark theme hands that theme's surfaces to Compose's
+     * dark grays, so the message list and search field match the page around them (#639, #577).
+     */
+    @Test
+    public void classicColorsHandsADarkThemesSurfacesToCompose() {
+        Settings.CLASSIC_COLORS.save(true);
+        AccentTheme.darkSurfacesForTests(null);
+        try {
+            Context dark = new ContextThemeWrapper(themed(THEMED + ".classic.compose", (name, type) -> {
+                if (type.equals("style") && name.startsWith("HushGramClassicBackgrounds_")) return android.R.style.TextAppearance_Small;
+                if (type.equals("attr") && name.equals(AccentTheme.ICON_ATTRIBUTE)) return android.R.attr.colorForeground;
+                return type.equals("attr") && name.startsWith("igds_color_") ? android.R.attr.colorBackground : 0;
+            }), android.R.style.Theme_Material);
+            long raised = (long) 0xff191c1f << 32;
+            assertEquals("before a classic theme is seen", raised, AccentTheme.composeSurface(raised));
+
+            AccentTheme.apply(dark, null);
+
+            TypedValue page = new TypedValue();
+            assertTrue(dark.getTheme().resolveAttribute(android.R.attr.colorBackground, page, true));
+            assertTrue("a page color unlike Compose's own", (page.data & 0xffffff) != 0x191c1f);
+            assertEquals((long) (0xff000000 | page.data & 0xffffff) << 32, AccentTheme.composeSurface(raised));
+        } finally {
+            AccentTheme.darkSurfacesForTests(null);
+        }
+    }
+
+    /**
+     * Classic colors on a light theme hands that theme's page to Compose's white, so the message list
+     * and its search field match the off-white View screens, and the dark grays a light screen writes
+     * its text with stay (#639).
+     */
+    @Test
+    public void classicColorsHandsALightThemesPageToCompose() {
+        Settings.CLASSIC_COLORS.save(true);
+        AccentTheme.darkSurfacesForTests(null);
+        AccentTheme.lightSurfacesForTests(null);
+        try {
+            Context light = new ContextThemeWrapper(themed(THEMED + ".classic.compose.light", (name, type) -> {
+                if (type.equals("style") && name.startsWith("HushGramClassicBackgrounds_")) return android.R.style.TextAppearance_Small;
+                if (type.equals("attr") && name.equals(AccentTheme.ICON_ATTRIBUTE)) return android.R.attr.colorForeground;
+                if (type.equals("attr") && name.equals("igds_color_secondary_background")) return android.R.attr.colorForeground;
+                return type.equals("attr") && name.startsWith("igds_color_") ? android.R.attr.colorBackground : 0;
+            }), android.R.style.Theme_Material_Light);
+            long white = (long) 0xffffffff << 32;
+            long text = (long) 0xff0c1014 << 32;
+            assertEquals("before a classic theme is seen", white, AccentTheme.composeSurface(white));
+
+            AccentTheme.apply(light, null);
+
+            TypedValue page = new TypedValue();
+            assertTrue(light.getTheme().resolveAttribute(android.R.attr.colorBackground, page, true));
+            TypedValue top = new TypedValue();
+            assertTrue(light.getTheme().resolveAttribute(android.R.attr.colorForeground, top, true));
+            assertTrue("a page color unlike Compose's own", (page.data & 0xffffff) != 0xffffff);
+            assertTrue("a top shade unlike the page", (top.data & 0xffffff) != (page.data & 0xffffff));
+            assertEquals((long) (0xff000000 | page.data & 0xffffff) << 32, AccentTheme.composeSurface(white));
+            assertEquals("the search field takes the top shade", (long) (0xff000000 | top.data & 0xffffff) << 32,
+                    AccentTheme.composeSurface((long) 0xfff0f2f5 << 32));
+            assertEquals("the text", text, AccentTheme.composeSurface(text));
+        } finally {
+            AccentTheme.darkSurfacesForTests(null);
+            AccentTheme.lightSurfacesForTests(null);
+        }
+    }
+
+    /**
+     * Meta's own menus, the account switcher among them: its blues take the picked fill on either
+     * screen, its dark grays the dark theme's shades with the accent backgrounds on, its white page and
+     * wash the light theme's with Classic colors on, and its text grays stay (#187).
+     */
+    @Test
+    public void metasMenuColorsTakeTheAccent() {
+        int[] dark = {0xff101820, 0xff182030, 0xff203040};
+        int[] light = {0xfffafafa, 0xfff0f0f0, 0xffe8e8e8};
+        AccentTheme.darkSurfacesForTests(dark);
+        AccentTheme.lightSurfacesForTests(light);
+        try {
+            assertEquals("the switch off", 0xff0064e0, AccentTheme.dspLight(0xff0064e0));
+            assertEquals("the switch off", 0xff1f1f20, AccentTheme.dspDark(0xff1f1f20));
+
+            Settings.ACCENT_COLOR.save(true);
+            Settings.ACCENT_HUE.save(AccentHue.PINK);
+            int fill = 0xff000000 | AccentHue.PINK.fill & 0xffffff;
+            assertEquals(fill, AccentTheme.dspLight(0xff0064e0));
+            assertEquals(fill, AccentTheme.dspDark(0xff0082fb));
+            assertEquals("the blue's own alpha", 0x80000000 | fill & 0xffffff, AccentTheme.dspDark(0x800082fb));
+            assertEquals("backgrounds off", 0xff1f1f20, AccentTheme.dspDark(0xff1f1f20));
+
+            Settings.ACCENT_BACKGROUNDS.save(true);
+            assertEquals("the menu", dark[1], AccentTheme.dspDark(0xff1f1f20));
+            assertEquals("the wash", dark[2], AccentTheme.dspDark(0xff28292b));
+            assertEquals("a scrim keeps its alpha", 0xb2000000 | dark[1] & 0xffffff, AccentTheme.dspDark(0xb21f1f20));
+            assertEquals("the light text gray", 0xffd1d3d5, AccentTheme.dspDark(0xffd1d3d5));
+            assertEquals("a dark gray on a light screen is text", 0xff28292b, AccentTheme.dspLight(0xff28292b));
+            assertEquals("a light page without Classic colors", 0xffffffff, AccentTheme.dspLight(0xffffffff));
+
+            Settings.CLASSIC_COLORS.save(true);
+            assertEquals(light[0], AccentTheme.dspLight(0xffffffff));
+            assertEquals(light[2], AccentTheme.dspLight(0xfff3f4f5));
+            assertEquals("the white page's share of a see-through white", 0x33000000 | light[0] & 0xffffff, AccentTheme.dspLight(0x33ffffff));
+
+            BaseSettings.PAUSED.save(true);
+            PauseForTests.pause(HushgramPause.Reason.SWITCH);
+            assertEquals("paused", 0xff0064e0, AccentTheme.dspLight(0xff0064e0));
+        } finally {
+            AccentTheme.darkSurfacesForTests(null);
+            AccentTheme.lightSurfacesForTests(null);
+        }
+    }
+
     /** An attribute the theme doesn't hold, one holding a size or one that isn't opaque isn't a background of its own (#187). */
     @Test
     public void onlyASolidColorIsABackgroundOfItsOwn() {
@@ -383,6 +581,181 @@ public class AccentThemeTest {
     }
 
     /**
+     * The theme Litho's resource resolver keeps takes the picked color's icon style with both switches
+     * on, so the feed's post buttons read the accent (#724). Each theme is looked at once, one already
+     * holding the style's color isn't counted, a viewer's keeps its own, a build without the styles says
+     * so, and with either switch off, paused or no context nothing changes.
+     */
+    @Test
+    public void lithosThemeTakesTheIconStyleOnce() {
+        Settings.ACCENT_COLOR.save(true);
+        Settings.ACCENT_HUE.save(AccentHue.TEAL);
+        Ids ids = (name, type) -> {
+            if (type.equals("style") && name.startsWith("HushGramAccentIcons_TEAL_")) return android.R.style.Theme_Material;
+            if (type.equals("attr") && (name.equals(AccentTheme.ICON_ATTRIBUTE) || name.equals(AccentTheme.GLYPH_ATTRIBUTE))) {
+                return android.R.attr.colorForeground;
+            }
+            return type.equals("attr") && name.equals(AccentTheme.BACKGROUND_ATTRIBUTE) ? android.R.attr.colorBackground : 0;
+        };
+        int accent = foreground(new ContextThemeWrapper(RuntimeEnvironment.getApplication(), android.R.style.Theme_Material));
+        Context light = new ContextThemeWrapper(themed(THEMED + ".litho", ids), android.R.style.Theme_Material_Light);
+        int own = foreground(light);
+        assertFalse("the light theme's icon color differs from the style's", own == accent);
+
+        AccentTheme.lithoIcons(light);
+        assertEquals("icons off", own, foreground(light));
+        Settings.ACCENT_ICONS.save(true);
+        BaseSettings.PAUSED.save(true);
+        PauseForTests.pause(HushgramPause.Reason.SWITCH);
+        AccentTheme.lithoIcons(light);
+        assertEquals("paused", own, foreground(light));
+        BaseSettings.PAUSED.save(false);
+        PauseForTests.resume();
+        AccentTheme.lithoIcons(null);
+        assertEquals("nothing counted yet", List.of(), HookStatus.report());
+
+        AccentTheme.lithoIcons(light);
+        assertEquals(accent, foreground(light));
+        light.getTheme().applyStyle(android.R.style.Theme_Material_Light, true);
+        AccentTheme.lithoIcons(light);
+        assertEquals("looked at once", own, foreground(light));
+        Context another = new ContextThemeWrapper(themed(THEMED + ".litho", ids), android.R.style.Theme_Material_Light);
+        AccentTheme.lithoIcons(another);
+        assertEquals("another tree's theme", accent, foreground(another));
+
+        Context dark = new ContextThemeWrapper(themed(THEMED + ".litho", ids), android.R.style.Theme_Material);
+        AccentTheme.lithoIcons(dark);
+        assertEquals("already the dark style's color", accent, foreground(dark));
+        Context viewer = new ContextThemeWrapper(themed(THEMED + ".litho.viewer", (name, type) ->
+                type.equals("attr") && name.equals(AccentTheme.BACKGROUND_ATTRIBUTE) ? android.R.attr.textColorPrimary : ids.of(name, type)),
+                android.R.style.Theme_Material_Light);
+        AccentTheme.lithoIcons(viewer);
+        assertEquals("over media", own, foreground(viewer));
+        AccentTheme.lithoIcons(new ContextThemeWrapper(themed(THEMED + ".litho.missing", (name, type) -> 0),
+                android.R.style.Theme_Material_Light));
+
+        String report = HookStatus.report().toString();
+        assertTrue(report, report.contains(AccentTheme.LITHO_ICONS + " 2"));
+        assertTrue(report, report.contains(AccentTheme.ICONS_MISSING + " 1"));
+    }
+
+    /**
+     * The repost button's animation, black or white in its file, takes the icon color through an
+     * SRC_IN layer once the Litho theme it loads on carries the icon style (#724), and the layer is
+     * closed when it's done drawing. Off, paused, over media, on a theme without the style, for any
+     * other animation or after a load that failed, it draws as Instagram's.
+     */
+    @Test
+    public void theRepostAnimationTakesTheIconColorWhereTheThemeHasIt() {
+        int repost = 0x7f120105;
+        int unrepost = 0x7f120113;
+        int other = 0x7f120200;
+        Settings.ACCENT_COLOR.save(true);
+        Settings.ACCENT_HUE.save(AccentHue.TEAL);
+        Ids ids = (name, type) -> {
+            if (type.equals("style") && name.startsWith("HushGramAccentIcons_TEAL_")) return android.R.style.Theme_Material;
+            if (type.equals("attr") && (name.equals(AccentTheme.ICON_ATTRIBUTE) || name.equals(AccentTheme.GLYPH_ATTRIBUTE))) {
+                return android.R.attr.colorForeground;
+            }
+            if (type.equals("attr") && name.equals(AccentTheme.BACKGROUND_ATTRIBUTE)) return android.R.attr.colorBackground;
+            if (type.equals("raw") && name.equals("repost_light")) return repost;
+            return type.equals("raw") && name.equals("unrepost_dark") ? unrepost : 0;
+        };
+        int accent = foreground(new ContextThemeWrapper(RuntimeEnvironment.getApplication(), android.R.style.Theme_Material));
+        Context light = new ContextThemeWrapper(themed(THEMED + ".repost", ids), android.R.style.Theme_Material_Light);
+
+        assertNull("icons off", layer(light, repost));
+        Settings.ACCENT_ICONS.save(true);
+        assertNull("the theme hasn't the icon style", layer(light, repost));
+        AccentTheme.lithoIcons(light);
+        BaseSettings.PAUSED.save(true);
+        PauseForTests.pause(HushgramPause.Reason.SWITCH);
+        assertNull("paused", layer(light, repost));
+        BaseSettings.PAUSED.save(false);
+        PauseForTests.resume();
+        assertNull("another animation", layer(light, other));
+        assertNull("no context", layer(null, repost));
+
+        PorterDuffColorFilter tint = new PorterDuffColorFilter(accent, PorterDuff.Mode.SRC_IN);
+        assertEquals("repost", tint, layer(light, repost));
+        assertEquals("unrepost", tint, layer(light, unrepost));
+        Context dark = new ContextThemeWrapper(themed(THEMED + ".repost", ids), android.R.style.Theme_Material);
+        assertEquals("a dark theme already in the dark style's color", tint, layer(dark, unrepost));
+        Context viewer = new ContextThemeWrapper(themed(THEMED + ".repost.viewer", (name, type) ->
+                type.equals("attr") && name.equals(AccentTheme.BACKGROUND_ATTRIBUTE) ? android.R.attr.textColorPrimary : ids.of(name, type)),
+                android.R.style.Theme_Material);
+        assertNull("over media", layer(viewer, repost));
+
+        AccentTheme.repostAnimation(light, repost);
+        AccentTheme.repostAnimation((Drawable) null);
+        Animation late = new Animation();
+        AccentTheme.repostAnimation(late);
+        Layers canvas = new Layers();
+        AccentTheme.repostDraw(late, canvas);
+        assertNull("a load that failed leaves nothing for the next one", canvas.paint);
+
+        String report = HookStatus.report().toString();
+        assertTrue(report, report.contains(AccentTheme.REPOST_ICONS + " 3"));
+    }
+
+    /**
+     * Loads [raw] on [context] the way the patched Keyframes loader does, draws the animation it hands
+     * back, and returns the color filter of the layer it was drawn in, null when it wasn't. A layer is
+     * checked to reach a quarter past the icon and to be closed again.
+     */
+    private static ColorFilter layer(Context context, int raw) {
+        AccentTheme.repostAnimation(context, raw);
+        Animation animation = new Animation();
+        animation.setBounds(0, 0, 24, 24);
+        AccentTheme.repostAnimation(animation);
+        Layers canvas = new Layers();
+        AccentTheme.repostDraw(animation, canvas);
+        AccentTheme.repostDrawn(animation, canvas);
+        if (canvas.paint == null) {
+            assertEquals("nothing to close", -1, canvas.restoredTo);
+            return null;
+        }
+        assertEquals(List.of(-6f, -6f, 30f, 30f), canvas.bounds);
+        assertEquals("closed", canvas.saved, canvas.restoredTo);
+        return canvas.paint.getColorFilter();
+    }
+
+    /** A Keyframes animation as the loader hands it back, drawing nothing here. */
+    private static final class Animation extends Drawable {
+        @Override public void draw(Canvas canvas) { }
+        @Override public void setAlpha(int alpha) { }
+        @Override public void setColorFilter(ColorFilter colorFilter) { }
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+    }
+
+    /** A canvas that keeps the layer opened on it and the save count it's put back to. */
+    private static final class Layers extends Canvas {
+        Paint paint;
+        List<Float> bounds;
+        final int saved = 7;
+        int restoredTo = -1;
+
+        @Override
+        public int saveLayer(float left, float top, float right, float bottom, Paint layerPaint) {
+            paint = layerPaint;
+            bounds = List.of(left, top, right, bottom);
+            return saved;
+        }
+
+        @Override
+        public void restoreToCount(int count) {
+            restoredTo = count;
+        }
+    }
+
+    /** The plain color [context]'s theme holds for {@code android:colorForeground}. */
+    private static int foreground(Context context) {
+        TypedValue value = new TypedValue();
+        assertTrue(context.getTheme().resolveAttribute(android.R.attr.colorForeground, value, true));
+        return value.data;
+    }
+
+    /**
      * A tab's icon told Reels' white takes the picked color's shade for a dark screen, and told the
      * dark text color Instagram resets to after Reels takes its shade for a light one, alpha kept, with
      * both switches on (#663). Either switch off or paused leaves the color as told, and a missing
@@ -417,6 +790,38 @@ public class AccentThemeTest {
         PauseForTests.resume();
         String report = HookStatus.report().toString();
         assertTrue(report, report.contains(AccentTheme.TAB_ICONS + " 4"));
+    }
+
+    /**
+     * The Messages folder chip's unread dot, which Compose paints red from a palette in the code, takes
+     * the picked color's fill with both switches on, alpha kept (#671). Either switch off or paused
+     * leaves it red, and a color outside sRGB comes back opaque in the fill.
+     */
+    @Test
+    public void theFolderChipsDotTakesThePickedFill() {
+        long red = (long) 0xffff3040 << 32;
+        long faded = (long) 0x80ff3040 << 32;
+        assertEquals("off", red, AccentTheme.composeBadge(red));
+        Settings.ACCENT_COLOR.save(true);
+        Settings.ACCENT_HUE.save(AccentHue.TEAL);
+        assertEquals("badges off", red, AccentTheme.composeBadge(red));
+        Settings.ACCENT_BADGES.save(true);
+
+        int fill = AccentColor.swap(0xff4a5df9, AccentHue.TEAL) & 0xffffff;
+        assertFalse("teal's fill isn't the red", fill == 0xff3040);
+        assertEquals("the dot", (long) (0xff000000 | fill) << 32, AccentTheme.composeBadge(red));
+        assertEquals("alpha kept", (long) (0x80000000 | fill) << 32, AccentTheme.composeBadge(faded));
+        assertEquals("outside sRGB", (long) (0xff000000 | fill) << 32, AccentTheme.composeBadge(red | 7));
+        assertEquals("already the fill, not counted", (long) (0xff000000 | fill) << 32,
+                AccentTheme.composeBadge((long) (0xff000000 | fill) << 32));
+
+        BaseSettings.PAUSED.save(true);
+        PauseForTests.pause(HushgramPause.Reason.SWITCH);
+        assertEquals("paused", red, AccentTheme.composeBadge(red));
+        BaseSettings.PAUSED.save(false);
+        PauseForTests.resume();
+        String report = HookStatus.report().toString();
+        assertTrue(report, report.contains(AccentTheme.COMPOSE_BADGES + " 3"));
     }
 
     /**
@@ -518,6 +923,63 @@ public class AccentThemeTest {
             assertTrue(hue.name(), AccentTheme.readsLight(hue.linkOnDark));
             assertFalse(hue.name(), AccentTheme.readsLight(hue.linkOnLight));
         }
+    }
+
+    /**
+     * The default secondary button, Edit profile's and Share profile's, takes the color its theme points
+     * the other secondary buttons at once that's one of the patch's (#187), and keeps its own fill while
+     * the theme holds Instagram's, with no context or no attribute.
+     */
+    @Test
+    public void theDefaultSecondaryButtonTakesTheThemesShadeOnceItsThePatchs() {
+        Context ours = new ContextThemeWrapper(named(THEMED + ".buttons", "hushgram_accent_teal_background_dark_top"),
+                android.R.style.Theme_Material);
+        TypedValue held = new TypedValue();
+        assertTrue(ours.getTheme().resolveAttribute(android.R.attr.colorBackground, held, false));
+        assertEquals("the theme points at a color", TypedValue.TYPE_REFERENCE, held.type);
+        int fill = 0x7f060355;
+
+        assertEquals(held.data, AccentTheme.secondaryButtonFill(ours, fill));
+        assertEquals("already that color, not counted", held.data, AccentTheme.secondaryButtonFill(ours, held.data));
+        Context instagrams = new ContextThemeWrapper(named(THEMED + ".buttons.stock", "igds_prism_secondary_button_background"),
+                android.R.style.Theme_Material);
+        assertEquals("Instagram's own color", fill, AccentTheme.secondaryButtonFill(instagrams, fill));
+        assertEquals("no context", fill, AccentTheme.secondaryButtonFill(null, fill));
+        Context bare = new ContextThemeWrapper(themed(THEMED + ".buttons.bare", (name, type) -> 0), android.R.style.Theme_Material);
+        assertEquals("no attribute", fill, AccentTheme.secondaryButtonFill(bare, fill));
+        String report = HookStatus.report().toString();
+        assertTrue(report, report.contains(AccentTheme.SECONDARY_BUTTONS + " 1"));
+    }
+
+    /**
+     * The app's context under [pkg], whose resources answer {@code android:colorBackground} for
+     * {@link AccentTheme#SECONDARY_BUTTON_ATTRIBUTE} and name every resource [entry].
+     */
+    private static Context named(String pkg, String entry) {
+        Context app = RuntimeEnvironment.getApplication();
+        Resources resources = new Resources(app.getAssets(), app.getResources().getDisplayMetrics(), app.getResources().getConfiguration()) {
+            @Override
+            public int getIdentifier(String name, String type, String defPackage) {
+                return pkg.equals(defPackage) && type.equals("attr") && name.equals(AccentTheme.SECONDARY_BUTTON_ATTRIBUTE)
+                        ? android.R.attr.colorBackground : 0;
+            }
+
+            @Override
+            public String getResourceEntryName(int resid) {
+                return entry;
+            }
+        };
+        return new ContextWrapper(app) {
+            @Override
+            public Resources getResources() {
+                return resources;
+            }
+
+            @Override
+            public String getPackageName() {
+                return pkg;
+            }
+        };
     }
 
     /** Answers a resource's number by name and type for {@link #themed}. */

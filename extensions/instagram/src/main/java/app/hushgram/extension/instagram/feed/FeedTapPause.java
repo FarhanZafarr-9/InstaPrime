@@ -42,6 +42,11 @@ import app.hushgram.extension.shared.diagnostics.HookStatus;
  * tap as well, {@link #tapped} pauses or plays it and lets go of the state, so the lift doesn't do
  * it twice. A press a scroll takes over ends without a lift and leaves the video as it was.
  *
+ * <p>With Hold for 2x on feed videos on, the press is left to Instagram, which plays the video faster.
+ * Instagram's gesture listener then reports the lift as a tap before it reports the release, so
+ * {@link #tapped} and {@link #opening} know that one tap as the end of the hold and leave the video
+ * playing.
+ *
  * <p>On Instagram 451 a tap can open Reels without reaching that handler: the video's overlays open
  * Reels on their own, the end screen a finished feed reel shows among them, and Instagram's own tap
  * can be sent to Reels by a server setting. All of them end in the feed's one Reels launcher, which
@@ -50,7 +55,8 @@ import app.hushgram.extension.shared.diagnostics.HookStatus;
  * launcher there. Every other opening goes on to Reels, the end screen a finished feed reel shows
  * included: its backdrop ({@code BACKGROUND_TAP}), Watch again and Watch more reels. Each opening with
  * the switch on is counted under its entry point's name, so one report says which way a phone's taps
- * come.
+ * come. Taps on feed videos stay in the feed (#706) ends the launcher for every tap on a video, and for
+ * a tap on the end screen's backdrop, whether or not the pause switch is on.
  *
  * <p>Everything else is left to Instagram: a sponsored post, a photo, a carousel on a photo, a video
  * the controller doesn't have playing, a feed with no video controller. So is every tap or press while
@@ -80,17 +86,30 @@ public final class FeedTapPause {
     static final String PRESS_TAKEN = "held presses taken as taps";
     static final String PRESS_LEFT = "held presses left to Instagram";
 
+    /** What {@link HookStatus} counts: the tap that ends a hold for 2x, which leaves the video as it was. */
+    static final String HOLD_LIFT_LEFT = "lifts of a hold for 2x left alone";
+
     /** What {@link HookStatus} counts for each Reels opening with the switch on, followed by its entry point's name. */
     static final String OPENED_FROM = "Reels openings from ";
 
+    /** What {@link HookStatus} counts for each Reels opening Taps on feed videos stay in the feed ended, followed by its entry point's name. */
+    static final String KEPT_FROM = "taps kept in the feed from ";
+
+    /** What {@link HookStatus} counts: Instagram's hand-offs of the playing video to Reels {@link #skipsHandoff} skipped. */
+    static final String HANDOFF_SKIPPED = "Reels hand-offs skipped";
+
     /** The entry point of a tap on a feed video, the one opening {@link #opening} pauses or plays in place of. */
     static final String VIDEO_TAP = "VIDEO_TAP";
+
+    /** The entry point of a tap on the backdrop of the end screen a finished feed reel shows. */
+    static final String BACKGROUND_TAP = "BACKGROUND_TAP";
 
     /** The hooks' names in a failure report. */
     static final String TAP = "feed tap";
     static final String PRESS = "feed press";
     static final String RELEASE = "feed press lift";
     static final String OPEN = "feed Reels opening";
+    static final String HANDOFF = "feed Reels hand-off";
 
     /** What {@link FeedPlayerReader}'s stubs return until the patch fills them in. */
     static final Object NOT_PATCHED = new Object();
@@ -202,6 +221,10 @@ public final class FeedTapPause {
     @Nullable
     private static volatile WeakReference<Object> held;
 
+    /** The post state of the press {@link #pressed} left to Hold for 2x on feed videos, until the tap or the release that ends it. */
+    @Nullable
+    private static volatile WeakReference<Object> heldFast;
+
     private FeedTapPause() {
     }
 
@@ -213,6 +236,7 @@ public final class FeedTapPause {
      * are unfilled, or something in here threw before the video was paused or played. Never throws.
      */
     public static boolean tapped(@Nullable Object handler, @Nullable Object media, @Nullable Object state) {
+        boolean endsHold;
         try {
             HookStatus.invoked(FamilyNames.FEED_TAP_PAUSE);
             if (handler == null || media == null || state == null) return false;
@@ -220,11 +244,13 @@ public final class FeedTapPause {
             HookStatus.bound(FamilyNames.FEED_TAP_PAUSE, TAP);
             // A tap that ends a held press this took is that press's own, which leaves its lift nothing to do.
             letGo(state);
+            endsHold = letGoFast(state);
         } catch (Throwable failure) {
             HookStatus.threw(FamilyNames.FEED_TAP_PAUSE, TAP, failure);
             return false;
         }
-        return toggle(feed -> feed.controllerOf(handler), media, state, TAP);
+        Function<Videos, Object> reach = feed -> feed.controllerOf(handler);
+        return endsHold ? leftPlaying(reach, media, state, TAP) : toggle(reach, media, state, TAP);
     }
 
     /**
@@ -237,10 +263,12 @@ public final class FeedTapPause {
      */
     public static boolean pressed(@Nullable Object handler, @Nullable Object media, @Nullable Object state) {
         held = null;
+        heldFast = null;
         try {
             if (handler == null || media == null || state == null) return false;
             if (!switchedOn()) return false;
             if (FeedHoldSpeed.holding()) {
+                heldFast = new WeakReference<>(state);
                 Logger.printDebug(() -> "Feed video: left a held press to Hold for 2x");
                 return false;
             }
@@ -268,6 +296,8 @@ public final class FeedTapPause {
      */
     public static void released(@Nullable Object handler, @Nullable Object media, @Nullable Object state, int lifted) {
         try {
+            // A hold for 2x is over either way, so no later tap gets taken for its lift.
+            if (state != null) letGoFast(state);
             if (state == null || !letGo(state) || lifted == 0) return;
             if (handler == null || media == null || !switchedOn()) return;
             HookStatus.bound(FamilyNames.FEED_TAP_PAUSE, RELEASE);
@@ -284,24 +314,69 @@ public final class FeedTapPause {
      * True means a tap on the playing video paused or played it and the launcher is done. False lets
      * Reels open: the switch is off, HushGram is paused, the settings aren't ready, the opening isn't a
      * tap on a video ({@link #VIDEO_TAP}), or the tap fails a check {@link #tapped} makes. A tap that
-     * ends a held press {@link #pressed} took is that press's own, so its lift does nothing more. Not
-     * counted as invoked, like the press. Never throws.
+     * ends a held press {@link #pressed} took is that press's own, so its lift does nothing more. With
+     * {@link Settings#FEED_TAPS_STAY_IN_FEED} on (#706), a tap on a video that isn't paused or played, and a
+     * tap on a finished reel's end screen ({@link #BACKGROUND_TAP}), answer true as well, so Reels never
+     * opens from a tap; the end screen's buttons and every other way in still open it. Not counted as
+     * invoked, like the press. Never throws.
      */
     public static boolean opening(@Nullable Object launcher, @Nullable Object entryPoint, @Nullable Object media,
                                   @Nullable Object state) {
+        boolean pauses;
+        boolean keeps;
+        boolean endsHold;
         try {
             if (launcher == null || media == null || state == null) return false;
-            if (!switchedOn()) return false;
+            pauses = switchedOn();
+            keeps = Utils.settingsReady() && Settings.FEED_TAPS_STAY_IN_FEED.get();
+            if (!pauses && !keeps) return false;
             HookStatus.bound(FamilyNames.FEED_TAP_PAUSE, OPEN);
             String from = entryPoint instanceof Enum ? ((Enum<?>) entryPoint).name() : String.valueOf(entryPoint);
             HookStatus.counted(FamilyNames.FEED_TAP_PAUSE, OPENED_FROM + from);
-            if (!VIDEO_TAP.equals(from)) return false;
+            boolean onVideo = VIDEO_TAP.equals(from);
+            if (!onVideo) return keeps && BACKGROUND_TAP.equals(from) && kept(from);
             letGo(state);
+            endsHold = letGoFast(state);
+            if (!pauses) return kept(from);
         } catch (Throwable failure) {
             HookStatus.threw(FamilyNames.FEED_TAP_PAUSE, OPEN, failure);
             return false;
         }
-        return toggle(feed -> feed.controllerOfLauncher(launcher), media, state, OPEN);
+        Function<Videos, Object> reach = feed -> feed.controllerOfLauncher(launcher);
+        boolean handled = endsHold ? leftPlaying(reach, media, state, OPEN) : toggle(reach, media, state, OPEN);
+        return handled || keeps && kept(VIDEO_TAP);
+    }
+
+    /**
+     * Asked by the feed video controller's tap right before it hands the playing video over to Reels, which some of
+     * Instagram's servers have it do before the Reels launcher runs. That hand-off pauses the feed's player and lets go
+     * of it, so a tap {@link #opening} then keeps in the feed left the video stopped on its cover, or playing under a
+     * play button (#706). True skips the hand-off while Taps on feed videos stay in the feed or the pause switch is on,
+     * since the launcher may then keep the tap. A tap that goes on to Reels opens it without the hand-off, the way it
+     * opens on servers that don't hand videos over. False leaves it to Instagram: both switches off, HushGram paused,
+     * the settings not ready, or something in here threw. Not counted as invoked, like the press. Never throws.
+     */
+    public static boolean skipsHandoff() {
+        try {
+            if (!switchedOn() && !(Utils.settingsReady() && Settings.FEED_TAPS_STAY_IN_FEED.get())) return false;
+            HookStatus.bound(FamilyNames.FEED_TAP_PAUSE, HANDOFF);
+            HookStatus.counted(FamilyNames.FEED_TAP_PAUSE, HANDOFF_SKIPPED);
+            Logger.printDebug(() -> "Feed video: skipped Instagram's hand-off to Reels");
+            return true;
+        } catch (Throwable failure) {
+            HookStatus.threw(FamilyNames.FEED_TAP_PAUSE, HANDOFF, failure);
+            return false;
+        }
+    }
+
+    /**
+     * Keeps a tap from opening Reels for Taps on feed videos stay in the feed (#706): counted, and true, so the
+     * launcher ends there and the video stays where it is in the feed.
+     */
+    private static boolean kept(String from) {
+        HookStatus.counted(FamilyNames.FEED_TAP_PAUSE, KEPT_FROM + from);
+        Logger.printDebug(() -> "Feed video: kept a tap in the feed (" + from + ")");
+        return true;
     }
 
     /**
@@ -328,6 +403,23 @@ public final class FeedTapPause {
         } catch (Throwable failure) {
             HookStatus.threw(FamilyNames.FEED_TAP_PAUSE, hook, failure);
             return handled;
+        }
+    }
+
+    /**
+     * Takes the tap that ends a hold for 2x on [media] without pausing or playing anything, on the same
+     * checks as {@link #toggle}. True when it did. False leaves the tap to Instagram. Never throws.
+     */
+    private static boolean leftPlaying(Function<Videos, Object> reach, Object media, Object state, String hook) {
+        try {
+            Videos feed = videos;
+            if (target(feed, reach.apply(feed), media, state, false) == null) return false;
+            HookStatus.counted(FamilyNames.FEED_TAP_PAUSE, HOLD_LIFT_LEFT);
+            Logger.printDebug(() -> "Feed video: left the lift of a hold for 2x alone");
+            return true;
+        } catch (Throwable failure) {
+            HookStatus.threw(FamilyNames.FEED_TAP_PAUSE, hook, failure);
+            return false;
         }
     }
 
@@ -372,6 +464,14 @@ public final class FeedTapPause {
         return true;
     }
 
+    /** Whether [state] is the press left to Hold for 2x on feed videos, which this then lets go of. */
+    private static boolean letGoFast(Object state) {
+        WeakReference<Object> press = heldFast;
+        if (press == null || press.get() != state) return false;
+        heldFast = null;
+        return true;
+    }
+
     /** Counts a gesture that goes to Instagram with the switch on, under the check [reason] it failed or as a press, and answers none. */
     @Nullable
     private static Target left(String reason, boolean press) {
@@ -390,5 +490,6 @@ public final class FeedTapPause {
     static void resetForTests() {
         videos = new Patched();
         held = null;
+        heldFast = null;
     }
 }

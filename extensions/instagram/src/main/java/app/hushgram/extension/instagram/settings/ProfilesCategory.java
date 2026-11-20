@@ -6,17 +6,24 @@
  */
 package app.hushgram.extension.instagram.settings;
 
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.CLEAR_ONLINE_HISTORY;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.CLEAR_PROFILE_HISTORY;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.CLEAR_SENT_REQUESTS;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.CLEAR_UNFOLLOWERS;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.category;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.clearOnlineHistory;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.clearProfileHistory;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.clearSentRequests;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.clearUnfollowers;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.followerHistoryRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.followLabelPlaceRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.mark;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.onFlip;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.onlineHistoryRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.profileHistoryRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.savedProfilesRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.savedProfilesTabRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.sentRequestsRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.toggle;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.unfollowersRow;
 
@@ -27,6 +34,7 @@ import android.preference.PreferenceScreen;
 
 import java.util.Set;
 
+import app.hushgram.extension.instagram.feed.ProfileFollowCounts;
 import app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.Row;
 import app.hushgram.extension.shared.L10n;
 
@@ -36,23 +44,32 @@ final class ProfilesCategory {
 
     static void add(HushgramPreferenceFragment page, PreferenceScreen screen, Context context, Set<PatchFamily> build) {
         if (build.contains(PatchFamily.FRIENDSHIP_STATUS) || build.contains(PatchFamily.PROFILE_SUGGESTIONS)
-                || build.contains(PatchFamily.PROFILE_HIGHLIGHTS) || build.contains(PatchFamily.THREADS_BUTTON)
+                || build.contains(PatchFamily.PROFILE_HIGHLIGHTS) || build.contains(PatchFamily.PROFILE_FOLLOW_COUNTS)
+                || build.contains(PatchFamily.THREADS_BUTTON)
                 || build.contains(PatchFamily.PROFILE_NOTES) || build.contains(PatchFamily.PROFILE_BANNERS)
-                || build.contains(PatchFamily.PROFILE_PICTURE)
+                || build.contains(PatchFamily.PROFILE_PICTURE) || build.contains(PatchFamily.ONLINE_HISTORY)
                 || build.contains(PatchFamily.PROFILE_TABS)
                 || build.contains(PatchFamily.SAVED_ON_PROFILE) || build.contains(PatchFamily.PROFILE_POSTS_LIST)
-                || build.contains(PatchFamily.PROFILE_GRID_JUMP)
-                || build.contains(PatchFamily.ASK_BEFORE_FOLLOW)) {
+                || build.contains(PatchFamily.PROFILE_GRID_JUMP) || build.contains(PatchFamily.PROFILE_REEL_SORT)
+                || build.contains(PatchFamily.ASK_BEFORE_FOLLOW) || build.contains(PatchFamily.SENT_FOLLOW_REQUESTS)) {
             PreferenceCategory profiles = category(screen, L10n.t("Profiles"), SettingsIcons.PERSON,
                     L10n.t("See who follows you back, and clear extras off profiles."));
             if (build.contains(PatchFamily.PROFILE_PICTURE)) {
                 profiles.addPreference(toggle(context, Settings.ABOUT_ACCOUNT_BUTTON, L10n.t("About this account button"),
                         L10n.t("Puts an (i) next to the three dots on a profile that opens Instagram's About this account "
                                 + "for that account. Instagram took its own away.")));
+                profiles.addPreference(toggle(context, Settings.PROFILE_PICTURE_LONG_PRESS,
+                        L10n.t("Long press a profile picture to view it"),
+                        L10n.t("Long press the picture at the top of a profile to open the whole square picture at full "
+                                + "size, with Save under it, instead of Instagram's own preview. A tap works as before.")));
                 profiles.addPreference(toggle(context, Settings.PROFILE_HISTORY, L10n.t("Keep profile history"),
                         L10n.t("Remembers the username, bio and profile picture of each profile you open, on this phone "
                                 + "only, and tells you when one changed since your last visit. Pictures are copied from "
                                 + "Instagram's image servers. Turn it off and it stops at once.")));
+                profiles.addPreference(toggle(context, Settings.PROFILE_HISTORY_SAVE_PICTURES,
+                        L10n.t("Save changed pictures to the gallery"),
+                        L10n.t("When a profile you open has a new picture, puts the old picture and the new one in your "
+                                + "gallery, each once. Needs Keep profile history.")));
                 Preference profileChanges = profileHistoryRow(context);
                 profiles.addPreference(profileChanges);
                 Row clearProfileHistory = new Row(context);
@@ -73,13 +90,34 @@ final class ProfilesCategory {
                 profiles.addPreference(savedProfilesRow(context));
                 profiles.addPreference(savedProfilesTabRow(context));
             }
+            if (build.contains(PatchFamily.ONLINE_HISTORY)) {
+                profiles.addPreference(toggle(context, Settings.ONLINE_HISTORY, L10n.t("Keep online history"),
+                        L10n.t("Notes when people in your messages come online and go offline, from the active "
+                                + "status Instagram already shows, on this phone only. Turn it off and it stops at once.")));
+                Preference onlineChanges = onlineHistoryRow(context);
+                profiles.addPreference(onlineChanges);
+                Row clearOnlineHistory = new Row(context);
+                clearOnlineHistory.setKey(CLEAR_ONLINE_HISTORY);
+                clearOnlineHistory.setPersistent(false);
+                clearOnlineHistory.actsAtOnce = true;
+                clearOnlineHistory.setTitle(L10n.t("Clear online history"));
+                clearOnlineHistory.setSummary(L10n.t("Forgets everyone on the list, for all your accounts. "
+                        + "The switch stays as it is."));
+                clearOnlineHistory.setOnPreferenceClickListener(p -> {
+                    clearOnlineHistory(p, onlineChanges);
+                    return true;
+                });
+                profiles.addPreference(mark(clearOnlineHistory, SettingsIcons.DELETE));
+            }
             if (build.contains(PatchFamily.FRIENDSHIP_STATUS)) {
                 profiles.addPreference(toggle(context, Settings.SHOW_FRIENDSHIP_STATUS, L10n.t("Show if a profile follows you"),
                         L10n.t("Adds Follows you or Doesn't follow you beside the name on someone's profile, after "
                                 + "their pronouns if they've set any. Nothing shows until Instagram has checked.")));
                 profiles.addPreference(toggle(context, Settings.FRIENDSHIP_STATUS_CHIP, L10n.t("Show it as a chip"),
                         L10n.t("Puts the answer in a chip under the profile's posts, followers and following counts "
-                                + "instead, and says Following each other when you follow them too.")));
+                                + "instead, and says Following each other when you follow them too. Tap the chip to "
+                                + "see everything else Instagram has said about you two, like Close Friends, mutes "
+                                + "and restrictions.")));
                 profiles.addPreference(followLabelPlaceRow(context));
                 if (PatchFamily.followingListMarkInBuild()) {
                     profiles.addPreference(toggle(context, Settings.MARK_FOLLOWING_LIST, L10n.t("Mark who doesn't follow you back"),
@@ -121,6 +159,26 @@ final class ProfilesCategory {
                         L10n.t("Asks before a Follow or Follow back button follows someone or sends them a request, so a "
                                 + "stray tap on a profile or in a Followers or Following list doesn't do it for you.")));
             }
+            if (build.contains(PatchFamily.SENT_FOLLOW_REQUESTS)) {
+                profiles.addPreference(toggle(context, Settings.SENT_FOLLOW_REQUESTS, L10n.t("Sent follow requests"),
+                        L10n.t("Keeps a list of the accounts you've asked to follow that haven't let you in yet, from what "
+                                + "their follow buttons show while this is on. Nothing extra is asked of Instagram, and "
+                                + "the list stays on your phone.")));
+                Preference sentRequests = sentRequestsRow(context);
+                profiles.addPreference(sentRequests);
+                Row clearSentRequests = new Row(context);
+                clearSentRequests.setKey(CLEAR_SENT_REQUESTS);
+                clearSentRequests.setPersistent(false);
+                clearSentRequests.actsAtOnce = true;
+                clearSentRequests.setTitle(L10n.t("Clear sent requests"));
+                clearSentRequests.setSummary(L10n.t("Forgets every request on the list, for all your accounts. The "
+                        + "requests stay sent on Instagram."));
+                clearSentRequests.setOnPreferenceClickListener(p -> {
+                    clearSentRequests(p, sentRequests);
+                    return true;
+                });
+                profiles.addPreference(mark(clearSentRequests, SettingsIcons.DELETE));
+            }
             if (build.contains(PatchFamily.PROFILE_SUGGESTIONS)) {
                 profiles.addPreference(toggle(context, Settings.HIDE_PROFILE_SUGGESTIONS, L10n.t("Hide suggested people"),
                         L10n.t("Takes Suggested for you and the Discover people button off profiles, yours included. "
@@ -141,6 +199,18 @@ final class ProfilesCategory {
                         L10n.t("Takes the row of story highlights off profiles, yours included. Bios, counts and "
                                 + "posts stay, and so does Add to highlight on your stories.")));
             }
+            if (build.contains(PatchFamily.PROFILE_FOLLOW_COUNTS)) {
+                profiles.addPreference(onFlip(toggle(context, Settings.HIDE_PROFILE_FOLLOW_COUNTS,
+                        L10n.t("Hide follower counts"),
+                        L10n.t("Takes the numbers off Followers and Following at the top of profiles, yours included. "
+                                + "The words stay, and a tap still opens the list.")),
+                        ProfileFollowCounts::switchChanged));
+                profiles.addPreference(onFlip(toggle(context, Settings.HIDE_PROFILE_FOLLOW_BUTTONS,
+                        L10n.t("Hide Followers and Following"),
+                        L10n.t("Takes the Followers and Following buttons off the top of profiles, yours included, "
+                                + "with no gap left. The post count stays.")),
+                        ProfileFollowCounts::switchChanged));
+            }
             if (build.contains(PatchFamily.PROFILE_TABS)) {
                 profiles.addPreference(page.ownProfileTabsRow(context));
                 profiles.addPreference(page.otherProfileTabsRow(context));
@@ -152,6 +222,11 @@ final class ProfilesCategory {
                 profiles.addPreference(toggle(context, Settings.SAVED_FAST_SCROLL, L10n.t("Fast scroll in Saved"),
                         L10n.t("Shows a handle at the right edge of Saved and your collections while they scroll. "
                                 + "Drag it to jump through them.")));
+                if (PatchFamily.savedNewCollectionInBuild()) {
+                    profiles.addPreference(toggle(context, Settings.HIDE_SAVED_NEW_COLLECTION,
+                            L10n.t("Hide the New collection button"),
+                            L10n.t("Takes the + for a new collection off the top of Saved. Your collections stay.")));
+                }
             }
             if (build.contains(PatchFamily.THREADS_BUTTON)) {
                 profiles.addPreference(toggle(context, Settings.HIDE_THREADS_BUTTON, L10n.t("Hide the Threads button"),
@@ -160,6 +235,10 @@ final class ProfilesCategory {
                 profiles.addPreference(toggle(context, Settings.HIDE_CREATE_BUTTON, L10n.t("Hide the Create button"),
                         L10n.t("Takes the plus for new posts off the top of your own profile. The other buttons "
                                 + "stay where they were.")));
+                profiles.addPreference(toggle(context, Settings.HIDE_EMPTY_PROFILE_PROMPT,
+                        L10n.t("Hide the empty profile prompt"),
+                        L10n.t("Takes the big prompt for your first post off your own profile while it has no "
+                                + "posts. Other people's profiles stay as they are.")));
                 profiles.addPreference(toggle(context, Settings.HIDE_SHARE_PROFILE_BUTTON, L10n.t("Hide Share profile"),
                         L10n.t("Takes the Share profile button off your profile, and Edit profile stretches to fill "
                                 + "the space.")));
@@ -196,6 +275,11 @@ final class ProfilesCategory {
                         L10n.t("Hide the other profile banners"),
                         L10n.t("Takes the rest of the banners under the bio off other people's profiles, like events, "
                                 + "fundraisers, schools and business hours. Yours keeps them.")));
+                if (PatchFamily.profileLinksInBuild()) {
+                    profiles.addPreference(toggle(context, Settings.HIDE_PROFILE_LINKS, L10n.t("Hide links"),
+                            L10n.t("Takes the row of links, like a website or a business's links, from under the bio "
+                                    + "on other people's profiles. Yours keeps it.")));
+                }
             }
             if (build.contains(PatchFamily.PROFILE_POSTS_LIST)) {
                 profiles.addPreference(toggle(context, Settings.PROFILE_POSTS_LIST, L10n.t("Show profile posts as a list"),
@@ -206,6 +290,11 @@ final class ProfilesCategory {
                 profiles.addPreference(toggle(context, Settings.PROFILE_GRID_JUMP, L10n.t("Jump a profile's posts to a date"),
                         L10n.t("Puts a calendar on a profile's top bar. Pick a day and the posts grid goes back to "
                                 + "that day. Pull down for the newest again.")));
+            }
+            if (build.contains(PatchFamily.PROFILE_REEL_SORT)) {
+                profiles.addPreference(toggle(context, Settings.PROFILE_REEL_SORT, L10n.t("Sort reels on profiles"),
+                        L10n.t("Puts the arrow next to Reels on every profile, so you can sort them by Latest or "
+                                + "Most viewed where Instagram took the choice away.")));
             }
         }
     }

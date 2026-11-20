@@ -357,7 +357,7 @@ public final class MediaSave {
                                 : page.manifest == null
                                 ? singleJob(application, page.renditions, page.video, !page.video, quality)
                                 : (into, progress) -> saveDash(application, "the carousel page", page.manifest,
-                                        page.renditions, into, progress, quality, compatible, convert);
+                                        page.renditions, page.details, into, progress, quality, compatible, convert);
                         result = job == null ? Downloader.Result.fail(Downloader.Status.BUILD_ERROR, "nothing to save")
                                 : job.run(writer, save);
                     } catch (Throwable failure) {
@@ -372,6 +372,7 @@ public final class MediaSave {
                         if (result.lower) lower++;
                         if (result.lower && result.lowStorage) lowStorage++;
                         DownloadHistory.record(application, key, writer, page.details);
+                        PhotoScrub.scrub(application, writer);
                         PostMetadata.tag(application, writer, page.details);
                     } else if (result.status == Downloader.Status.CANCELLED) {
                         skipped += snapshot.size() - index;
@@ -524,6 +525,15 @@ public final class MediaSave {
      * @return whether a save started. Never throws.
      */
     public static boolean savePictureBySize(Context context, List<Rendition> renditions, PostDetails details) {
+        return savePictureBySize(context, renditions, details, null);
+    }
+
+    /**
+     * As above, then hands [published] the gallery entry the save published, on the save's own
+     * thread, once the file is there. Not called when the save fails or is cancelled.
+     */
+    public static boolean savePictureBySize(Context context, List<Rendition> renditions, PostDetails details,
+            Consumer<String> published) {
         try {
             Context safe = ready(context);
             if (safe == null) return false;
@@ -537,7 +547,7 @@ public final class MediaSave {
                 return false;
             }
             saving(false, chosen, found, null, Dash.SINGLE_FILE, null);
-            return startPicture(safe, details, fileJob(safe, chosen.url, Downloader.Kind.IMAGE)) != null;
+            return startPicture(safe, details, fileJob(safe, chosen.url, Downloader.Kind.IMAGE), published) != null;
         } catch (Throwable t) {
             failure(() -> "the picture save could not start", t);
             return false;
@@ -1167,17 +1177,19 @@ public final class MediaSave {
         DownloadQuality quality = quality();
         boolean compatible = compatibleSaves();
         boolean convert = convertSaves();
-        return start(safe, true, details, (writer, progress) -> saveDash(safe, label, manifest, candidates, writer,
-                progress, quality, compatible, convert)) != null;
+        return start(safe, true, details, (writer, progress) -> saveDash(safe, label, manifest, candidates, details,
+                writer, progress, quality, compatible, convert)) != null;
     }
 
     /**
      * {@link #beginDash}'s save, on the worker: the manifest's tracks or the single file. The
      * quality, compatibility and conversion choices were read on the tap and are passed to every
      * helper, so a later setting change can't judge the fallback against a different quality.
+     * With Ask for VP9 instead of AV1 on, a manifest whose best picture is AV1 gets the website's
+     * VP9 of the post [details] names (#546, {@link WebManifest}).
      */
     private static Downloader.Result saveDash(Context application, String label, String manifest,
-            List<Rendition> renditions, MediaStoreWriter writer, Downloader.Progress progress,
+            List<Rendition> renditions, PostDetails details, MediaStoreWriter writer, Downloader.Progress progress,
             DownloadQuality quality, boolean compatible, boolean convert) {
         if (!DashManifest.withinLimits(manifest)) {
             info(() -> "the manifest of " + label + " is over the limits a save reads (" + manifest.length()
@@ -1185,10 +1197,11 @@ public final class MediaSave {
             return saveSingleVideo(application, renditions, Collections.emptyList(), Dash.SINGLE_FILE,
                 "the manifest is over the limits a save reads", null, quality, writer, progress);
         }
-        List<DashManifest.Track> tracks = new ArrayList<>();
+        List<DashManifest.Track> parsed = new ArrayList<>();
         for (DashManifest.Track track : DashManifest.parse(manifest)) {
-            if (MediaUrlPolicy.shapeRefusal(track.url) == null) tracks.add(track);
+            if (MediaUrlPolicy.shapeRefusal(track.url) == null) parsed.add(track);
         }
+        List<DashManifest.Track> tracks = Vp9Video.asked() ? WebManifest.withVp9(label, parsed, details) : parsed;
         renditions = metaOnly(renditions);
         boolean skipAv1 = skipsAv1();
         boolean skipHdr = skipsHdr();
@@ -1590,11 +1603,21 @@ public final class MediaSave {
      * already saved keeps apart from the video and from a photo of the same post.
      */
     static Thread startPicture(Context application, PostDetails details, Job job) {
-        return start(application, false, false, details, DownloadHistory.Kind.PICTURE, job);
+        return startPicture(application, details, job, null);
+    }
+
+    /** As above, handing [published] the gallery entry once the picture is saved. */
+    static Thread startPicture(Context application, PostDetails details, Job job, Consumer<String> published) {
+        return start(application, false, false, details, DownloadHistory.Kind.PICTURE, job, published);
     }
 
     private static Thread start(Context application, boolean video, boolean audio, PostDetails details,
             DownloadHistory.Kind kind, Job job) {
+        return start(application, video, audio, details, kind, job, null);
+    }
+
+    private static Thread start(Context application, boolean video, boolean audio, PostDetails details,
+            DownloadHistory.Kind kind, Job job, Consumer<String> published) {
         final PostDetails known = details == null ? PostDetails.NONE : details;
         // Read on the tap, for the account in front now. Null with Skip what's already saved off,
         // or for a save that doesn't know the media's id: it's saved as it always was.
@@ -1618,8 +1641,13 @@ public final class MediaSave {
                 else failure(() -> "save finished: " + result, null);
                 if (result.ok()) {
                     DownloadHistory.record(application, key, writer, known);
-                    // A photo or a video, after the file is published: tag it with where it came from.
-                    if (!audio) PostMetadata.tag(application, writer, known);
+                    // A photo or a video, after the file is published: take the hidden data out of
+                    // a photo, then tag it with where it came from.
+                    if (!audio) {
+                        PhotoScrub.scrub(application, writer);
+                        PostMetadata.tag(application, writer, known);
+                    }
+                    if (published != null) published(published, writer.publishedItem());
                 }
                 Feedback.show(application, message(application, result.status, writer.savedLocation(), result.lower,
                         result.lowStorage),
@@ -1629,6 +1657,15 @@ public final class MediaSave {
                 DownloadHistory.release(key);
             }
         }, save -> {}, () -> {});
+    }
+
+    /** Hands [published] the saved [item]. What it does after the save can't fail the save. */
+    private static void published(Consumer<String> published, String item) {
+        try {
+            if (item != null) published.accept(item);
+        } catch (Throwable t) {
+            failure(() -> "after the save", t);
+        }
     }
 
     private interface Work { void run(SaveControl.Save save); }

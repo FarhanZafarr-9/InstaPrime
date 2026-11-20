@@ -12,7 +12,6 @@ import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patches.instagram.FixtureDex
 import app.morphe.patches.instagram.download.MEDIA
-import app.morphe.patches.instagram.misc.extension.markers
 import app.morphe.patches.instagram.reels.partnership.ReelsPageSites
 import app.morphe.patches.shared.compat.AppCompatibilities
 import com.android.tools.smali.dexlib2.AccessFlags
@@ -109,7 +108,7 @@ class HideAiLabeledReelsHookTest {
         assertTrue("no fixture of a declared build", checked > 0)
     }
 
-    /** The same in the other seven builds of 451 (#77, #95), where every class and getter has another short name. */
+    /** The same in the other builds (#77, #95), where every class and getter has another short name. */
     @Test
     fun everyOtherBuildReadsTheLabelInstagramShows() {
         val checked = Fixtures.otherBuilds().map { bundle ->
@@ -126,9 +125,9 @@ class HideAiLabeledReelsHookTest {
      * - The getter is Media's one loading the hash of ai_label_info, and the label's getters are the
      *   ones of the class whose type name is XDTAILabelInfo loading the hashes of
      *   should_read_attribution_label and attribution_label_text.
-     * - Instagram's test for showing the AI label under a reel (both copies of the method marked
-     *   ClipsMediaItemInfoUtil_shouldShowAIGMMediaLabelSubtitle) reads those three fields and hands
-     *   the flag and the text to one check. That check answers true only past Boolean.TRUE.equals on
+     * - Instagram's test for showing the AI label under a reel (each copy, marked
+     *   ClipsMediaItemInfoUtil_shouldShowAIGMMediaLabelSubtitle up to 455) reads those three fields
+     *   and hands the flag and the text to one check. That check answers true only past Boolean.TRUE.equals on
      *   the flag and String.length on the text, which is the positive label the extension takes.
      * - The Reels impression logger, which names the label's type "ai_label_type", reads the same
      *   two getters through the same interface off the same Media getter.
@@ -141,11 +140,11 @@ class HideAiLabeledReelsHookTest {
         val interfaces = mutableListOf<ClassDef>()
         val shows = mutableListOf<Method>()
         FixtureDex.forEach(bundle) { dex ->
-            val marked = dex.stringSection.any { it.endsWith("_$LABEL_SUBTITLE") }
             for (classDef in dex.classes) {
                 if (classDef.type == labelType) interfaces += ImmutableClassDef.of(classDef)
                 if (labelType in classDef.interfaces) implementers += ImmutableClassDef.of(classDef)
-                if (marked) classDef.methods.filter { LABEL_SUBTITLE in it.markers() }.forEach { shows += ImmutableMethod.of(it) }
+                classDef.methods.filter { method -> method.code().any { it.method()?.isShowCheck() == true } && method.loads(AI_LABEL_FIELD.hashCode()) }
+                    .forEach { shows += ImmutableMethod.of(it) }
             }
         }
         val named = FixtureDex.classesLoading(bundle, AI_LABEL_TYPE_NAME)
@@ -156,19 +155,23 @@ class HideAiLabeledReelsHookTest {
 
         assertEquals("$label: Media's label getter", getter.name, sites.getter.name)
         assertEquals("$label: the label interface", labelType, sites.labelType)
-        val tree = implementers.single { classDef -> classDef.methods.any { method -> method.code().any { it.string() == AI_LABEL_TYPE_NAME } } &&
-            classDef.methods.any { it.loads(READS_LABEL_FIELD.hashCode()) } }
+        // 455's arm64 builds ask a Redex pool for the type name (LX/0005;->A00 on 386113969), so the
+        // tree is among the classes loading it either way, not only those holding the literal.
+        val namedTypes = named.mapTo(HashSet()) { it.type }
+        val tree = implementers.single { classDef -> classDef.type in namedTypes && classDef.methods.any { it.loads(READS_LABEL_FIELD.hashCode()) } }
         assertTrue("$label: ${sites.reads} reads $READS_LABEL_FIELD", tree.methods.single { it.name == sites.reads && it.parameterTypes.isEmpty() }.loads(READS_LABEL_FIELD.hashCode()))
         assertTrue("$label: ${sites.text} reads $LABEL_TEXT_FIELD", tree.methods.single { it.name == sites.text && it.parameterTypes.isEmpty() }.loads(LABEL_TEXT_FIELD.hashCode()))
 
-        assertEquals("$label: Instagram's tests for showing the AI label under a reel (452 folds the two into one)", 1, shows.size)
+        // 455 marked both copies (LX/02Ke;->A0C and the one inlined into the attribution list builder,
+        // LX/055a;->A03, on 386113969). 456 dropped the marker, so they're the methods reading Media's
+        // label field and handing a flag and a text to the check (LX/00z9;->A0B and A0C on 386214574,
+        // where A0B calls it twice).
+        assertTrue("$label: Instagram's tests for showing the AI label under a reel", shows.isNotEmpty())
         val checks = shows.map { method ->
-            for (field in listOf(AI_LABEL_FIELD, READS_LABEL_FIELD, LABEL_TEXT_FIELD)) {
+            for (field in listOf(READS_LABEL_FIELD, LABEL_TEXT_FIELD)) {
                 assertTrue("$label: ${method.definingClass}->${method.name} doesn't read $field", method.loads(field.hashCode()))
             }
-            method.code().mapNotNull { it.method() }.single { called ->
-                called.returnType == "Z" && called.parameterTypes.map(Any::toString) == listOf(SESSION, BOOLEAN, STRING, "Z", "Z")
-            }
+            method.code().mapNotNull { it.method() }.filter { it.isShowCheck() }.distinctBy { "${it.definingClass}->${it.name}" }.single()
         }.distinctBy { "${it.definingClass}->${it.name}" }
         for (check in checks) {
             val body = FixtureDex.classes(bundle, setOf(check.definingClass)).values.single().methods.single {
@@ -234,6 +237,9 @@ class HideAiLabeledReelsHookTest {
 
     private fun Instruction.method() = reference() as? MethodReference
 
+    /** Instagram's check for a positive AI label: (session, the label's flag, its text, two switches) to a yes or no. */
+    private fun MethodReference.isShowCheck() = returnType == "Z" && parameterTypes.map(Any::toString) == listOf(SESSION, BOOLEAN, STRING, "Z", "Z")
+
     private fun Instruction.string() = (reference() as? StringReference)?.string
 
     private fun Instruction.referenceText(): String? = when (val reference = reference()) {
@@ -244,7 +250,6 @@ class HideAiLabeledReelsHookTest {
     }
 
     private companion object {
-        const val LABEL_SUBTITLE = "ClipsMediaItemInfoUtil_shouldShowAIGMMediaLabelSubtitle"
         const val LABEL = "Lfixture/Label;"
         const val TREE = "Lfixture/LabelTree;"
         const val ITEM = "Lfixture/ClipsItem;"

@@ -10,6 +10,7 @@ import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragme
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.callBlockModeRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.category;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.changePinRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.chatGlassTintRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.lockDelayRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.lockToggle;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.toggle;
@@ -31,11 +32,13 @@ final class MessagesCategory {
         PreferenceCategory messages = null;
         if (build.contains(PatchFamily.NOTES_ROW) || build.contains(PatchFamily.SPLIT_NOTES_ROW)
                 || build.contains(PatchFamily.INBOX_SEARCH)
-                || build.contains(PatchFamily.INBOX_SUGGESTIONS) || build.contains(PatchFamily.INSTANTS)
+                || build.contains(PatchFamily.INBOX_SUGGESTIONS) || build.contains(PatchFamily.NEW_MESSAGE)
+                || build.contains(PatchFamily.INSTANTS)
                 || build.contains(PatchFamily.THREAD_SEEN) || build.contains(PatchFamily.TYPING)
                 || build.contains(PatchFamily.DM_MEDIA_SEEN)
                 || build.contains(PatchFamily.ACTIVE_STATUS)
                 || build.contains(PatchFamily.LAST_ACTIVE)
+                || build.contains(PatchFamily.SHORT_ACTIVE_NOW)
                 || build.contains(PatchFamily.MESSAGES_LOCK)
                 || build.contains(PatchFamily.SCREENSHOT_REPORTS)
                 || build.contains(PatchFamily.BLEND_VISITS)
@@ -48,12 +51,14 @@ final class MessagesCategory {
                 || build.contains(PatchFamily.PREVIEW_CHATS)
                 || build.contains(PatchFamily.ASK_BEFORE_CALL)
                 || build.contains(PatchFamily.CALL_BLOCKER)
+                || build.contains(PatchFamily.CALL_RECORDER)
                 || build.contains(PatchFamily.KINDNESS_REMINDER)
                 || build.contains(PatchFamily.MESSAGE_BOX)
                 || build.contains(PatchFamily.PLUS_MENU)
                 || build.contains(PatchFamily.MESSAGE_ACTIONS)
                 || build.contains(PatchFamily.MESSAGE_GESTURES)
                 || build.contains(PatchFamily.GLASS_CHAT)
+                || build.contains(PatchFamily.CENTER_CHAT_NAME)
                 || build.contains(PatchFamily.FULL_SCREEN_BARS)) {
             messages = category(screen, L10n.t("Messages"), SettingsIcons.CHATS,
                     L10n.t("Privacy and controls for your chats."));
@@ -81,6 +86,11 @@ final class MessagesCategory {
                         L10n.t("Takes the accounts Instagram suggests off the bottom of your messages. Your chats "
                                 + "and follow requests stay. Restart Instagram to see the change.")));
             }
+            if (build.contains(PatchFamily.NEW_MESSAGE)) {
+                messages.addPreference(toggle(context, Settings.HIDE_NEW_MESSAGE_SUGGESTIONS,
+                        L10n.t("Hide suggestions in New message"),
+                        L10n.t("Takes the Suggested people off the New message and new group screens. Search still finds anyone.")));
+            }
             if (build.contains(PatchFamily.INSTANTS)) {
                 messages.addPreference(toggle(context, Settings.HIDE_INSTANTS, L10n.t("Hide Instants"),
                         L10n.t("Removes the stack of Instants (quick photos from friends) from your messages. "
@@ -101,6 +111,10 @@ final class MessagesCategory {
                         L10n.t("Mark a chat seen when you reply"),
                         L10n.t("Sending a message in a chat lets the other person see that you've read what they "
                                 + "sent before it. Chats you don't answer stay unseen to them.")));
+                messages.addPreference(toggle(context, Settings.MARK_SEEN_ON_REACTION,
+                        L10n.t("Mark a chat seen when you react"),
+                        L10n.t("Reacting to a message in a chat lets the other person see that you've read up to that "
+                                + "message. What they sent after it stays unseen to them.")));
                 if (build.contains(PatchFamily.MESSAGES_LOCK)) {
                     // Both buttons learn which chat is open from the lock patch's ChatLocks, the only
                     // hook that reads a chat's thread, so a build without it would show two dead rows.
@@ -142,6 +156,11 @@ final class MessagesCategory {
                         L10n.t("Show when someone was last active"),
                         L10n.t("Under a name in your messages and in a chat, the exact time they were last on, like "
                                 + "Active at 3:42 PM, replaces Active 3h ago. Active now stays as it is.")));
+            }
+            if (build.contains(PatchFamily.SHORT_ACTIVE_NOW)) {
+                messages.addPreference(toggle(context, Settings.SHORT_ACTIVE_NOW, L10n.t("Shorter Active now"),
+                        L10n.t("Someone shows as Active now for one minute after they leave, like on the website, "
+                                + "instead of six and a half. Restart Instagram to see the change.")));
             }
             if (build.contains(PatchFamily.SCREENSHOT_REPORTS)) {
                 messages.addPreference(toggle(context, Settings.HIDE_SCREENSHOTS, L10n.t("Don't report screenshots"),
@@ -194,7 +213,8 @@ final class MessagesCategory {
                 messages.addPreference(toggle(context, Settings.EXPORT_CHAT, L10n.t("Export a chat as text"),
                         L10n.t("Open a chat, tap the clock button next to the call buttons at the top, or long press "
                                 + "the chat's name, and pick Export chat. The whole chat is saved as a text file in "
-                                + "Downloads, HushGram folder, one line per message.")));
+                                + "Downloads, HushGram folder, one line per message. Select messages in the same menu lets "
+                                + "you tick messages to copy, share or save.")));
             }
             if (build.contains(PatchFamily.ASK_BEFORE_CALL)) {
                 messages.addPreference(toggle(context, Settings.ASK_BEFORE_CALL, L10n.t("Ask before a call"),
@@ -209,10 +229,23 @@ final class MessagesCategory {
                 messages.addPreference(toggle(context, Settings.HIDE_BLEND_BUTTON, L10n.t("Hide Blend in chats"),
                         L10n.t("Hides the Blend and create Blend buttons from the chat header. "
                                 + "Reopen the chat after changing this option.")));
+                messages.addPreference(toggle(context, Settings.HIDE_CHAT_BACK_BUTTON, L10n.t("Hide the back button in chats"),
+                        L10n.t("Leaves the back arrow off the top left of a chat, and the picture and the name move "
+                                + "over. Swipe back or use the phone's back button to leave the chat. Shows the next "
+                                + "time a chat opens.")));
             }
             if (build.contains(PatchFamily.CALL_BLOCKER)) {
                 messages.addPreference(callBlockModeRow(context));
                 messages.addPreference(callBlockAccountsRow(context));
+                messages.addPreference(toggle(context, Settings.CALL_BLOCK_DECLINE, L10n.t("Decline calls that don't ring"),
+                        L10n.t("Calls kept quiet by Who can call you are also declined, the same as tapping Decline, "
+                                + "instead of being left unanswered.")));
+            }
+            if (build.contains(PatchFamily.CALL_RECORDER)) {
+                messages.addPreference(toggle(context, Settings.CALL_RECORDER, L10n.t("Record calls"),
+                        L10n.t("Adds a Record button to the call screen. It saves the call's sound, both sides, as an "
+                                + "audio file on your phone. Some places require everyone on the call to agree to "
+                                + "being recorded.")));
             }
             if (build.contains(PatchFamily.KINDNESS_REMINDER)) {
                 messages.addPreference(toggle(context, Settings.HIDE_KINDNESS_REMINDER, L10n.t("Hide the Community Standards reminder"),
@@ -253,6 +286,18 @@ final class MessagesCategory {
                 messages.addPreference(toggle(context, Settings.GLASS_CHAT, L10n.t("Glass in chats"),
                         L10n.t("Gives a chat's top bar and message bar frosted glass and puts the back, call and video buttons "
                                 + "on round glass circles. It shows the next time you open a chat. Needs Android 12 or newer for the blur.")));
+                messages.addPreference(toggle(context, Settings.GLASS_CHAT_TOP_BAR, L10n.t("Glass top bar in chats"),
+                        L10n.t("Turn it off to leave a chat's top bar as Instagram draws it, with no frosted band behind it. "
+                                + "The round glass buttons and the glass message bar stay.")));
+                messages.addPreference(chatGlassTintRow(context, Settings.GLASS_CHAT_TOP_BAR_OPACITY,
+                        L10n.t("Top bar tint in chats")));
+                messages.addPreference(chatGlassTintRow(context, Settings.GLASS_CHAT_BOX_OPACITY,
+                        L10n.t("Message bar tint")));
+            }
+            if (build.contains(PatchFamily.CENTER_CHAT_NAME)) {
+                messages.addPreference(toggle(context, Settings.CENTER_CHAT_NAME, L10n.t("Center names in chats"),
+                        L10n.t("Puts the name and username at the top of a chat in the middle of the bar. A long name "
+                                + "sits as near the middle as the call buttons leave room for.")));
             }
             if (build.contains(PatchFamily.FULL_SCREEN_BARS)) {
                 messages.addPreference(toggle(context, Settings.FULL_SCREEN_MESSAGES, L10n.t("Full screen Messages"),
@@ -276,6 +321,7 @@ final class MessagesCategory {
                 messages.addPreference(unlockWithRow(context));
                 messages.addPreference(changePinRow(context));
                 messages.addPreference(page.lockedChatsRow(context));
+                messages.addPreference(page.lockedCollectionsRow(context));
                 messages.addPreference(page.hiddenChatsRow(context));
                 messages.addPreference(toggle(context, Settings.DOUBLE_TAP_HIDDEN_CHATS,
                         L10n.t("Double-tap Messages for hidden chats"),
@@ -287,7 +333,7 @@ final class MessagesCategory {
         }
         if (messages == null) messages = category(screen, L10n.t("Messages"), SettingsIcons.CHATS,
                 L10n.t("Privacy and controls for your chats."));
-        messages.addPreference(toggle(context, Settings.HIDE_DM_COMPOSE_BUTTON, L10n.t("Hide compose button"),
+        messages.addPreference(toggle(context, Settings.HIDE_DM_COMPOSE_BUTTON, L10n.t("Hide the New message button"),
                 L10n.t("Hide the New message button in the inbox header.")));
         messages.addPreference(toggle(context, Settings.SETTINGS_BUTTON_IN_DM_HEADER, L10n.t("Settings button in DM header"),
                 L10n.t("Place InstaPrime settings before the New message button.")));

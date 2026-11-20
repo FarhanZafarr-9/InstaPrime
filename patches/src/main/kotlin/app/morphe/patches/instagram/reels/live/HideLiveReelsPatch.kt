@@ -4,16 +4,24 @@
  */
 package app.morphe.patches.instagram.reels.live
 
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.util.smali.ExternalLabel
 import app.morphe.patches.instagram.misc.extension.EXTENSION_PACKAGE
+import app.morphe.patches.instagram.misc.extension.classesAccessing
+import app.morphe.patches.instagram.misc.extension.classesCreating
+import app.morphe.patches.instagram.misc.extension.classesLoadingString
 import app.morphe.patches.instagram.misc.extension.enableStatus
 import app.morphe.patches.instagram.misc.extension.instagramExtensionPatch
 import app.morphe.patches.instagram.misc.extension.jumpTargets
-import app.morphe.patches.instagram.misc.extension.markers
+import app.morphe.patches.instagram.misc.extension.loadsString
+import app.morphe.patches.instagram.misc.extension.localRegisterCount
+import app.morphe.patches.instagram.misc.extension.parameterRegister
 import app.morphe.patches.instagram.misc.extension.requireStatusMethod
-import app.morphe.patches.instagram.misc.extension.typesMarked
 import app.morphe.patches.instagram.misc.settings.settingsPatch
 import app.morphe.patches.instagram.reels.partnership.ReelsPageSites
 import app.morphe.patches.instagram.reels.partnership.fillStub
@@ -38,12 +46,49 @@ import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 private const val PATCH = "Hide lives in Reels"
 internal const val LIVE_REELS = "$EXTENSION_PACKAGE/reels/LiveReels;"
 internal const val LIVE_PAGE_FILTER = "$LIVE_REELS->page(Ljava/util/List;Ljava/lang/String;)Ljava/util/List;"
+internal const val LIVE_ADDED_FILTER = "$LIVE_REELS->added(Ljava/util/List;Ljava/lang/String;I)Ljava/util/List;"
+internal const val LIVE_SINGLE_FILTER = "$LIVE_REELS->single(Ljava/lang/Object;Ljava/lang/String;I)I"
 
 /**
- * The marker of the method that works out what a live preview in Reels shows. It asks the Reels
- * item for its live preview part first, by that part's key, and stops when there isn't one.
+ * The trace names of Instagram's Reels adapter's two inserts of one item at a position, which put
+ * the item straight into the data source's items without its list add or insert. A live Instagram
+ * slips in this way after the Reels have run a while (#566).
  */
-internal const val LIVE_PREVIEW_STATE = "ClipsLivePreviewUseCase_getUiState"
+internal val REELS_SINGLE_INSERT_TRACES = listOf(
+    "ClipsStandaloneAdapterDataSource:insertItem",
+    "ClipsStandaloneAdapterDataSource:insertItemGranular",
+)
+
+/**
+ * The Reels viewer's data source has two ways a list joins its items: added at the end (a page, an
+ * ad fetch, a refresh) or inserted at a position (a chain, items the server places). The insert loads
+ * this trace name, and the add runs the helper loading [REELS_ADD_ITEM] for each item. 456 dropped
+ * the purge markers 455 named both methods by.
+ */
+internal const val REELS_INSERT_TRACE = "ClipsStandaloneAdapterDataSource:insertItemsGranular"
+
+/** The log label of the data source's helper that adds one item at the end. */
+internal const val REELS_ADD_ITEM = "addItemInternal()"
+
+private const val GET_MODULE_NAME = "getModuleName"
+
+/**
+ * The trace name of Instagram's Reels adapter's add, which may put a placeholder at the end of a list
+ * it adds, for the next page to show in once it's loaded, and checks whether its last item already is
+ * one. 455 marked that check ClipsViewerAdapter_maybeReturnGhostClipsItem; 456 dropped the marker.
+ */
+internal const val REELS_PLACEHOLDER = "ClipsViewerAdapter.addClipsItems"
+
+/**
+ * The image a live preview in Reels shows, which the method working out what the preview shows
+ * makes from the reel's broadcast ([BROADCAST]). That method asks the Reels item for its live preview
+ * part first, by that part's key, and stops when there isn't one. 455 marked it
+ * ClipsLivePreviewUseCase_getUiState; 456 dropped the marker, and it loads no string of its own.
+ */
+internal const val LIVE_PREVIEW_IMAGE = "Lcom/instagram/common/typedurl/SimpleImageUrl;"
+
+/** The broadcast a live reel carries, which the live preview's code reads off the reel's media. */
+internal const val BROADCAST = "Lcom/instagram/api/schemas/BroadcastIntf;"
 
 private const val OBJECT = "Ljava/lang/Object;"
 private const val STRING = "Ljava/lang/String;"
@@ -61,9 +106,11 @@ internal class LivePreviewKey(val key: FieldReference, val lookup: MethodReferen
 /**
  * How the live preview code tells a live part from an empty one. Instagram hands back a part for
  * every reel, so a part alone means nothing (#566). The code casts it to [part], reads its [tree],
- * and asks the tree through [read] for the value under [id], passing a [fallback] built from the part
- * and [fallbackCase] that works the value out when the tree doesn't hold it. A live part answers a
- * String there, and the code stops on anything else.
+ * and asks the tree through [read] for the value under [id], passing a [fallback] built from
+ * [fallbackCase] that works the value out when the tree doesn't hold it. A live part answers a
+ * String there, and the code stops on anything else. Up to 455 [read] is the tree's own (int,
+ * Function0) read and the fallback a Function0 holding the part too; from 456 it's a static helper
+ * handed the tree, a Function1 fallback holding the case alone, and the id.
  */
 internal class LiveCheck(
     val part: String,
@@ -72,27 +119,38 @@ internal class LiveCheck(
     val id: Int,
     val fallback: MethodReference,
     val fallbackCase: Int,
-)
+) {
+    /** Whether [read] is 456's static helper rather than the tree's own read. */
+    val throughHelper: Boolean get() = read.parameterTypes.size == 3
+}
 
 /** How far past the lookup the check is looked for. In 454 it ends 14 instructions on. */
 private const val LIVE_CHECK_REACH = 32
 
 private const val FUNCTION0 = "Lkotlin/jvm/functions/Function0;"
+private const val FUNCTION1 = "Lkotlin/jvm/functions/Function1;"
 
 private val LITERALS = setOf(Opcode.CONST_4, Opcode.CONST_16, Opcode.CONST, Opcode.CONST_HIGH16)
 
 /**
- * Finds [LivePreviewKey] in the one method marked [LIVE_PREVIEW_STATE]: a static field read straight
- * into a call of the Reels item's ([itemType]) one-argument method answering an Object, with that
- * field as the argument, and the [LiveCheck] that follows it. Every such read there has to agree. The
- * field, its class, the method, the item and everything the check touches all have to be public so the
+ * Finds [LivePreviewKey] in the live preview's state, the one method taking only a Reels item
+ * ([itemType]) that makes a [LIVE_PREVIEW_IMAGE] and asks for a [BROADCAST]: a static field read
+ * straight into a call of the item's one-argument method answering an Object, with that field as the
+ * argument, and the [LiveCheck] that follows it. Every such read there has to agree. The field, its
+ * class, the method, the item and everything the check touches all have to be public so the
  * extension's stub can reach them, and the field's type has to be the key type the method takes.
  */
 internal fun BytecodePatchContext.findLivePreviewKey(itemType: String): LivePreviewKey {
-    val marked = typesMarked(LIVE_PREVIEW_STATE).sorted()
-        .flatMap { type -> classDefBy(type).methods.filter { LIVE_PREVIEW_STATE in it.markers() } }
-    val state = marked.singleOrNull()
-        ?: refuse("expected one method marked $LIVE_PREVIEW_STATE, found ${marked.size}")
+    val states = classesCreating(LIVE_PREVIEW_IMAGE).sortedBy { it.type }.flatMap { it.methods }.filter { method ->
+        val code = method.implementation?.instructions ?: return@filter false
+        method.parameterTypes.map(Any::toString) == listOf(itemType) &&
+            code.any { it.opcode == Opcode.NEW_INSTANCE && ((it as ReferenceInstruction).reference as TypeReference).type == LIVE_PREVIEW_IMAGE } &&
+            code.any { ((it as? ReferenceInstruction)?.reference as? MethodReference)?.returnType == BROADCAST }
+    }
+    val state = states.singleOrNull() ?: refuse(
+        "expected one method taking a Reels item ($itemType) that makes a $LIVE_PREVIEW_IMAGE from a $BROADCAST, " +
+            "found ${states.map { it.describe() }}",
+    )
     val code = state.implementation?.instructions?.toList().orEmpty()
     val targets = state.jumpTargets()
     val found = LinkedHashMap<String, Pair<FieldReference, MethodReference>>()
@@ -195,24 +253,35 @@ private fun liveCheck(code: List<Instruction>, targets: Set<Int>, call: Int): Li
             Opcode.INVOKE_DIRECT -> {
                 val method = (instruction as ReferenceInstruction).reference as? MethodReference ?: continue
                 val passed = instruction.registers()
-                if (method.definingClass == made && method.name == "<init>" &&
-                    method.parameterTypes.map(Any::toString) == listOf(OBJECT, "I") &&
-                    passed.size == 3 && passed[0] == madeAt && passed[1] == part
-                ) {
+                if (method.definingClass != made || method.name != "<init>" || passed.firstOrNull() != madeAt) continue
+                val parameters = method.parameterTypes.map(Any::toString)
+                if (parameters == listOf(OBJECT, "I") && passed.size == 3 && passed[1] == part) {
                     fallback = method
                     fallbackCase = literals[passed[2]]
+                } else if (parameters == listOf("I") && passed.size == 2) {
+                    // 456's fallback holds the case alone.
+                    fallback = method
+                    fallbackCase = literals[passed[1]]
                 }
             }
-            Opcode.INVOKE_INTERFACE, Opcode.INVOKE_INTERFACE_RANGE -> {
+            Opcode.INVOKE_INTERFACE, Opcode.INVOKE_INTERFACE_RANGE, Opcode.INVOKE_STATIC, Opcode.INVOKE_STATIC_RANGE -> {
                 val method = (instruction as ReferenceInstruction).reference as? MethodReference ?: continue
                 val passed = instruction.registers()
                 val treeRead = tree ?: continue
                 val made0 = fallback ?: continue
-                if (passed.size != 3 || passed[0] != treeAt || passed[2] != madeAt) continue
-                if (method.definingClass != treeRead.type || method.returnType != OBJECT ||
-                    method.parameterTypes.map(Any::toString) != listOf("I", FUNCTION0)
-                ) continue
-                val id = literals[passed[1]] ?: return null
+                val parameters = method.parameterTypes.map(Any::toString)
+                val held = made0.parameterTypes.map(Any::toString)
+                val idAt = if (opcode == Opcode.INVOKE_STATIC || opcode == Opcode.INVOKE_STATIC_RANGE) {
+                    // 456 reads the tree through a static helper handed the tree, the fallback and the id.
+                    if (passed.size != 3 || passed[0] != treeAt || passed[1] != madeAt || held != listOf("I")) continue
+                    if (method.returnType != OBJECT || parameters != listOf(treeRead.type, FUNCTION1, "I")) continue
+                    passed[2]
+                } else {
+                    if (passed.size != 3 || passed[0] != treeAt || passed[2] != madeAt || held != listOf(OBJECT, "I")) continue
+                    if (method.definingClass != treeRead.type || method.returnType != OBJECT || parameters != listOf("I", FUNCTION0)) continue
+                    passed[1]
+                }
+                val id = literals[idAt] ?: return null
                 val answer = code.getOrNull(at + 1)?.takeIf { it.opcode == Opcode.MOVE_RESULT_OBJECT } ?: return null
                 val string = code.getOrNull(at + 2)?.takeIf { it.opcode == Opcode.CHECK_CAST } ?: return null
                 if ((string as OneRegisterInstruction).registerA != (answer as OneRegisterInstruction).registerA) return null
@@ -250,21 +319,34 @@ private fun BytecodePatchContext.requireReachable(check: LiveCheck) {
     if (!AccessFlags.PUBLIC.isSet(part.accessFlags) || !AccessFlags.PUBLIC.isSet(tree.accessFlags) ||
         AccessFlags.STATIC.isSet(tree.accessFlags)
     ) refuse("${check.tree} isn't a public field the extension can read")
-    val treeType = classDefByOrNull(check.tree.type) ?: refuse("${check.tree.type} isn't a class of the app")
-    val read = treeType.methods.firstOrNull {
-        it.name == check.read.name && it.returnType == OBJECT && it.parameterTypes.map(Any::toString) == listOf("I", FUNCTION0)
-    } ?: refuse("${check.read} isn't declared by ${check.tree.type}")
-    if (!AccessFlags.PUBLIC.isSet(treeType.accessFlags) || !AccessFlags.INTERFACE.isSet(treeType.accessFlags) ||
-        !AccessFlags.PUBLIC.isSet(read.accessFlags)
-    ) refuse("${check.read} isn't a public interface method the extension can call")
+    val readParameters = check.read.parameterTypes.map(Any::toString)
+    if (check.throughHelper) {
+        val helper = classDefByOrNull(check.read.definingClass) ?: refuse("${check.read.definingClass} isn't a class of the app")
+        val read = helper.methods.firstOrNull {
+            it.name == check.read.name && it.returnType == OBJECT && it.parameterTypes.map(Any::toString) == readParameters
+        } ?: refuse("${check.read} isn't declared by ${helper.type}")
+        if (!AccessFlags.PUBLIC.isSet(helper.accessFlags) || !AccessFlags.PUBLIC.isSet(read.accessFlags) ||
+            !AccessFlags.STATIC.isSet(read.accessFlags)
+        ) refuse("${check.read} isn't a public static method the extension can call")
+    } else {
+        val treeType = classDefByOrNull(check.tree.type) ?: refuse("${check.tree.type} isn't a class of the app")
+        val read = treeType.methods.firstOrNull {
+            it.name == check.read.name && it.returnType == OBJECT && it.parameterTypes.map(Any::toString) == listOf("I", FUNCTION0)
+        } ?: refuse("${check.read} isn't declared by ${check.tree.type}")
+        if (!AccessFlags.PUBLIC.isSet(treeType.accessFlags) || !AccessFlags.INTERFACE.isSet(treeType.accessFlags) ||
+            !AccessFlags.PUBLIC.isSet(read.accessFlags)
+        ) refuse("${check.read} isn't a public interface method the extension can call")
+    }
+    val fallbackParameters = check.fallback.parameterTypes.map(Any::toString)
     val made = classDefByOrNull(check.fallback.definingClass) ?: refuse("${check.fallback.definingClass} isn't a class of the app")
     val made0 = made.methods.firstOrNull {
-        it.name == "<init>" && it.parameterTypes.map(Any::toString) == listOf(OBJECT, "I")
+        it.name == "<init>" && it.parameterTypes.map(Any::toString) == fallbackParameters
     } ?: refuse("${check.fallback} isn't declared by ${made.type}")
     if (!AccessFlags.PUBLIC.isSet(made.accessFlags) || !AccessFlags.PUBLIC.isSet(made0.accessFlags) ||
         AccessFlags.ABSTRACT.isSet(made.accessFlags)
     ) refuse("${check.fallback} isn't a public constructor the extension can call")
-    if (FUNCTION0 !in made.interfaces) refuse("${made.type} isn't a $FUNCTION0")
+    val function = if (check.throughHelper) FUNCTION1 else FUNCTION0
+    if (function !in made.interfaces) refuse("${made.type} isn't a $function")
 }
 
 private fun LiveCheck.describe() = "$part $tree $read $id $fallback $fallbackCase"
@@ -306,9 +388,9 @@ internal fun BytecodePatchContext.fillLivePreview(itemType: String, live: LivePr
             if-eqz v1, :none
             new-instance v2, ${check.fallback.definingClass}
             const v3, ${check.fallbackCase}
-            invoke-direct { v2, v0, v3 }, ${check.fallback}
+            ${if (check.throughHelper) "invoke-direct { v2, v3 }, ${check.fallback}" else "invoke-direct { v2, v0, v3 }, ${check.fallback}"}
             const v3, ${check.id}
-            invoke-interface { v1, v3, v2 }, ${check.read}
+            ${if (check.throughHelper) "invoke-static { v1, v2, v3 }, ${check.read}" else "invoke-interface { v1, v3, v2 }, ${check.read}"}
             move-result-object v1
             instance-of v1, v1, $STRING
             if-eqz v1, :none
@@ -317,7 +399,304 @@ internal fun BytecodePatchContext.fillLivePreview(itemType: String, live: LivePr
     )
 }
 
+/**
+ * How a Reels item is told for the placeholder Instagram's adapter puts at the end of a list it adds
+ * while the next page loads: its [kind], read off the item, is the one the static [placeholder] holds.
+ */
+internal class ReelsPlaceholder(val kind: FieldReference, val placeholder: FieldReference)
+
+/**
+ * Finds [ReelsPlaceholder] in the methods loading [REELS_PLACEHOLDER], where the adapter checks
+ * whether its last item is the placeholder already: a field of the Reels item ([itemType]) read,
+ * straight followed by a static of that field's type read off that type, the two compared at once,
+ * with nothing jumping in between. Every such compare there has to agree, and the fields and the
+ * classes holding them have to be public so the extension's stub can reach them.
+ */
+internal fun BytecodePatchContext.findReelsPlaceholder(itemType: String): ReelsPlaceholder {
+    val marked = classesLoadingString(REELS_PLACEHOLDER).sortedBy { it.type }
+        .flatMap { it.methods }.filter { loadsString(it, REELS_PLACEHOLDER) }
+    if (marked.isEmpty()) refuse("expected a method loading $REELS_PLACEHOLDER, found none")
+    val found = LinkedHashMap<String, ReelsPlaceholder>()
+    for (method in marked) {
+        val code = method.implementation?.instructions?.toList().orEmpty()
+        val targets = method.jumpTargets()
+        for (at in 0 until code.size - 2) {
+            if (code[at].opcode != Opcode.IGET_OBJECT || code[at + 1].opcode != Opcode.SGET_OBJECT) continue
+            val compare = code[at + 2]
+            if (compare.opcode != Opcode.IF_EQ && compare.opcode != Opcode.IF_NE) continue
+            if (at + 1 in targets || at + 2 in targets) continue
+            val kind = (code[at] as ReferenceInstruction).reference as? FieldReference ?: continue
+            val placeholder = (code[at + 1] as ReferenceInstruction).reference as? FieldReference ?: continue
+            if (kind.definingClass != itemType || placeholder.definingClass != kind.type || placeholder.type != kind.type) continue
+            val read = (code[at] as TwoRegisterInstruction).registerA
+            val held = (code[at + 1] as OneRegisterInstruction).registerA
+            val compared = compare as TwoRegisterInstruction
+            if (read == held || setOf(compared.registerA, compared.registerB) != setOf(read, held)) continue
+            found["$kind $placeholder"] = ReelsPlaceholder(kind, placeholder)
+        }
+    }
+    val check = found.values.singleOrNull() ?: refuse(
+        if (found.isEmpty()) "${marked.map { it.describe() }} don't compare a Reels item's ($itemType) kind with a placeholder's"
+        else "the methods loading $REELS_PLACEHOLDER tell the placeholder in more than one way: ${found.keys}",
+    )
+
+    val item = classDefBy(itemType)
+    val kind = item.fields.firstOrNull { it.name == check.kind.name && it.type == check.kind.type }
+        ?: refuse("${check.kind} isn't declared by $itemType")
+    if (!AccessFlags.PUBLIC.isSet(item.accessFlags) || !AccessFlags.PUBLIC.isSet(kind.accessFlags) ||
+        AccessFlags.STATIC.isSet(kind.accessFlags)
+    ) refuse("${check.kind} isn't a public field the extension can read")
+    val holder = classDefByOrNull(check.placeholder.definingClass) ?: refuse("${check.placeholder.definingClass} isn't a class of the app")
+    val placeholder = holder.fields.firstOrNull { it.name == check.placeholder.name && it.type == check.placeholder.type }
+        ?: refuse("${check.placeholder} isn't in the app")
+    if (!AccessFlags.PUBLIC.isSet(holder.accessFlags) || !AccessFlags.PUBLIC.isSet(placeholder.accessFlags) ||
+        !AccessFlags.STATIC.isSet(placeholder.accessFlags)
+    ) refuse("${check.placeholder} isn't a public static field the extension can read")
+    if (classDefByOrNull(LIVE_REELS)?.methods?.none { it.isStaticStub("placeholder", listOf(OBJECT), "Z") } != false) {
+        refuse("the extension has no static placeholder(Object)boolean to fill")
+    }
+    return check
+}
+
+/**
+ * Fills the extension's placeholder(Object)boolean stub for Reels items of [itemType]: true when the
+ * item's kind is the placeholder's, the compare Instagram's adapter makes, and false for anything else.
+ */
+internal fun BytecodePatchContext.fillReelsPlaceholder(itemType: String, check: ReelsPlaceholder) {
+    fillStub(
+        LIVE_REELS, "placeholder", "Z", 3,
+        """
+            instance-of v0, p0, $itemType
+            if-eqz v0, :no
+            check-cast p0, $itemType
+            iget-object v0, p0, ${check.kind}
+            sget-object v1, ${check.placeholder}
+            if-ne v0, v1, :no
+            const/4 v0, 0x1
+            return v0
+            :no
+            const/4 v0, 0x0
+            return v0
+        """,
+    )
+}
+
+/**
+ * Where the Reels viewer's data source, [dataSource], takes a list into its items: [inserts], each
+ * method's descriptor with the index of its List parameter, its [moduleField], the viewer's module
+ * name, and [size], how many items it holds.
+ */
+internal class ReelsItemInserts(
+    val dataSource: String,
+    val moduleField: FieldReference,
+    val size: MethodReference,
+    val inserts: List<Pair<String, Int>>,
+)
+
+/**
+ * Finds [ReelsItemInserts]: the one method loading [REELS_INSERT_TRACE], an instance (int, List)Z, and
+ * on its class the instance (List)V that runs the one helper loading [REELS_ADD_ITEM]. The add may hand
+ * its list to a sibling (List)V running the helper too, so it's the one no other such sibling calls.
+ * That class keeps what its viewer's getModuleName answered in one String field in its constructor,
+ * which nothing else writes, and answers its own size()I. Each method needs three locals for the hook
+ * and nothing jumping to its first instruction, and [extension] a static added(List, String, int)List.
+ * A failure names [patch].
+ */
+internal fun BytecodePatchContext.findReelsItemInserts(patch: String = PATCH, extension: String = LIVE_REELS): ReelsItemInserts {
+    fun refuse(detail: String): Nothing = throw PatchException("$patch: $detail")
+    val traced = classesLoadingString(REELS_INSERT_TRACE).flatMap { it.methods }.filter { loadsString(it, REELS_INSERT_TRACE) }
+    val insert = traced.singleOrNull() ?: refuse("expected one method loading $REELS_INSERT_TRACE, found ${traced.size}")
+    val dataSource = insert.definingClass
+    val source = classDefBy(dataSource)
+    val helpers = source.methods.filter { loadsString(it, REELS_ADD_ITEM) }
+    val helper = helpers.singleOrNull()
+        ?: refuse("expected one method of $dataSource loading $REELS_ADD_ITEM, found ${helpers.map { it.describe() }}")
+    val adding = source.methods.filter { method ->
+        !AccessFlags.STATIC.isSet(method.accessFlags) && method.parameterTypes.map(Any::toString) == listOf(LIST) &&
+            method.returnType == "V" && method.calls(helper)
+    }
+    val outer = adding.filter { method -> adding.none { other -> other !== method && other.calls(method) } }
+    val add = outer.singleOrNull()
+        ?: refuse("expected one (List)V of $dataSource adding its items through ${helper.describe()}, found ${outer.map { it.describe() }}")
+    val shapes = listOf(add to (listOf(LIST) to "V"), insert to (listOf("I", LIST) to "Z"))
+    for ((method, shape) in shapes) {
+        val (parameters, returns) = shape
+        if (AccessFlags.STATIC.isSet(method.accessFlags) || method.implementation == null ||
+            method.parameterTypes.map(Any::toString) != parameters || method.returnType != returns
+        ) refuse("expected ${method.describe()} to be an instance method taking $parameters and answering $returns")
+    }
+
+    val kept = source.methods.filter { it.name == "<init>" }.flatMap { constructor ->
+        val code = constructor.implementation?.instructions?.toList().orEmpty()
+        val self = constructor.localRegisterCount()
+        val targets = constructor.jumpTargets()
+        code.indices.mapNotNull { at ->
+            val field = (code[at] as? ReferenceInstruction)?.reference as? FieldReference ?: return@mapNotNull null
+            if (code[at].opcode != Opcode.IPUT_OBJECT || field.definingClass != dataSource || field.type != STRING) return@mapNotNull null
+            val write = code[at] as TwoRegisterInstruction
+            if (write.registerB != self || at < 2 || at in targets || at - 1 in targets) return@mapNotNull null
+            val result = code[at - 1].takeIf { it.opcode == Opcode.MOVE_RESULT_OBJECT } as? OneRegisterInstruction
+            val called = (code[at - 2] as? ReferenceInstruction)?.reference as? MethodReference
+            if (result?.registerA != write.registerA || called == null || called.name != GET_MODULE_NAME ||
+                called.parameterTypes.isNotEmpty() || called.returnType != STRING
+            ) return@mapNotNull null
+            field
+        }
+    }.distinctBy { it.toString() }
+    val moduleField = kept.singleOrNull()
+        ?: refuse("expected $dataSource's constructor to keep one module name from $GET_MODULE_NAME, found ${kept.map { it.name }}")
+    val writers = source.methods.filter { method ->
+        method.implementation?.instructions?.any { instruction ->
+            val written = (instruction as? ReferenceInstruction)?.reference as? FieldReference
+            instruction.opcode == Opcode.IPUT_OBJECT && written?.definingClass == dataSource && written.name == moduleField.name
+        } == true
+    }
+    val outside = classesAccessing(dataSource, moduleField.name, Opcode.IPUT_OBJECT).map { it.type }.filter { it != dataSource }
+    if (writers.any { it.name != "<init>" } || outside.isNotEmpty()) {
+        refuse("$moduleField is written by ${writers.filter { it.name != "<init>" }.map { it.describe() } + outside}, not only $dataSource's constructor")
+    }
+
+    val size = source.methods.firstOrNull {
+        it.name == "size" && it.parameterTypes.isEmpty() && it.returnType == "I" &&
+            !AccessFlags.STATIC.isSet(it.accessFlags) && it.implementation != null
+    } ?: refuse("$dataSource doesn't answer its own size()I")
+
+    val inserts = shapes.map { (method, _) ->
+        if (method.localRegisterCount() < 3) refuse("${method.describe()} has ${method.localRegisterCount()} local register(s), needs 3")
+        if (0 in method.jumpTargets()) refuse("${method.describe()} jumps back to its first instruction")
+        if ((method.implementation?.registerCount ?: 0) > 256) refuse("${method.describe()} has more registers than the hook can name")
+        "${method.name}(${method.parameterTypes.joinToString("")})${method.returnType}" to method.parameterTypes.map(Any::toString).indexOf(LIST)
+    }
+    if (classDefByOrNull(extension)?.methods?.none { it.isStaticStub("added", listOf(LIST, STRING, "I"), LIST) } != false) {
+        refuse("the extension has no static added(List, String, int)List")
+    }
+    return ReelsItemInserts(dataSource, moduleField, size, inserts)
+}
+
+/**
+ * Hands the list each of [sites]' inserts takes to [filter] first thing, with the data source's
+ * module name and size, and puts the list it answers in the parameter's place. Nothing jumps to the
+ * first instruction and the locals hold nothing yet, so the hook borrows v0 to v2. A second patch's
+ * hook goes in ahead of the first, and both read the list from the parameter.
+ */
+internal fun BytecodePatchContext.filterReelsItemInserts(sites: ReelsItemInserts, filter: String = LIVE_ADDED_FILTER) {
+    val methods = mutableClassDefBy(sites.dataSource).methods
+    for ((descriptor, listIndex) in sites.inserts) {
+        val method = methods.single { "${it.name}(${it.parameterTypes.joinToString("")})${it.returnType}" == descriptor }
+        val list = method.parameterRegister(listIndex)
+        method.addInstructions(
+            0,
+            """
+                move-object/from16 v0, p0
+                invoke-virtual { v0 }, ${sites.size}
+                move-result v1
+                iget-object v0, v0, ${sites.moduleField}
+                move-object/from16 v2, $list
+                invoke-static { v2, v0, v1 }, $filter
+                move-result-object v2
+                move-object/from16 $list, v2
+            """,
+        )
+    }
+}
+
+/**
+ * One of the Reels adapter's inserts of a single item: the method's [type] and [descriptor], and
+ * [dataSource], the adapter's field holding the data source the item goes into.
+ */
+internal class ReelsSingleInsert(val type: String, val descriptor: String, val dataSource: FieldReference)
+
+/**
+ * Finds the [ReelsSingleInsert]s: for each of [REELS_SINGLE_INSERT_TRACES], the one method loading
+ * it, an instance (item, int)Z with no switch (a Redex merge of several methods dispatches on one),
+ * three locals for the hook and nothing jumping to its first instruction. Its field is the one it
+ * reads off this and casts straight to [sites]' data source, read from Instagram's own code. The
+ * extension needs a static single(Object, String, int)int.
+ */
+internal fun BytecodePatchContext.findReelsSingleInserts(sites: ReelsItemInserts): List<ReelsSingleInsert> {
+    val found = REELS_SINGLE_INSERT_TRACES.map { trace ->
+        val traced = classesLoadingString(trace).flatMap { it.methods }.filter { loadsString(it, trace) }
+        val insert = traced.singleOrNull() ?: refuse("expected one method loading $trace, found ${traced.size}")
+        val parameters = insert.parameterTypes.map(Any::toString)
+        if (AccessFlags.STATIC.isSet(insert.accessFlags) || insert.implementation == null || parameters.size != 2 ||
+            !parameters[0].startsWith("L") || parameters[1] != "I" || insert.returnType != "Z"
+        ) refuse("expected ${insert.describe()} to be an instance method taking an item and an int and answering Z")
+        val code = insert.implementation?.instructions?.toList().orEmpty()
+        if (code.any { it.opcode == Opcode.PACKED_SWITCH || it.opcode == Opcode.SPARSE_SWITCH }) {
+            refuse("${insert.describe()} switches, so it may be several methods in one")
+        }
+        if (insert.localRegisterCount() < 3) refuse("${insert.describe()} has ${insert.localRegisterCount()} local register(s), needs 3")
+        if (0 in insert.jumpTargets()) refuse("${insert.describe()} jumps back to its first instruction")
+        val self = insert.localRegisterCount()
+        val fields = code.indices.mapNotNull { at ->
+            val read = code[at]
+            val field = (read as? ReferenceInstruction)?.reference as? FieldReference ?: return@mapNotNull null
+            if (read.opcode != Opcode.IGET_OBJECT || (read as TwoRegisterInstruction).registerB != self ||
+                field.definingClass != insert.definingClass
+            ) return@mapNotNull null
+            val cast = code.getOrNull(at + 1)
+            val type = (cast as? ReferenceInstruction)?.reference as? TypeReference
+            if (cast?.opcode != Opcode.CHECK_CAST || (cast as OneRegisterInstruction).registerA != read.registerA ||
+                type?.type != sites.dataSource
+            ) return@mapNotNull null
+            field
+        }.distinctBy { it.toString() }
+        val field = fields.singleOrNull()
+            ?: refuse("expected ${insert.describe()} to read one field of its own as ${sites.dataSource}, found ${fields.map { it.name }}")
+        ReelsSingleInsert(insert.definingClass, "${insert.name}(${parameters.joinToString("")})Z", field)
+    }
+    if (classDefByOrNull(LIVE_REELS)?.methods?.none { it.isStaticStub("single", listOf(OBJECT, STRING, "I"), "I") } != false) {
+        refuse("the extension has no static single(Object, String, int)int")
+    }
+    return found
+}
+
+/**
+ * Hands the item each of [inserts] takes to [LIVE_SINGLE_FILTER] first thing, with the module name
+ * and size of the data source it goes into, and answers false, as Instagram's insert does for a
+ * position it can't take, when the filter says the item is a live to leave out. An adapter whose
+ * field holds something else inserts as it would. The return is gated on the item, so the rest of
+ * the insert runs for anything that isn't a live. Nothing jumps to the first instruction and the
+ * locals hold nothing yet, so the hook borrows v0 to v2.
+ */
+internal fun BytecodePatchContext.filterReelsSingleInserts(sites: ReelsItemInserts, inserts: List<ReelsSingleInsert>) {
+    for (insert in inserts) {
+        val method = mutableClassDefBy(insert.type).methods.single {
+            "${it.name}(${it.parameterTypes.joinToString("")})${it.returnType}" == insert.descriptor
+        }
+        val item = method.parameterRegister(0)
+        method.addInstructionsWithLabels(
+            0,
+            """
+                move-object/from16 v0, p0
+                iget-object v0, v0, ${insert.dataSource}
+                instance-of v1, v0, ${sites.dataSource}
+                if-eqz v1, :insert
+                check-cast v0, ${sites.dataSource}
+                invoke-virtual { v0 }, ${sites.size}
+                move-result v1
+                iget-object v0, v0, ${sites.moduleField}
+                move-object/from16 v2, $item
+                invoke-static { v2, v0, v1 }, $LIVE_SINGLE_FILTER
+                move-result v0
+                if-eqz v0, :insert
+                const/4 v0, 0x0
+                return v0
+            """,
+            ExternalLabel("insert", method.getInstruction(0)),
+        )
+    }
+}
+
 private fun Method.describe() = "$definingClass->$name(${parameterTypes.joinToString("")})$returnType"
+
+/** Whether this method invokes [target]. */
+private fun Method.calls(target: Method): Boolean = implementation?.instructions?.any { instruction ->
+    val called = (instruction as? ReferenceInstruction)?.reference as? MethodReference ?: return@any false
+    called.definingClass == target.definingClass && called.name == target.name &&
+        called.returnType == target.returnType &&
+        called.parameterTypes.map(Any::toString) == target.parameterTypes.map(Any::toString)
+} == true
 
 /** The registers an invoke passes, the receiver first. */
 private fun Instruction.registers(): List<Int> = when (this) {
@@ -345,7 +724,13 @@ val hideLiveReelsPatch = bytecodePatch(
         requireStatusMethod("liveReels")
         val page = findReelsPage(PATCH)
         val live = findLivePreviewKey(page.itemType)
+        val inserts = findReelsItemInserts()
+        val singles = findReelsSingleInserts(inserts)
+        val placeholder = findReelsPlaceholder(page.itemType)
         hideLiveReels(page, live)
+        fillReelsPlaceholder(page.itemType, placeholder)
+        filterReelsItemInserts(inserts)
+        filterReelsSingleInserts(inserts, singles)
         enableStatus("liveReels")
     }
 }

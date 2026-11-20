@@ -175,7 +175,8 @@ public class ProfilePictureViewerTest {
     }
 
     @Test public void loadingKeepsCloseAvailableAndSaveDisabledUntilThePictureIsReady() {
-        ProfilePictureViewer.Screen screen = new ProfilePictureViewer.Screen(activity.get(), sizes(), "someone", save);
+        ProfilePictureViewer.Screen screen = new ProfilePictureViewer.Screen(activity.get(), sizes(), "someone", save,
+                ProfilePicture::viewing);
         screen.dialog.show();
         assertTrue(screen.close.isEnabled());
         assertFalse(screen.save.isEnabled());
@@ -214,7 +215,8 @@ public class ProfilePictureViewerTest {
     }
 
     @Test public void closingWhileLoadingNeverBringsThePictureOrSaveBack() {
-        ProfilePictureViewer.Screen screen = new ProfilePictureViewer.Screen(activity.get(), sizes(), "someone", save);
+        ProfilePictureViewer.Screen screen = new ProfilePictureViewer.Screen(activity.get(), sizes(), "someone", save,
+                ProfilePicture::viewing);
         screen.dialog.show();
         screen.close.performClick();
         screen.shown(new ProfilePictureViewer.Picture(Bitmap.createBitmap(120, 80, Bitmap.Config.ARGB_8888), 120));
@@ -227,7 +229,7 @@ public class ProfilePictureViewerTest {
 
     @Test public void failingToQueueASaveKeepsTheViewerOpenAndSaysWhy() {
         ProfilePictureViewer.Screen screen = new ProfilePictureViewer.Screen(activity.get(), sizes(), "someone",
-                (context, renditions, details) -> false);
+                (context, renditions, details) -> false, ProfilePicture::viewing);
         screen.dialog.show();
         screen.shown(new ProfilePictureViewer.Picture(Bitmap.createBitmap(120, 80, Bitmap.Config.ARGB_8888), 120));
         screen.save.performClick();
@@ -241,7 +243,8 @@ public class ProfilePictureViewerTest {
     @Test @SuppressWarnings("deprecation")
     public void viewerKeepsItsBlackSurfaceAndReadableSystemBarsOverALightHost() {
         activity.get().setTheme(android.R.style.Theme_Material_Light_NoActionBar);
-        ProfilePictureViewer.Screen screen = new ProfilePictureViewer.Screen(activity.get(), sizes(), "someone", save);
+        ProfilePictureViewer.Screen screen = new ProfilePictureViewer.Screen(activity.get(), sizes(), "someone", save,
+                ProfilePicture::viewing);
         screen.dialog.show();
         View root = (View) screen.picture.getParent().getParent();
         assertEquals("the surface behind transparent system bars stays black", Color.BLACK,
@@ -266,7 +269,8 @@ public class ProfilePictureViewerTest {
 
     @Test @SuppressWarnings("deprecation")
     public void navigationGestureAndKeyboardInsetsKeepTheToolbarAndPictureClear() throws Exception {
-        ProfilePictureViewer.Screen screen = new ProfilePictureViewer.Screen(activity.get(), sizes(), "someone", save);
+        ProfilePictureViewer.Screen screen = new ProfilePictureViewer.Screen(activity.get(), sizes(), "someone", save,
+                ProfilePicture::viewing);
         screen.dialog.show();
         ViewGroup root = (ViewGroup) screen.picture.getParent().getParent();
         WindowInsets insets = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
@@ -310,6 +314,23 @@ public class ProfilePictureViewerTest {
         assertTrue(saved.isEmpty());
     }
 
+    /** The long press's way in (#737) answers to its own switch, not View profile picture's. */
+    @Test public void aWayInWithItsOwnSwitchSavesWhileThatSwitchSaysSo() throws Exception {
+        Settings.VIEW_PROFILE_PICTURES.save(false);
+        boolean[] allowed = {true};
+        List<MediaSave.Rendition> sizes = sizes();
+        assertTrue(ProfilePictureViewer.open(activity.get(), sizes, "someone", save, () -> allowed[0]));
+        settle();
+        TextView saveButton = labeled(ShadowDialog.getLatestDialog().getWindow().getDecorView(), "Save");
+        saveButton.performClick();
+        assertEquals(1, saved.size());
+        assertSame(sizes, saved.get(0));
+        assertEquals("someone", named.get(0).owner);
+        allowed[0] = false;
+        saveButton.performClick();
+        assertEquals("nothing saved once its switch went off", 1, saved.size());
+    }
+
     @Test public void aPictureThatCantBeFetchedClosesAndSaysSo() throws Exception {
         server.serve("/gone.jpg", 404, "text/html", new byte[16], 16);
         List<MediaSave.Rendition> sizes = Collections.singletonList(
@@ -320,6 +341,41 @@ public class ProfilePictureViewerTest {
         assertEquals("Couldn't open the picture", ShadowToast.getTextOfLatestToast());
         assertEquals(Collections.singletonList(FamilyNames.PROFILE_PICTURE
                 + ": invoked 0, 0 found, 0 missing. Counted: picture not opened 1"), HookStatus.report());
+    }
+
+    /** #611: an old picture kept on the phone opens from its file, and Save is the caller's own. */
+    @Test public void aKeptPictureOpensFromItsFileWithItsOwnSave() throws Exception {
+        File kept = new File(application.getCacheDir(), "kept-picture.jpg");
+        java.nio.file.Files.write(kept.toPath(), jpeg(120, 80));
+        List<Activity> saves = new ArrayList<>();
+        assertTrue(ProfilePictureViewer.openKept(activity.get(), () -> kept, saves::add));
+        settle();
+        Dialog dialog = ShadowDialog.getLatestDialog();
+        assertTrue(dialog.isShowing());
+        assertEquals(Collections.singletonList(FamilyNames.PROFILE_PICTURE
+                + ": invoked 0, 0 found, 0 missing. Counted: viewed under 1080 px wide 1"), HookStatus.report());
+        labeled(dialog.getWindow().getDecorView(), "Save").performClick();
+        assertEquals(1, saves.size());
+        assertTrue("the profile's own save isn't asked", saved.isEmpty());
+        assertTrue("the kept copy stays", kept.delete());
+    }
+
+    @Test public void aKeptPictureThatsGoneClosesAndSaysSo() throws Exception {
+        assertTrue(ProfilePictureViewer.openKept(activity.get(), () -> null, at -> true));
+        settle();
+        assertFalse(ShadowDialog.getLatestDialog().isShowing());
+        assertEquals("Couldn't open the picture", ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test public void aKeptPicturesFailedSaveSaysDownloadFailed() throws Exception {
+        File kept = new File(application.getCacheDir(), "kept-picture.jpg");
+        java.nio.file.Files.write(kept.toPath(), jpeg(120, 80));
+        assertTrue(ProfilePictureViewer.openKept(activity.get(), () -> kept, at -> false));
+        settle();
+        labeled(ShadowDialog.getLatestDialog().getWindow().getDecorView(), "Save").performClick();
+        ShadowLooper.idleMainLooper();
+        assertEquals("Download failed", ShadowToast.getTextOfLatestToast());
+        assertTrue(kept.delete());
     }
 
     @Test public void loadReadsThePictureAndLeavesNoWorkFile() {

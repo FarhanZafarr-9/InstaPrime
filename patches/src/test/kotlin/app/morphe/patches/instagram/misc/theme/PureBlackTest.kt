@@ -41,6 +41,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.w3c.dom.Document
 import org.w3c.dom.Element
 import javax.xml.parsers.DocumentBuilderFactory
 import java.io.File
@@ -287,13 +288,13 @@ class PureBlackTest {
     }
 
     /**
-     * A Likes row's normal fill goes pure black (#248), in the form a decoded file may spell it, and
-     * its pressed fill keeps its own attribute so a press still shows.
+     * A Likes row's normal fill goes to HushGram's own attribute (#248, #639), in the form a decoded
+     * file may spell it, and its pressed fill keeps its own attribute so a press still shows.
      */
     @Test
-    fun theLikesRowGetsPureBlackAndKeepsItsPress() {
+    fun theLikesRowFillsWithItsOwnAttributeAndKeepsItsPress() {
         for (spelled in listOf("?$ROW_BACKGROUND", "?attr/$ROW_BACKGROUND")) {
-            val row = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(
+            val row = parse(
                 """
                     <selector xmlns:android="http://schemas.android.com/apk/res/android">
                         <item android:state_pressed="true">
@@ -303,16 +304,128 @@ class PureBlackTest {
                             <shape><solid android:color="$spelled"/></shape>
                         </item>
                     </selector>
-                """.trimIndent().byteInputStream(),
+                """,
             )
 
-            assertEquals(1, blackenRow(row))
+            assertEquals(1, routeRow(row))
 
             val solids = row.getElementsByTagName("solid").let { list ->
                 (0 until list.length).map { (list.item(it) as Element).getAttribute("android:color") }
             }
-            assertEquals(listOf("?${ROW_BACKGROUND}_pressed", PURE_BLACK_COLOR), solids)
-            assertEquals("a second pass finds nothing", 0, blackenRow(row))
+            assertEquals(listOf("?${ROW_BACKGROUND}_pressed", "?attr/$ROW_ATTRIBUTE"), solids)
+            assertEquals("a second pass finds nothing", 0, routeRow(row))
+        }
+    }
+
+    /**
+     * Every style that sets the row's old attribute gives the row's own one pure black, the light
+     * theme's too, as the row was before (#248). A style setting only the pressed shade, or the row's
+     * attribute already, keeps what it had.
+     */
+    @Test
+    fun theRowStylesGetPureBlack() {
+        val styles = parse(
+            """
+                <resources>
+                    <style name="IgdsPrismGrayOverridesDark">
+                        <item name="$ROW_BACKGROUND">@color/igds_prism_gray_09</item>
+                    </style>
+                    <style name="IgdsSemanticColorsLight">
+                        <item name="$ROW_BACKGROUND">@color/bds_grey_9</item>
+                    </style>
+                    <style name="Pressed">
+                        <item name="${ROW_BACKGROUND}_pressed">@color/igds_prism_gray_08</item>
+                    </style>
+                    <style name="HushGramClassicBackgrounds_dark">
+                        <item name="$ROW_BACKGROUND">@color/hushgram_classic_background_dark_raised</item>
+                        <item name="$ROW_ATTRIBUTE">@color/hushgram_classic_background_dark_raised</item>
+                    </style>
+                </resources>
+            """,
+        )
+
+        assertEquals(listOf("IgdsPrismGrayOverridesDark", "IgdsSemanticColorsLight"), blackenRowStyles(styles))
+
+        assertEquals(
+            mapOf(
+                "IgdsPrismGrayOverridesDark" to listOf(ROW_BACKGROUND to "@color/igds_prism_gray_09", ROW_ATTRIBUTE to PURE_BLACK_COLOR),
+                "IgdsSemanticColorsLight" to listOf(ROW_BACKGROUND to "@color/bds_grey_9", ROW_ATTRIBUTE to PURE_BLACK_COLOR),
+                "Pressed" to listOf("${ROW_BACKGROUND}_pressed" to "@color/igds_prism_gray_08"),
+                "HushGramClassicBackgrounds_dark" to listOf(
+                    ROW_BACKGROUND to "@color/hushgram_classic_background_dark_raised",
+                    ROW_ATTRIBUTE to "@color/hushgram_classic_background_dark_raised",
+                ),
+            ),
+            styleItems(styles),
+        )
+        assertEquals("a second pass finds nothing", emptyList<String>(), blackenRowStyles(styles))
+
+        val attrs = parse("<resources><attr name=\"$ROW_BACKGROUND\" format=\"reference|color\" /></resources>")
+        assertTrue(declareRowAttribute(attrs))
+        assertTrue("declared once", !declareRowAttribute(attrs))
+        val declared = attrs.getElementsByTagName("attr").let { list -> (0 until list.length).map { list.item(it) as Element } }
+        assertEquals(listOf(ROW_BACKGROUND, ROW_ATTRIBUTE), declared.map { it.getAttribute("name") })
+        assertEquals("color", declared.last().getAttribute("format"))
+    }
+
+    /**
+     * With Classic colors and Backgrounds in the accent color, a dark style's Likes row takes the
+     * sheet's raised shade whichever patch runs first, Instagram's own styles keep pure black, and the
+     * light styles leave the row alone (#639).
+     */
+    @Test
+    fun theDarkBackgroundStylesGiveTheRowTheirRaisedShadeInEitherOrder() {
+        val uses = setOf(AccentUse("igds_color_link", AccentRole.LINK_ON_DARK, 0xff))
+        val instagram = """
+            <style name="IgdsPrismGrayOverridesDark">
+                <item name="$ROW_BACKGROUND">@color/igds_prism_gray_09</item>
+            </style>
+        """
+        val raised = "@color/${classicColor(IconTheme.DARK, BackgroundStep.RAISED)}"
+        for (pureBlackFirst in listOf(true, false)) {
+            val attrs = parse(
+                "<resources>" + listOf("igds_color_primary_background", "igds_color_elevated_background", ROW_BACKGROUND)
+                    .joinToString("") { "<attr name=\"$it\" format=\"reference|color\" />" } + "</resources>",
+            )
+            val styles = parse("<resources>$instagram</resources>")
+            val colors = parse("<resources />")
+            fun accent() {
+                addAccentResources(uses, attrs, colors, styles)
+                addWallpaperResources(uses, attrs, colors, parse("<resources />"), styles)
+            }
+            if (pureBlackFirst) {
+                declareRowAttribute(attrs)
+                assertEquals(listOf("IgdsPrismGrayOverridesDark"), blackenRowStyles(styles))
+                accent()
+            } else {
+                accent()
+                assertEquals(listOf("IgdsPrismGrayOverridesDark"), blackenRowStyles(styles))
+                declareRowAttribute(attrs)
+            }
+            val items = styleItems(styles).mapValues { it.value.toMap() }
+            val what = if (pureBlackFirst) "Pure black first" else "the accent first"
+            assertEquals("$what: Instagram's row", PURE_BLACK_COLOR, items.getValue("IgdsPrismGrayOverridesDark")[ROW_ATTRIBUTE])
+            assertEquals("$what: the classic row", raised, items.getValue(classicStyle(IconTheme.DARK))[ROW_ATTRIBUTE])
+            assertEquals(
+                "$what: the classic sheet",
+                raised,
+                items.getValue(classicStyle(IconTheme.DARK))["igds_color_elevated_background"],
+            )
+            assertEquals(
+                "$what: the accent row",
+                "@color/${backgroundColor("PURPLE", IconTheme.DARK, BackgroundStep.RAISED)}",
+                items.getValue(backgroundStyle("PURPLE", IconTheme.DARK))[ROW_ATTRIBUTE],
+            )
+            assertTrue("$what: the wallpaper row", ROW_ATTRIBUTE in items.getValue(backgroundStyle(WALLPAPER, IconTheme.DARK)))
+            assertTrue(
+                "$what: no light style sets the row",
+                items.filterKeys { it.endsWith("_light") }.values.none { ROW_ATTRIBUTE in it },
+            )
+            assertEquals(
+                "$what: declared once",
+                1,
+                attrs.getElementsByTagName("attr").let { list -> (0 until list.length).count { (list.item(it) as Element).getAttribute("name") == ROW_ATTRIBUTE } },
+            )
         }
     }
 
@@ -437,6 +550,9 @@ class PureBlackTest {
                         commentAttributes.associateWith { attributeColors(res, it)[comments] },
                     )
                     val primaryBefore = attributeColors(res, "igds_color_primary_background")
+                    val rowBefore = attributeColors(res, ROW_BACKGROUND)
+                    assertTrue("$code: some style sets the row's gray", rowBefore.isNotEmpty())
+                    assertTrue("$code: no style sets the row's own attribute yet", attributeColors(res, ROW_ATTRIBUTE).isEmpty())
 
                     context.blackenThemes()
 
@@ -485,9 +601,19 @@ class PureBlackTest {
                         (primaryAfter - comments).filterKeys { primaryBefore[it] != PRISM_BLACK_COLOR },
                     )
                     val row = File(res, "drawable/$ROW_DRAWABLE.xml").readText()
-                    assertTrue("$code: the Likes row goes black (#248)\n$row", PURE_BLACK_COLOR in row)
+                    assertTrue("$code: the Likes row fills with its own attribute (#639)\n$row", "?attr/$ROW_ATTRIBUTE" in row)
                     assertTrue("$code: its press keeps its gray\n$row", "${ROW_BACKGROUND}_pressed" in row)
                     assertTrue("$code: its normal fill is gone\n$row", !Regex("""$ROW_BACKGROUND\b""").containsMatchIn(row))
+                    assertEquals(
+                        "$code: every style setting the row's gray makes the row black (#248)",
+                        rowBefore.keys.associateWith { PURE_BLACK_COLOR },
+                        attributeColors(res, ROW_ATTRIBUTE),
+                    )
+                    assertEquals("$code: the row's gray itself stays", rowBefore, attributeColors(res, ROW_BACKGROUND))
+                    assertTrue(
+                        "$code: attrs.xml declares the row's attribute",
+                        Regex("""<attr [^>]*name="$ROW_ATTRIBUTE"""").containsMatchIn(File(res, "values/attrs.xml").readText()),
+                    )
                 }
             } finally {
                 work.deleteRecursively()
@@ -745,6 +871,57 @@ class PureBlackTest {
     }
 
     /**
+     * An avatar with both arms of its ring inlined reads the tint where its own "new" flag falls
+     * through and another color where it branches (`LX/0U2I;->invoke` on 386113918). The new arm's
+     * color is the tint, and the other one stays everywhere.
+     */
+    @Test
+    fun anAvatarReadingTwoColorsTakesItsNewArmsColor() {
+        val avatar = "Lfixture/Avatar;"
+        val row = "Lfixture/Row;"
+        val patch = newRowContext(
+            classDef(avatar, """
+                const-string v0, "com.instagram.newsfeed.compose.ui.StartAvatar.<anonymous> (NewsfeedStoryRow.kt:359)"
+                iget-boolean v0, v5, $avatar->isNew:Z
+                if-eqz v0, :old
+                iget-wide v1, v5, $FAKE_THEME->tint:J
+                goto :ring
+                :old
+                iget-wide v1, v5, $FAKE_THEME->f0:J
+                :ring
+                return-void
+            """),
+            classDef(row, """
+                const-string v0, "com.instagram.newsfeed.fragment.NewsfeedRow.<anonymous> (NewsfeedYouComposeFragment.kt:3634)"
+                iget-wide v1, v5, $FAKE_THEME->f0:J
+                iget-wide v3, v5, $FAKE_THEME->tint:J
+                return-void
+            """),
+        )
+
+        assertEquals(listOf(avatar to 3, row to 2), patch.findNewRowTintReads().map { it.type to it.index })
+    }
+
+    /** Two colors split by a flag that isn't the avatar's own still don't say which is the tint. */
+    @Test
+    fun anAvatarSplittingOnAnotherClassesFlagFails() {
+        val patch = newRowContext(classDef("Lfixture/Avatar;", """
+            const-string v0, "com.instagram.newsfeed.compose.ui.StartAvatar.<anonymous> (NewsfeedStoryRow.kt:359)"
+            iget-boolean v0, v5, Lfixture/Other;->isNew:Z
+            if-eqz v0, :old
+            iget-wide v1, v5, $FAKE_THEME->tint:J
+            goto :ring
+            :old
+            iget-wide v1, v5, $FAKE_THEME->f0:J
+            :ring
+            return-void
+        """))
+
+        val failure = assertThrows(PatchException::class.java) { patch.findNewRowTintReads() }
+        assertTrue(failure.message!!, "color" in failure.message!!)
+    }
+
+    /**
      * A merged lambda's invoke holding an avatar label that reads no color isn't the avatar, even when
      * another arm's body in its class reads the theme (`LX/0C5a;->invoke` beside `A04` on 386014714).
      */
@@ -784,6 +961,36 @@ class PureBlackTest {
 
         val failure = assertThrows(PatchException::class.java) { patch.findNewRowTintReads() }
         assertTrue(failure.message!!, "found 2" in failure.message!!)
+    }
+
+    /**
+     * 456 starts a trace with its key alone, so the avatar's and a new row's keys stand in for their
+     * labels (`LX/0R30;->invoke` and `LX/0OKO;->invoke` on 386214574). Another key reads as no label.
+     */
+    @Test
+    fun theTraceKeysOfTheAvatarAndARowStandInForTheirLabels() {
+        val avatar = "Lfixture/Avatar;"
+        val row = "Lfixture/Row;"
+        val other = "Lfixture/OtherRow;"
+        val patch = newRowContext(
+            classDef(avatar, """
+                const v0, 0x676a129d
+                iget-wide v1, v5, $FAKE_THEME->tint:J
+                return-void
+            """),
+            classDef(row, """
+                const v0, 0xabc6d658
+                iget-wide v1, v5, $FAKE_THEME->tint:J
+                return-void
+            """),
+            classDef(other, """
+                const v0, 0x676a129e
+                iget-wide v1, v5, $FAKE_THEME->tint:J
+                return-void
+            """),
+        )
+
+        assertEquals(listOf(avatar to 1, row to 1), patch.findNewRowTintReads().map { it.type to it.index }.sortedBy { it.first })
     }
 
     /** No class making a theme from Prism's tint means an update the patch hasn't seen. */
@@ -1344,6 +1551,19 @@ class PureBlackTest {
             }
         }
         return found
+    }
+
+    private fun parse(xml: String): Document =
+        DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(xml.trimIndent().byteInputStream())
+
+    /** Each style in [styles] by name, with its items as name and value in order. */
+    private fun styleItems(styles: Document): Map<String, List<Pair<String, String>>> {
+        val list = styles.getElementsByTagName("style")
+        return (0 until list.length).map { list.item(it) as Element }.associate { style ->
+            val items = style.getElementsByTagName("item")
+            style.getAttribute("name") to (0 until items.length).map { items.item(it) as Element }
+                .map { it.getAttribute("name") to it.textContent.trim() }
+        }
     }
 
     private fun app.morphe.patcher.patch.BytecodePatchContext.code(type: String): List<Instruction> =

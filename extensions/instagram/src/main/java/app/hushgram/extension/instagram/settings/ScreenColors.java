@@ -43,6 +43,11 @@ import android.widget.TextView;
 import androidx.annotation.Nullable;
 
 import app.hushgram.extension.instagram.misc.AccentTheme;
+import java.util.Collections;
+import java.util.Set;
+import java.util.WeakHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import app.hushgram.extension.shared.Utils;
 import app.hushgram.extension.shared.settings.preference.ImmediateAction;
 
@@ -84,14 +89,20 @@ public final class ScreenColors {
     public static final ScreenColors DEFAULT = new ScreenColors(false);
     /** Black cards and dialogs, for the black look (#455). */
     static final ScreenColors BLACK = new ScreenColors(true);
+    /** The white page, cards and dialogs, for the light look while the settings show (#762). */
+    static final ScreenColors LIGHT = new ScreenColors(false, true);
+    /** How many settings screens are up. The light look keeps to them. */
+    private static final AtomicInteger SETTINGS_SCREENS = new AtomicInteger();
 
     /**
-     * The colours to paint with now: the screen's own, or the black ones while Black settings page
-     * is on, or {@link #DEFAULT}. Read each time, so a flip of the switch shows on the next bind.
+     * The colours to paint with now: the screen's own, or the white ones while Light settings page
+     * is on and the settings show, or the black ones while Black settings page is on, or
+     * {@link #DEFAULT}. Read each time, so a flip of the switch shows on the next bind.
      */
     public static ScreenColors current() {
         ScreenColors colors = shown;
         if (colors != null) return colors;
+        if (Utils.settingsReady() && SETTINGS_SCREENS.get() > 0) return settingsPage();
         Context context = Utils.settingsReady() ? Utils.getContext() : null;
         return context == null ? DEFAULT : forScreen(context);
     }
@@ -101,8 +112,8 @@ public final class ScreenColors {
     }
 
     /** Raised surfaces remain distinguishable from the page, including the pure-black page. */
-    public int popupSurface() { return mix(dialog, Color.WHITE, 7); }
-    public int snackbarSurface() { return mix(dialog, Color.WHITE, 9); }
+    public int popupSurface() { return mix(dialog, light ? Color.BLACK : Color.WHITE, 7); }
+    public int snackbarSurface() { return mix(dialog, light ? Color.BLACK : Color.WHITE, 9); }
 
     private int choiceTone(int strength) {
         return mix(iconSurface, accent, strength);
@@ -123,8 +134,33 @@ public final class ScreenColors {
         this(context, false);
     }
 
-    private ScreenColors(@Nullable Context context, boolean pureBlack) {
-        light = false;
+    ScreenColors(boolean pureBlack, boolean light) { this(null, pureBlack, light); }
+
+    private ScreenColors(@Nullable Context context, boolean pureBlack) { this(context, pureBlack, false); }
+
+    private ScreenColors(@Nullable Context context, boolean pureBlack, boolean light) {
+        this.light = light;
+        if (light) {
+            background = Color.WHITE;
+            dialog = Color.WHITE;
+            // 19:1 on the page, 17:1 on the card.
+            title = 0xFF0C1014;
+            summary = 0xFF5C5C5C;
+            // Quieter than the summary, so lighter here, and still 4.8:1 on the card.
+            hint = 0xFF6B6B6B;
+            // Instagram's indigo, darkened to 7:1 on white for the section titles and icons.
+            heading = 0xFF3346D3;
+            accent = 0xFF4A5DF9;
+            // 3.6:1 on the card, with the near-black thumb at 4.7:1 on it.
+            switchOff = 0xFF7A7F85;
+            card = 0xFFF2F3F5;
+            outline = 0xFFDBDBDB;
+            iconSurface = 0xFFE6E8EB;
+            onAccent = Color.WHITE;
+            // Material 3's error at tone 40, 5.8:1 on the card.
+            error = 0xFFBA1A1A;
+            return;
+        }
         // System tonal palettes follow the wallpaper without requesting wallpaper access.
         dialog = pureBlack ? Color.BLACK : tone(context, "system_neutral1_900", 0xFF211F26);
         title = tone(context, "system_neutral1_100", 0xFFE6E0E9);
@@ -174,6 +210,17 @@ public final class ScreenColors {
         return new ColorStateList(new int[][]{{-android.R.attr.state_enabled}, {}}, new int[]{dimmed, color});
     }
 
+    /**
+     * A row's summary, readable when the row is off. On white, the grey summary at 75% fell to
+     * about 3.7:1, so the light look dims its near-black title colour to 60% instead, about 5:1
+     * on the card (#762).
+     */
+    ColorStateList disabledSummary() {
+        if (!light) return readableWhenDisabled(summary);
+        int dimmed = (title & 0x00FFFFFF) | 0x99000000;
+        return new ColorStateList(new int[][]{{-android.R.attr.state_enabled}, {}}, new int[]{dimmed, summary});
+    }
+
     /** Native list navigation uses selected/activated as well as focused. Keep each visible. */
     ColorStateList interactionOutline(int normal) {
         return interactionOutline(normal, heading);
@@ -219,6 +266,7 @@ public final class ScreenColors {
 
     /** Wallpaper-derived Material tones, refreshed when opening the screen. */
     public static ScreenColors forScreen(Context context) {
+        if (Utils.settingsReady() && SETTINGS_SCREENS.get() > 0 && Settings.SETTINGS_LIGHT_LOOK.savedValue()) return LIGHT;
         return new ScreenColors(context,
                 Utils.settingsReady() && Settings.SETTINGS_BLACK_LOOK.savedValue());
     }
@@ -228,10 +276,36 @@ public final class ScreenColors {
         return light ? android.R.style.Theme_Material_Light_NoActionBar : android.R.style.Theme_Material_NoActionBar;
     }
 
-    /** {@link #theme()} of {@link #forScreen}, or the dark Material theme the black page has always had. */
+    /**
+     * {@link #theme()} of {@link #forScreen}, or of the colours on show: the light Material theme
+     * under the light look, so what this class doesn't paint reads on white too.
+     */
     static int themeFor(Context context) {
         ScreenColors colors = forScreen(context);
-        return colors == null ? android.R.style.Theme_Material_NoActionBar : colors.theme();
+        return (colors == null ? current() : colors).theme();
+    }
+
+    /**
+     * Dark status and navigation bar icons over the white page, light ones over the black. The
+     * settings draw edge to edge, under both bars. Only once the window has its decor view, which
+     * setContentView makes: before that, the insets controller throws, and making the decor here would
+     * come before the dialog's own window features. A window without one is left for a later call.
+     */
+    @SuppressWarnings("deprecation")
+    void paintBars(@Nullable Window window) {
+        View decor = window == null ? null : window.peekDecorView();
+        if (decor == null) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            android.view.WindowInsetsController bars = window.getInsetsController();
+            if (bars == null) return;
+            int both = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                    | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+            bars.setSystemBarsAppearance(light ? both : 0, both);
+            return;
+        }
+        int both = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        int now = decor.getSystemUiVisibility();
+        decor.setSystemUiVisibility(light ? now | both : now & ~both);
     }
 
     /** A row's title and summary, its switch if it has one, and its chevron if a tap opens something. */
@@ -251,8 +325,8 @@ public final class ScreenColors {
         }
         TextView summary = row.findViewById(android.R.id.summary);
         if (summary != null) {
-            summary.setTextColor(readableWhenDisabled(this.summary));
-            summary.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+            summary.setTextColor(disabledSummary());
+            summary.setTextSize(TypedValue.COMPLEX_UNIT_SP, overview ? 12 : 13);
             summary.setLineSpacing(0, 1);
             summary.setMaxLines(Integer.MAX_VALUE);
             summary.setEllipsize(null);
@@ -598,7 +672,7 @@ public final class ScreenColors {
 
     static void recoveryMessage(View row) {
         ScreenColors palette = forScreen(row.getContext());
-        if (palette == null) palette = DEFAULT;
+        if (palette == null) palette = current();
         HushgramPreferenceFragment.showAllText(row);
         TextView title = row.findViewById(android.R.id.title);
         TextView summary = row.findViewById(android.R.id.summary);
@@ -680,6 +754,21 @@ public final class ScreenColors {
         View field = dialog.findViewById(android.R.id.edit);
         if (field instanceof EditText) paintField((EditText) field);
         if (window != null) startTextAtTheStart(window.getDecorView());
+        if (window != null) followFont(window.getDecorView());
+    }
+
+    /** Dialog windows already following the picked font, so a repaint doesn't watch one twice. */
+    private static final Set<View> FONT_WATCHED = Collections.synchronizedSet(
+            Collections.newSetFromMap(new WeakHashMap<>()));
+
+    /**
+     * With the font patch in the build, a dialog's text follows the font picked for Instagram's,
+     * as the settings page's does (#166). The "i" descriptions, pickers and prompts are windows of
+     * their own, which the page's watcher never sees.
+     */
+    private static void followFont(View decor) {
+        if (!PatchFamily.FONT.inBuild() || !FONT_WATCHED.add(decor)) return;
+        decor.getViewTreeObserver().addOnPreDrawListener(new SettingsDialog.FontDraw(decor));
     }
 
     /**
@@ -809,7 +898,7 @@ public final class ScreenColors {
     /** Paints both recovery actions even if the ordinary settings page failed to initialize. */
     static void recoveryAction(View row, boolean primary) {
         ScreenColors colors = forScreen(row.getContext());
-        (colors == null ? DEFAULT : colors).paintRecoveryAction(row, primary);
+        (colors == null ? current() : colors).paintRecoveryAction(row, primary);
     }
 
     /** Paints a dialog with the colours on show, if there are any. */
@@ -885,4 +974,13 @@ public final class ScreenColors {
     public static int half(int color) {
         return (color & 0x00FFFFFF) | 0x80000000;
     }
+
+    static ScreenColors settingsPage() {
+        if (Utils.settingsReady() && Settings.SETTINGS_LIGHT_LOOK.savedValue()) return LIGHT;
+        Context context = Utils.settingsReady() ? Utils.getContext() : null;
+        return context == null ? DEFAULT : forScreen(context);
+    }
+    static void settingsOpened() { SETTINGS_SCREENS.incrementAndGet(); }
+    static void settingsClosed() { SETTINGS_SCREENS.updateAndGet(open -> Math.max(0, open - 1)); }
+    static void settingsClosedForTests() { SETTINGS_SCREENS.set(0); }
 }

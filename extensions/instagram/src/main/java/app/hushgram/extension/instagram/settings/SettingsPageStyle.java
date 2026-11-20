@@ -39,11 +39,12 @@ final class SettingsPageStyle {
         View decor = window.getDecorView();
         if (Build.VERSION.SDK_INT >= 30 && decor.isAttachedToWindow()) {
             WindowInsetsController controller = window.getInsetsController();
-            if (controller != null) controller.setSystemBarsAppearance(0,
-                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
+            int lightBars = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+            if (controller != null) controller.setSystemBarsAppearance(colors.light ? lightBars : 0, lightBars);
         } else {
-            decor.setSystemUiVisibility(decor.getSystemUiVisibility()
-                    & ~(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR));
+            int lightBars = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            decor.setSystemUiVisibility(colors.light ? decor.getSystemUiVisibility() | lightBars
+                    : decor.getSystemUiVisibility() & ~lightBars);
         }
     }
 
@@ -74,7 +75,7 @@ final class SettingsPageStyle {
             private boolean closing;
 
             PageDialog(Context context, ScreenColors colors) {
-                super(context, android.R.style.Theme_Material_NoActionBar);
+            super(context, colors.theme());
                 this.colors = colors;
             }
 

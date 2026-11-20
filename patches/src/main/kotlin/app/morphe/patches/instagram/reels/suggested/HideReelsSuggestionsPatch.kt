@@ -11,7 +11,10 @@ import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import app.morphe.patches.instagram.feed.back.enumConstantName
 import app.morphe.patches.instagram.feed.requireOneKindField
+import app.morphe.patches.instagram.misc.extension.classesLoadingString
+import app.morphe.patches.instagram.misc.extension.loadsString
 import app.morphe.patches.instagram.misc.extension.EXTENSION_PACKAGE
 import app.morphe.patches.instagram.misc.extension.enableStatus
 import app.morphe.patches.instagram.misc.extension.freeLocalsAt
@@ -22,6 +25,7 @@ import app.morphe.patches.instagram.misc.extension.uniqueMethod
 import app.morphe.patches.instagram.misc.settings.settingsPatch
 import app.morphe.patches.shared.compat.AppCompatibilities
 import app.morphe.util.addInstructionsAtControlFlowLabel
+import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
@@ -39,15 +43,20 @@ internal const val REELS_FILTER = "$REELS_SUGGESTIONS->filter(Ljava/lang/Object;
 internal const val NETEGO_FILTER = "$REELS_SUGGESTIONS->netego(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;"
 internal const val FRIENDS_TAB_FILTER = "$REELS_SUGGESTIONS->friendsTab(Ljava/lang/Object;)Ljava/lang/Object;"
 
-/** The trace marker of the converter that makes each Reels item (a clips item) from the server's. */
-internal const val TO_CLIPS_ITEM = "android_purge_26_q2_ClipsItemExt_toClipsItemCombined"
+/**
+ * A string only the converter that makes each Reels item (a clips item) from the server's loads:
+ * the start of the id it gives a live's preview item. 456 dropped the converter's trace marker
+ * (ClipsItemExt_toClipsItemCombined).
+ */
+internal const val TO_CLIPS_ITEM = "live_preview_"
 
 /**
- * The trace marker of the method that makes the page of people to follow, which the Reels friends
- * tab shows when it has no reels ("Instagram is better with friends", #167), into a clips item of
- * its own. That item never goes through the converter.
+ * The item kind the page of people to follow is made with, which the Reels friends tab shows when
+ * it has no reels ("Instagram is better with friends", #167). The method making it into a clips
+ * item of its own reads it; that item never goes through the converter. 456 dropped that method's
+ * trace marker (ClipsItemExt_toFriendLaneEmptyStateClipsItem).
  */
-internal const val TO_FRIENDS_TAB_PAGE = "android_purge_26_q2_ClipsItemExt_toFriendLaneEmptyStateClipsItem"
+internal const val TO_FRIENDS_TAB_PAGE = "SUGGESTED_USERS"
 
 /**
  * Two of the netego unit types, which the Reels viewer's binder dispatch compares a netego unit's
@@ -61,6 +70,15 @@ internal val SUGGESTED_KINDS = listOf(
     "SUGGESTED_USERS", "CREATORS_YOU_MAY_FOLLOW", "NETEGO_SUGGESTED_USERS", "NETEGO_SUGGESTED_CREATORS",
 )
 
+/** The clips item kind of a Catch up with friends page of stories, which ReelsSuggestions drops under its own switch (#730). */
+internal val STORY_KINDS = listOf("STORIES_IN_REELS")
+
+/** The clips item kind of a card bringing people over to Threads, which ReelsSuggestions drops under its own switch (#765). */
+internal val THREADS_KINDS = listOf("NETEGO_THREADS_IN_REELS_UNIT_ACQUISITION")
+
+/** Every kind ReelsSuggestions takes out, all named by the one enum field it reads. */
+internal val READ_KINDS = SUGGESTED_KINDS + STORY_KINDS + THREADS_KINDS
+
 private const val STRING = "Ljava/lang/String;"
 
 /**
@@ -71,8 +89,9 @@ private const val STRING = "Ljava/lang/String;"
 @Suppress("unused")
 val hideReelsSuggestionsPatch = bytecodePatch(
     name = "Hide suggested accounts in Reels",
-    description = "Leaves out the cards of accounts to follow that Instagram puts between reels. Every reel still " +
-        "plays. Starts off. Turn it on in HushGram settings > Reels.",
+    description = "Leaves out the cards of accounts to follow that Instagram puts between reels, and on switches of " +
+        "their own its Catch up with friends pages of stories and its Threads cards. Every reel still plays. " +
+        "Starts off. Turn them on in HushGram settings > Reels.",
 ) {
     category("Profiles")
     dependsOn(settingsPatch, instagramExtensionPatch)
@@ -88,17 +107,47 @@ val hideReelsSuggestionsPatch = bytecodePatch(
 
 private fun refuse(detail: String): Nothing = throw PatchException("$PATCH: $detail")
 
-/** The converter that makes a clips item from the server's Reels item, by its trace marker. */
-internal object ClipsItemConverterFingerprint : Fingerprint(
-    filters = listOf(string(TO_CLIPS_ITEM)),
-    custom = { method, _ -> method.holdsString(TO_CLIPS_ITEM) },
-)
+/**
+ * The converter that makes a clips item from the server's Reels item: the one method loading
+ * [TO_CLIPS_ITEM], however Redex pooled it. None or more than one stops [patch] before anything
+ * changes.
+ */
+internal fun BytecodePatchContext.reelsItemConverter(patch: String): MutableMethod {
+    // A pool's own getter holds every string it pools, so it's left out.
+    val found = classesLoadingString(TO_CLIPS_ITEM).sortedBy { it.type }.flatMap { it.methods }.filter { method ->
+        !(method.parameterTypes.map(Any::toString) == listOf("I") && method.returnType == "Ljava/lang/String;") &&
+            loadsString(method, TO_CLIPS_ITEM)
+    }
+    val converter = found.singleOrNull() ?: throw PatchException(
+        "$patch: expected exactly one Reels item converter holding \"$TO_CLIPS_ITEM\" in this Instagram build, found " +
+            if (found.isEmpty()) "none" else found.joinToString { "${it.definingClass}->${it.name}" },
+    )
+    return mutableClassDefBy(converter.definingClass).methods.single { method ->
+        method.name == converter.name && method.returnType == converter.returnType &&
+            method.parameterTypes.map(Any::toString) == converter.parameterTypes.map(Any::toString)
+    }
+}
 
-/** The method that makes the friends tab's page of people to follow into a clips item, by its trace marker. */
-internal object FriendsTabPageFingerprint : Fingerprint(
-    filters = listOf(string(TO_FRIENDS_TAB_PAGE)),
-    custom = { method, _ -> method.holdsString(TO_FRIENDS_TAB_PAGE) },
-)
+/**
+ * The method that makes the friends tab's page of people to follow into a clips item: the one
+ * static method of [converter]'s class taking one value that reads the [TO_FRIENDS_TAB_PAGE] constant
+ * of an enum. What it answers is checked after, so a maker answering something else is named.
+ */
+private fun BytecodePatchContext.friendsTabPageMaker(converter: Method): Method {
+    val makers = classDefBy(converter.definingClass).methods.filter { method ->
+        AccessFlags.STATIC.isSet(method.accessFlags) && method.parameterTypes.size == 1 &&
+            method.instructions().any { instruction ->
+                val field = instruction.fieldReference()
+                instruction.opcode == Opcode.SGET_OBJECT && field != null && field.type == field.definingClass &&
+                    classDefByOrNull(field.definingClass)?.takeIf { it.superclass == "Ljava/lang/Enum;" }
+                        ?.let { enumConstantName(it, field) } == TO_FRIENDS_TAB_PAGE
+            }
+    }
+    return makers.singleOrNull() ?: refuse(
+        "expected one Reels friends tab page maker of ${converter.definingClass} reading the $TO_FRIENDS_TAB_PAGE kind, " +
+            "found ${makers.map { "${it.definingClass}->${it.name}" }}",
+    )
+}
 
 /**
  * The Reels viewer's binder dispatch for one clips item and its position, answering the binder:
@@ -133,21 +182,22 @@ internal class ReelsSuggestionSites(
 )
 
 /**
- * Finds the converter by [TO_CLIPS_ITEM] and checks that its clips item names [SUGGESTED_KINDS] in
+ * Finds the converter by [TO_CLIPS_ITEM] and checks that its clips item names [READ_KINDS] in
  * one enum field, the one the extension reads. The netego unit's type is the one String field the
  * binder dispatch reads off another class, and that class is the netego unit: the converter has to
  * return, once, the item a call taking the unit makes, with the unit still in its register and
- * nothing jumping to the return. The friends tab's page is made by the one method holding
- * [TO_FRIENDS_TAB_PAGE], which has to answer the same item type and return it somewhere. Fails
+ * nothing jumping to the return. Where Redex built that call's item in place, as 455 does on
+ * some builds ([inlinedNetegoReturns]), the item's constructor right before the return counts. The friends tab's page is made by the one method
+ * [friendsTabPageMaker] finds, which has to return its item somewhere. Fails
  * before anything changes when any of it isn't there exactly once, since that's an update this
  * patch hasn't seen.
  */
 internal fun BytecodePatchContext.findReelsSuggestions(): ReelsSuggestionSites {
-    val converter = uniqueMethod(PATCH, "Reels item converter holding \"$TO_CLIPS_ITEM\"", ClipsItemConverterFingerprint)
+    val converter = reelsItemConverter(PATCH)
     val where = "${converter.definingClass}->${converter.name}"
     val itemType = converter.returnType
     if (!itemType.startsWith("L") || classDefByOrNull(itemType) == null) refuse("$where answers $itemType, which isn't a class of the app")
-    requireOneKindField(PATCH, itemType, SUGGESTED_KINDS)
+    requireOneKindField(PATCH, itemType, READ_KINDS)
 
     val dispatch = uniqueMethod(PATCH, "Reels binder dispatch comparing $CREATORS_TO_FOLLOW", NetegoDispatchFingerprint)
     if (dispatch.parameterTypes.first().toString() != itemType) {
@@ -168,21 +218,25 @@ internal fun BytecodePatchContext.findReelsSuggestions(): ReelsSuggestionSites {
             (code[at - 1] as OneRegisterInstruction).registerA == (code[at] as OneRegisterInstruction).registerA &&
             made != null && made.returnType == itemType && made.parameterTypes.firstOrNull()?.toString() == unitType
     }
-    val netegoReturn = returns.singleOrNull()
-        ?: refuse("expected $where to return one item made from a $unitType, found ${returns.size}")
+    val targets = converter.jumpTargets()
+    val inlined = inlinedNetegoReturns(code, targets, itemType, unitType)
+    val netegoReturn = (returns + inlined.map { it.first }).singleOrNull()
+        ?: refuse("expected $where to return one item made from a $unitType, found ${returns.size + inlined.size}")
     val item = (code[netegoReturn] as OneRegisterInstruction).registerA
-    // The unit is the call's first argument only in a static call; an instance call's first is its receiver.
-    val call = code[netegoReturn - 2].opcode
-    if (call != Opcode.INVOKE_STATIC && call != Opcode.INVOKE_STATIC_RANGE) {
-        refuse("$where makes its netego item with ${call.name}, not a static call")
+    val unit = inlined.singleOrNull { it.first == netegoReturn }?.second ?: run {
+        // The unit is the call's first argument only in a static call; an instance call's first is its receiver.
+        val call = code[netegoReturn - 2].opcode
+        if (call != Opcode.INVOKE_STATIC && call != Opcode.INVOKE_STATIC_RANGE) {
+            refuse("$where makes its netego item with ${call.name}, not a static call")
+        }
+        code[netegoReturn - 2].argumentRegisters().firstOrNull() ?: refuse("$where makes its netego item with no arguments")
     }
-    val unit = code[netegoReturn - 2].argumentRegisters().firstOrNull() ?: refuse("$where makes its netego item with no arguments")
     if (unit == item) refuse("$where writes the netego item over its unit before returning it")
-    if (netegoReturn in converter.jumpTargets()) refuse("something in $where jumps to the return of its netego item")
+    if (netegoReturn in targets) refuse("something in $where jumps to the return of its netego item")
     // Two locals the netego hook may borrow, checked now so a method short of them changes nothing.
     converter.freeLocalsAt(PATCH, netegoReturn, 2)
 
-    val page = uniqueMethod(PATCH, "Reels friends tab page maker holding \"$TO_FRIENDS_TAB_PAGE\"", FriendsTabPageFingerprint)
+    val page = friendsTabPageMaker(converter)
     val pageWhere = "${page.definingClass}->${page.name}"
     if (page.returnType != itemType) refuse("$pageWhere answers ${page.returnType}, not a $itemType")
     if (page.instructions().none { it.opcode == Opcode.RETURN_OBJECT }) refuse("$pageWhere returns no item")
@@ -255,6 +309,43 @@ private fun Method.holdsString(value: String) = instructions().any {
 private fun Instruction.fieldReference(): FieldReference? = (this as? ReferenceInstruction)?.reference as? FieldReference
 
 private fun Instruction.methodReference(): MethodReference? = (this as? ReferenceInstruction)?.reference as? MethodReference
+
+/**
+ * The returns of [code] whose item Redex built in place from a netego unit, the way 455 inlines
+ * the netego maker on some builds (`Companion_ofNetego` in `LX/07f5;->A03` at 1055 on 386113922):
+ * the return's register gets [itemType]'s constructor right before it, and before that, along code
+ * nothing jumps into, a constructor taking just a [unitType] wraps the unit, whose register nothing
+ * writes after. Each comes with the unit's register.
+ */
+private fun inlinedNetegoReturns(code: List<Instruction>, targets: Set<Int>, itemType: String, unitType: String): List<Pair<Int, Int>> =
+    code.indices.mapNotNull { at ->
+        if (code[at].opcode != Opcode.RETURN_OBJECT || at < 2 || at in targets) return@mapNotNull null
+        val item = (code[at] as OneRegisterInstruction).registerA
+        val made = code[at - 1]
+        val built = made.methodReference()
+        if (built == null || built.definingClass != itemType || built.name != "<init>" || !made.isDirectCall() ||
+            made.argumentRegisters().firstOrNull() != item
+        ) {
+            return@mapNotNull null
+        }
+        for (index in at - 2 downTo 0) {
+            if (index + 1 in targets) return@mapNotNull null
+            val wrap = code[index].methodReference() ?: continue
+            if (wrap.name != "<init>" || !code[index].isDirectCall() || wrap.parameterTypes.map(CharSequence::toString) != listOf(unitType)) continue
+            val unit = code[index].argumentRegisters().getOrNull(1) ?: return@mapNotNull null
+            return@mapNotNull if ((index + 1 until at).none { code[it].writesRegister(unit) }) at to unit else null
+        }
+        null
+    }
+
+private fun Instruction.isDirectCall() = opcode == Opcode.INVOKE_DIRECT || opcode == Opcode.INVOKE_DIRECT_RANGE
+
+/** Whether this instruction writes [register], a wide write's second half included. */
+private fun Instruction.writesRegister(register: Int): Boolean {
+    if (!opcode.setsRegister()) return false
+    val destination = (this as? OneRegisterInstruction)?.registerA ?: return false
+    return destination == register || (opcode.setsWideRegister() && destination + 1 == register)
+}
 
 /** The registers an invoke hands over, in order. */
 private fun Instruction.argumentRegisters(): List<Int> = when (this) {

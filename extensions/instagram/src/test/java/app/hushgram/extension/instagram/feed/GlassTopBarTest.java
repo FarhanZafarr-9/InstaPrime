@@ -96,6 +96,8 @@ public class GlassTopBarTest {
         Settings.GLASS_TAB_BAR.resetToDefault();
         Settings.GLASS_TAB_BAR_BLUR.resetToDefault();
         Settings.GLASS_TAB_BAR_REFRACT.resetToDefault();
+        Settings.GLASS_CHAT_TOP_BAR_OPACITY.resetToDefault();
+        Settings.GLASS_CHAT_BOX_OPACITY.resetToDefault();
         BaseSettings.PAUSED.save(false);
         PauseForTests.resume();
         HookStatus.clear();
@@ -415,6 +417,152 @@ public class GlassTopBarTest {
         Settings.GLASS_TAB_BAR_REFRACT.save(true);
         drawnOnTheGpu(box);
         assertEquals(1, GlassTopBar.bends(box));
+    }
+
+    /**
+     * A chat's top bar tint follows its own slider over the tab bar's Tint intensity, read as it draws, and the
+     * message bar's slider leaves it alone (#688).
+     */
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(sdk = 33)
+    public void aChatsTopBarTintFollowsItsOwnSlider() {
+        GlassTopBar.glazeChat(header, () -> true);
+        frame();
+        assertTrue(GlassTopBar.showing(header));
+        assertEquals("full look by default", tintAlpha(1f), Color.alpha(drawn(header.getBackground()).getPixel(50, 20)), 1);
+
+        Settings.GLASS_CHAT_TOP_BAR_OPACITY.save(40);
+        assertEquals(tintAlpha(0.4f), Color.alpha(drawn(header.getBackground()).getPixel(50, 20)), 1);
+        Settings.GLASS_CHAT_TOP_BAR_OPACITY.save(0);
+        assertEquals("clear at 0%", 0, Color.alpha(drawn(header.getBackground()).getPixel(50, 20)));
+
+        Settings.GLASS_CHAT_TOP_BAR_OPACITY.save(100);
+        Settings.GLASS_CHAT_BOX_OPACITY.save(20);
+        assertEquals("the message bar's slider isn't the top bar's", tintAlpha(1f),
+                Color.alpha(drawn(header.getBackground()).getPixel(50, 20)), 1);
+    }
+
+    /** Home's see-through header keeps its look whatever the chat sliders say (#688). */
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(sdk = 33)
+    public void homesHeaderIgnoresTheChatSliders() {
+        Settings.SEE_THROUGH_HOME_TOP_BAR.save(true);
+        Settings.GLASS_CHAT_TOP_BAR_OPACITY.save(30);
+        Settings.GLASS_CHAT_BOX_OPACITY.save(30);
+        HomeTopBar.slidingViews(views);
+        frame();
+        assertEquals(tintAlpha(1f), Color.alpha(drawn(header.getBackground()).getPixel(50, 20)), 1);
+    }
+
+    /**
+     * A chat's message bar tint follows its own slider, and a story's reply box, which shares the glass but has
+     * no slider of its own, keeps the standard look (#688).
+     */
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(sdk = 33)
+    public void aChatsMessageBarTintFollowsItsOwnSlider() {
+        FrameLayout box = messageBox();
+        GlassTopBar.glazeBox(box, screen.getId(), false, () -> true, FamilyNames.GLASS_CHAT, Settings.GLASS_CHAT_BOX_OPACITY);
+        frame();
+        assertTrue(GlassTopBar.boxShowing(box));
+        assertEquals("full look by default", tintAlpha(1f), Color.alpha(drawn(box.getBackground()).getPixel(50, 25)), 1);
+
+        Settings.GLASS_CHAT_BOX_OPACITY.save(150);
+        assertEquals(tintAlpha(1.5f), Color.alpha(drawn(box.getBackground()).getPixel(50, 25)), 1);
+        Settings.GLASS_CHAT_BOX_OPACITY.save(25);
+        assertEquals(tintAlpha(0.25f), Color.alpha(drawn(box.getBackground()).getPixel(50, 25)), 1);
+        Settings.GLASS_CHAT_TOP_BAR_OPACITY.save(0);
+        assertEquals("the top bar's slider isn't the message bar's", tintAlpha(0.25f),
+                Color.alpha(drawn(box.getBackground()).getPixel(50, 25)), 1);
+
+        FrameLayout story = messageBox();
+        GlassTopBar.glazeBox(story, screen.getId(), true, () -> true, FamilyNames.GLASS_CHAT);
+        frame();
+        assertTrue(GlassTopBar.boxShowing(story));
+        assertEquals("a story's reply box keeps the standard look", tintAlpha(1f),
+                Color.alpha(drawn(story.getBackground()).getPixel(50, 25)), 1);
+    }
+
+    /**
+     * Bigger text makes a chat's message box taller while Instagram keeps its buttons the same size, the same
+     * distance from its edges: the pill's ends then round about the first button, which stays in the middle of the
+     * curve and not out in the corner (#729).
+     */
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(sdk = 33)
+    public void aTallerMessageBoxRoundsItsEndsAboutItsFirstButton() {
+        int edge = 16;
+        int inset = 12;
+        int button = 76;
+        screen.setId(View.generateViewId());
+        FrameLayout holder = new FrameLayout(activity);
+        FrameLayout box = new FrameLayout(activity);
+        FrameLayout.LayoutParams boxAt = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 100);
+        boxAt.leftMargin = edge;
+        boxAt.rightMargin = edge;
+        holder.addView(box, boxAt);
+        View camera = new View(activity);
+        camera.setId(View.generateViewId());
+        FrameLayout.LayoutParams cameraAt = new FrameLayout.LayoutParams(button, button);
+        cameraAt.leftMargin = edge + inset;
+        cameraAt.topMargin = inset;
+        holder.addView(camera, cameraAt);
+        screen.addView(holder, 2, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, HEADER));
+        layout();
+        GlassTopBar.glazeBox(box, screen.getId(), false, () -> true, FamilyNames.GLASS_CHAT,
+                Settings.GLASS_CHAT_BOX_OPACITY, camera.getId());
+        frame();
+        assertTrue(GlassTopBar.boxShowing(box));
+        assertEquals("Instagram's own size: fully round", 50f, GlassTopBar.pillRadius(box), 0.01f);
+
+        boxAt.height = 140;
+        box.setLayoutParams(boxAt);
+        layout();
+        frame();
+        assertEquals(140, box.getHeight());
+        assertEquals("taller: round about the camera's middle", inset + button / 2f, GlassTopBar.pillRadius(box), 0.01f);
+
+        boxAt.height = 60;
+        box.setLayoutParams(boxAt);
+        layout();
+        frame();
+        assertEquals("smaller: fully round", 30f, GlassTopBar.pillRadius(box), 0.01f);
+
+        boxAt.height = 140;
+        box.setLayoutParams(boxAt);
+        camera.setVisibility(View.GONE);
+        layout();
+        frame();
+        assertEquals("no camera showing: fully round", 70f, GlassTopBar.pillRadius(box), 0.01f);
+
+        FrameLayout story = messageBox();
+        GlassTopBar.glazeBox(story, screen.getId(), true, () -> true, FamilyNames.GLASS_CHAT);
+        layout();
+        frame();
+        assertEquals("a box with no button named stays fully round", HEADER / 2f, GlassTopBar.pillRadius(story), 0.01f);
+        String report = HookStatus.report().toString();
+        assertFalse(report, report.contains(GlassTopBar.HOOK));
+    }
+
+    /** A message box in a holder over the feed, laid out, as a chat's composer sits. */
+    private FrameLayout messageBox() {
+        if (screen.getId() == View.NO_ID) screen.setId(View.generateViewId());
+        FrameLayout holder = new FrameLayout(activity);
+        FrameLayout box = new FrameLayout(activity);
+        box.addView(new View(activity), new FrameLayout.LayoutParams(40, 40));
+        holder.addView(box, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, HEADER));
+        screen.addView(holder, 2, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, HEADER));
+        layout();
+        return box;
+    }
+
+    /** The alpha of the unblurred tint at [share] of the tab bar's Tint intensity, as a software canvas draws it. */
+    private static int tintAlpha(float share) {
+        return Color.alpha(GlassTabBar.tint(Color.BLACK, false, GlassTabBar.opacityScale() * share));
     }
 
     /** On a phone's canvas, the header bends along its bottom edge only while the tab bar's rim bends (#513). */

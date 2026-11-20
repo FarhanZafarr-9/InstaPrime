@@ -84,6 +84,7 @@ internal val ACCENT_BLUES: Map<Int, AccentRole> = mapOf(
     0x232e67 to AccentRole.DIM,
     0x3143e3 to AccentRole.LINK_ON_LIGHT, 0x3849da to AccentRole.LINK_ON_LIGHT, 0x00376b to AccentRole.LINK_ON_LIGHT,
     0x85a1ff to AccentRole.LINK_ON_DARK, 0x8593ff to AccentRole.LINK_ON_DARK, 0x708dff to AccentRole.LINK_ON_DARK,
+    0x7595ff to AccentRole.LINK_ON_DARK,
     0xe0f1ff to AccentRole.PALE, 0xeff1ff to AccentRole.PALE, 0xebf1ff to AccentRole.PALE,
     0xdbdfff to AccentRole.PALE, 0xccddff to AccentRole.PALE,
 )
@@ -321,17 +322,33 @@ internal enum class BackgroundStep(val darkShare: Float, val lightShare: Float, 
 internal const val BACKGROUND_ATTRIBUTE = "igds_color_primary_background"
 
 /**
+ * The fills of Instagram's secondary buttons, read by its button component and its Compose screens: the
+ * plain one, and the one a button raised on a card takes. They held Prism's grays over the backgrounds
+ * in the accent color (#187). The default secondary button, Edit profile's and Share profile's, reads a
+ * color of its own instead, which [fillSecondaryButtons] swaps for the first of these. Declared before
+ * [BACKGROUND_ATTRIBUTES], which is built from it.
+ */
+internal val SECONDARY_BUTTONS = listOf(
+    "igds_color_secondary_button_panavision",
+    "igds_color_secondary_button_elevated_panavision",
+)
+
+/**
  * The attributes the background styles set, each with its step (#187). Instagram's other backgrounds
  * mostly point at these. The media, Reels and story loading backgrounds aren't here, so a story or a
  * reel still plays over black. Neither are the see-through ones (toasts, blurs), which already show
- * what's behind them.
+ * what's behind them. [ROW_ATTRIBUTE] is HushGram's, the one Pure black leaves a Likes row filling with.
+ * [REELS_TAB_BAR] is the tab bar's own color on the Reels tab. [SECONDARY_BUTTONS] fill gray buttons
+ * like a profile's Edit profile and Share profile.
  */
 internal val BACKGROUND_ATTRIBUTES: Map<String, BackgroundStep> = linkedMapOf(
     BACKGROUND_ATTRIBUTE to BackgroundStep.BASE,
     "status_bar_background" to BackgroundStep.BASE,
     "igds_color_cta_banner_background" to BackgroundStep.BASE,
+    REELS_TAB_BAR to BackgroundStep.BASE,
     "igds_color_elevated_background" to BackgroundStep.RAISED,
-    "igds_color_elevated_background_dark" to BackgroundStep.RAISED,
+    ROW_BACKGROUND to BackgroundStep.RAISED,
+    ROW_ATTRIBUTE to BackgroundStep.RAISED,
     "igds_color_prism_card_background" to BackgroundStep.RAISED,
     "igds_color_generic_xma_background_color" to BackgroundStep.RAISED,
     "igds_color_secondary_background" to BackgroundStep.TOP,
@@ -339,7 +356,23 @@ internal val BACKGROUND_ATTRIBUTES: Map<String, BackgroundStep> = linkedMapOf(
     "igds_color_highlight_background" to BackgroundStep.TOP,
     "igds_color_elevated_highlight_background" to BackgroundStep.TOP,
     "igds_color_pill_background" to BackgroundStep.TOP,
-)
+) + SECONDARY_BUTTONS.associateWith { BackgroundStep.TOP }
+
+/**
+ * The attribute the main screen paints its tab bar and the navigation bar with each time the Reels tab
+ * opens, in place of the page's. Its Prism black stayed under the Reels tab with the backgrounds in
+ * the accent color, so the bar changed color there (#187). Instagram keeps the Reels tab dark on a
+ * light theme too, its icons white, so only a dark style sets it.
+ */
+internal const val REELS_TAB_BAR = "igds_color_clips_tab_bar_background"
+
+/**
+ * The ones of [backgrounds] the background styles for [theme] set. Instagram holds a dark gray in the
+ * ones named for a dark surface on a light theme too, for pills and buttons with light text on them,
+ * so a light style leaves those alone (#639), and [REELS_TAB_BAR] with them.
+ */
+internal fun backgroundsFor(theme: IconTheme, backgrounds: Map<String, BackgroundStep>): Map<String, BackgroundStep> =
+    if (theme == IconTheme.LIGHT) backgrounds.filterKeys { !it.endsWith("_dark") && it != REELS_TAB_BAR } else backgrounds
 
 internal fun backgroundColor(palette: String, theme: IconTheme, step: BackgroundStep): String =
     "hushgram_accent_${palette.lowercase(Locale.ROOT)}_background_${theme.name.lowercase(Locale.ROOT)}_${step.name.lowercase(Locale.ROOT)}"
@@ -356,6 +389,29 @@ internal fun backgroundShade(fill: Int, theme: IconTheme, step: BackgroundStep):
         IconTheme.LIGHT -> channels { 0xff - Math.round((0xff - it) * step.lightShare) }
     }
 }
+
+/**
+ * Instagram's older look at each step, for Classic colors (#639): a navy screen with charcoal and gray
+ * panels in dark mode, an off-white screen with white and light gray panels in light mode.
+ */
+internal fun classicBackground(theme: IconTheme, step: BackgroundStep): Int = when (theme) {
+    IconTheme.DARK -> when (step) {
+        BackgroundStep.BASE -> 0x101b2d
+        BackgroundStep.RAISED -> 0x262626
+        BackgroundStep.TOP -> 0x363636
+    }
+    IconTheme.LIGHT -> when (step) {
+        BackgroundStep.BASE -> 0xfafafa
+        BackgroundStep.RAISED -> 0xffffff
+        BackgroundStep.TOP -> 0xefefef
+    }
+}
+
+internal fun classicColor(theme: IconTheme, step: BackgroundStep): String =
+    "hushgram_classic_background_${theme.name.lowercase(Locale.ROOT)}_${step.name.lowercase(Locale.ROOT)}"
+
+/** The style setting each of [BACKGROUND_ATTRIBUTES] declared to its [classicColor], for Classic colors (#639). */
+internal fun classicStyle(theme: IconTheme): String = "HushGramClassicBackgrounds_${theme.name.lowercase(Locale.ROOT)}"
 
 /** The background this color gives [theme] at [step]: its set's screen color with a little of the fill on each step up, or else [backgroundShade]. */
 internal fun AccentPalette.background(theme: IconTheme, step: BackgroundStep): Int {
@@ -382,9 +438,15 @@ private fun <T> declaredOf(table: Map<String, T>, attrs: Document): Map<String, 
 /** The ring attributes [attrs] declares. */
 private fun ringAttributes(attrs: Document): Map<String, AccentRole> = declaredOf(RING_ATTRIBUTES, attrs)
 
-/** The background attributes [attrs] declares, or none without [BACKGROUND_ATTRIBUTE]. */
-private fun backgroundAttributes(attrs: Document): Map<String, BackgroundStep> =
-    declaredOf(BACKGROUND_ATTRIBUTES, attrs).takeIf { BACKGROUND_ATTRIBUTE in it }.orEmpty()
+/**
+ * The background attributes [attrs] declares, or none without [BACKGROUND_ATTRIBUTE]. [ROW_ATTRIBUTE]
+ * counts wherever [ROW_BACKGROUND] is declared, since [declareRowAttribute] adds it then (#639).
+ */
+private fun backgroundAttributes(attrs: Document): Map<String, BackgroundStep> {
+    val declared = attrs.children("attr").mapTo(HashSet()) { it.getAttribute("name") }
+    if (ROW_BACKGROUND in declared) declared += ROW_ATTRIBUTE
+    return BACKGROUND_ATTRIBUTES.filterKeys { it in declared }.takeIf { BACKGROUND_ATTRIBUTE in it }.orEmpty()
+}
 
 private fun Document.children(tag: String): List<Element> {
     val list = documentElement.getElementsByTagName(tag)
@@ -473,7 +535,9 @@ internal fun accentUses(styles: List<Document>, colors: Map<String, Set<Int>>): 
  *   Solid story rings (#519). A color with an [AccentSet] points the gradient at the set's stops (#528);
  * - when attrs.xml declares [BACKGROUND_ATTRIBUTE], each color's background shades for a light and a
  *   dark theme and a style setting each declared one of [BACKGROUND_ATTRIBUTES] to them,
- *   `HushGramAccentBackgrounds_PURPLE_dark`, for Backgrounds in the accent color (#187).
+ *   `HushGramAccentBackgrounds_PURPLE_dark`, for Backgrounds in the accent color (#187), and the same
+ *   for Instagram's older look, [classicBackground] in [classicColor] and `HushGramClassicBackgrounds_dark`,
+ *   for Classic colors (#639).
  *
  * The extension lays a color's style and the styles for whatever its theme's attributes hold onto the
  * theme. The shade attributes stand between them because a part and alpha is the same whatever color
@@ -507,8 +571,12 @@ internal fun addAccentResources(uses: Set<AccentUse>, attrs: Document, colors: D
             IconTheme.entries.flatMap { theme ->
                 backgroundSteps.map { backgroundColor(palette.name, theme, it) } + backgroundStyle(palette.name, theme)
             }
+        } else emptyList()) +
+        (if (backgrounds.isNotEmpty()) IconTheme.entries.flatMap { theme ->
+            backgroundSteps.map { classicColor(theme, it) } + classicStyle(theme)
         } else emptyList())
     adding.firstOrNull { it in taken }?.let { refuse("the resources already have a $it") }
+    if (ROW_ATTRIBUTE in backgrounds) declareRowAttribute(attrs)
 
     for (shade in shades) {
         attrs.documentElement.appendChild(attrs.createElement("attr").apply {
@@ -593,9 +661,15 @@ internal fun addAccentResources(uses: Set<AccentUse>, attrs: Document, colors: D
             for (theme in IconTheme.entries) {
                 for (step in backgroundSteps) color(backgroundColor(palette.name, theme, step), palette.background(theme, step))
                 styles.documentElement.appendChild(
-                    styles.colorsStyle(backgroundStyle(palette.name, theme), backgrounds.mapValues { backgroundColor(palette.name, theme, it.value) }),
+                    styles.colorsStyle(backgroundStyle(palette.name, theme), backgroundsFor(theme, backgrounds).mapValues { backgroundColor(palette.name, theme, it.value) }),
                 )
             }
+        }
+        for (theme in IconTheme.entries) {
+            for (step in backgroundSteps) color(classicColor(theme, step), classicBackground(theme, step))
+            styles.documentElement.appendChild(
+                styles.colorsStyle(classicStyle(theme), backgroundsFor(theme, backgrounds).mapValues { classicColor(theme, it.value) }),
+            )
         }
     }
     return uses.map { it.attribute }.distinct().joinToString(" ")
@@ -642,6 +716,7 @@ internal fun addWallpaperResources(uses: Set<AccentUse>, attrs: Document, colors
             backgroundSteps.map { backgroundColor(WALLPAPER, theme, it) } + backgroundStyle(WALLPAPER, theme)
         } else emptyList())
     adding.firstOrNull { it in taken }?.let { refuse("the resources already have a $it") }
+    if (ROW_ATTRIBUTE in backgrounds) declareRowAttribute(attrs)
 
     fun color(name: String, fallback: Int, system: String) {
         colors.documentElement.appendChild(colors.createElement("color").apply {
@@ -693,7 +768,7 @@ internal fun addWallpaperResources(uses: Set<AccentUse>, attrs: Document, colors
                 color(backgroundColor(WALLPAPER, theme, step), backgroundShade(fill, theme, step), wallpaperBackground(theme, step))
             }
             styles.documentElement.appendChild(
-                styles.colorsStyle(backgroundStyle(WALLPAPER, theme), backgrounds.mapValues { backgroundColor(WALLPAPER, theme, it.value) }),
+                styles.colorsStyle(backgroundStyle(WALLPAPER, theme), backgroundsFor(theme, backgrounds).mapValues { backgroundColor(WALLPAPER, theme, it.value) }),
             )
         }
     }
@@ -1085,6 +1160,61 @@ internal fun BytecodePatchContext.tintTabIcons() {
             move-result-object v$normal
         """,
     )
+}
+
+/** The extension's hook that lays the icon style onto a theme as Litho's resource resolver keeps it (#724). */
+internal const val LITHO_ICONS = "$ACCENT_THEME->lithoIcons(Landroid/content/Context;)V"
+
+private const val RESOURCES = "Landroid/content/res/Resources;"
+
+/**
+ * The constructor of Litho's resource resolver (`LX/00b9` on 386214574): the one constructor taking a
+ * Context first that keeps that Context's getTheme() in a Theme field of its own class, which holds the
+ * Context's Resources as well. Every color a Litho tree reads from a theme attribute comes from that
+ * Theme, the feed's post buttons' glyphColorPrimary among them (`LX/01LA;->A05`), and the Context a tree
+ * is built on isn't always one the overrides or the theme util reached, so with Icons in the accent
+ * color on those buttons stayed black (#724). Answers null with a warning when there's not exactly one.
+ */
+internal fun BytecodePatchContext.findLithoThemeHolder(): MutableMethod? {
+    val found = classesCalling(CONTEXT, "getTheme").flatMap { type ->
+        if (type.fields.none { it.type == RESOURCES } || type.fields.none { it.type == CONTEXT }) return@flatMap emptyList()
+        type.methods.filter { it.keepsItsTheme(type.type) }.map { type.type to it }
+    }
+    if (found.size != 1) {
+        patchLog.warning("$PATCH: ${found.size} constructors keep a Context's theme for Litho, not one, so the feed's post buttons keep Instagram's icon color")
+        return null
+    }
+    if (extensionMethod(LITHO_ICONS) == null) refuse("the extension has no public static $LITHO_ICONS")
+    val (type, method) = found.single()
+    val returns = method.code().indices.filter { method.code()[it].opcode == Opcode.RETURN_VOID }
+    if (returns.isEmpty()) refuse("${method.where()} never returns")
+    method.requireParameterIntact(PATCH, 0, returns)
+    return mutableClassDefBy(type).methods.single { it.name == "<init>" && it.keepsItsTheme(type) }
+}
+
+/** A constructor taking a Context first that stores Context.getTheme()'s answer in a Theme field of [type]. */
+private fun Method.keepsItsTheme(type: String): Boolean {
+    if (name != "<init>" || parameterTypes.firstOrNull()?.toString() != CONTEXT) return false
+    val code = code()
+    return code.any { it.calls(CONTEXT, "getTheme") } && code.any { instruction ->
+        val field = (instruction as? ReferenceInstruction)?.reference as? FieldReference
+        instruction.opcode == Opcode.IPUT_OBJECT && field != null && field.definingClass == type && field.type == THEME
+    }
+}
+
+/**
+ * Hands the Context Litho's resource resolver was built from to the extension at each of its
+ * constructor's returns, once it keeps that Context's theme, so the icon style can go onto a theme the
+ * accent never reached before the tree reads its icon colors (#724). Leaves Litho as it is when
+ * [findLithoThemeHolder] finds no one constructor.
+ */
+internal fun BytecodePatchContext.tintLithoIcons() {
+    val method = findLithoThemeHolder() ?: return
+    val context = method.parameterRegisterNumber(0)
+    val returns = method.code().indices.filter { method.code()[it].opcode == Opcode.RETURN_VOID }
+    for (at in returns.asReversed()) {
+        method.addInstructionsAtControlFlowLabel(at, "invoke-static/range { v$context .. v$context }, $LITHO_ICONS")
+    }
 }
 
 private fun BytecodePatchContext.extensionMethod(signature: String): Method? =

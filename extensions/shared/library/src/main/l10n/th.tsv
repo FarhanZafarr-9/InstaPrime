@@ -48,6 +48,8 @@ Loading older messages. %1$d message so far.	กำลังโหลดข้�
 Loading older messages. %1$d messages so far.	กำลังโหลดข้อความก่อนหน้า โหลดแล้ว %1$d ข้อความ
 Lock these settings	ล็อกการตั้งค่าเหล่านี้
 Mark a chat seen when you reply	ทำเครื่องหมายว่าอ่านแชทแล้วเมื่อคุณตอบกลับ
+Mark a chat seen when you react	ทำเครื่องหมายว่าอ่านแชทแล้วเมื่อคุณแสดงความรู้สึก
+Reacting to a message in a chat lets the other person see that you've read up to that message. What they sent after it stays unseen to them.	การแสดงความรู้สึกต่อข้อความในแชทจะทำให้อีกฝ่ายเห็นว่าคุณได้อ่านถึงข้อความนั้นแล้ว ส่วนข้อความที่พวกเขาส่งมาหลังจากนั้นจะยังคงไม่ขึ้นว่าอ่านแล้วสำหรับพวกเขา
 No messages found to save.	ไม่พบข้อความที่จะบันทึก
 Pick a wait from 1 to 72 hours. Locked, nothing here changes until you ask to unlock and the wait is over.	เลือกระยะเวลารอตั้งแต่ 1 ถึง 72 ชั่วโมง เมื่อล็อกแล้ว จะไม่สามารถเปลี่ยนสิ่งใดที่นี่ได้จนกว่าคุณจะขอปลดล็อกและระยะเวลารอสิ้นสุดลง
 Ask to unlock	ขอปลดล็อก
@@ -246,12 +248,32 @@ Only in Reels	ในรีลส์เท่านั้น
 Feed videos, reels and stories all wait for your tap.	วิดีโอในฟีด, รีลส์ และสตอรี่จะรอให้คุณแตะทั้งหมด
 Feed videos and stories wait for your tap. Reels play as you swipe to them.	วิดีโอในฟีดและสตอรี่จะรอให้คุณแตะ ส่วนรีลส์จะเล่นทันทีที่คุณปัดไปถึง
 Reels wait for your tap. Feed videos and stories play as Instagram plays them.	รีลส์จะรอให้คุณแตะ ส่วนวิดีโอในฟีดและสตอรี่จะเล่นตามปกติของ Instagram
+# context: Tap to play settings: 'Where videos wait' choice that holds feed videos, reels and stories but lets videos in the Explore tab play (#762)
+Everywhere but Explore	ทุกที่ยกเว้นในสำรวจ
+# context: 'Where videos wait' choice that holds only videos in the Explore tab (#762)
+Only in Explore	ในสำรวจเท่านั้น
+# context: 'Where videos wait' choice that holds reels and videos in the Explore tab (#762)
+Reels and Explore	รีลส์และสำรวจ
+# context: 'Where videos wait' choice that holds feed videos and stories but lets reels and the Explore tab play (#762)
+Everywhere but Reels and Explore	ทุกที่ยกเว้นในรีลส์และสำรวจ
+# context: summary of 'Everywhere but Explore' (#762)
+Feed videos, reels and stories wait for your tap. Videos in Explore play as Instagram plays them.	วิดีโอในฟีด, รีลส์ และสตอรี่จะรอให้คุณแตะ ส่วนวิดีโอในสำรวจจะเล่นตามปกติของ Instagram
+# context: summary of 'Only in Explore' (#762)
+Videos in Explore wait for your tap. Feed videos, reels and stories play as Instagram plays them.	วิดีโอในสำรวจจะรอให้คุณแตะ ส่วนวิดีโอในฟีด, รีลส์ และสตอรี่จะเล่นตามปกติของ Instagram
+# context: summary of 'Reels and Explore' (#762)
+Reels and videos in Explore wait for your tap. Feed videos and stories play as Instagram plays them.	รีลส์และวิดีโอในสำรวจจะรอให้คุณแตะ ส่วนวิดีโอในฟีดและสตอรี่จะเล่นตามปกติของ Instagram
+# context: summary of 'Everywhere but Reels and Explore' (#762)
+Feed videos and stories wait for your tap. Reels and videos in Explore play as Instagram plays them.	วิดีโอในฟีดและสตอรี่จะรอให้คุณแตะ ส่วนรีลส์และวิดีโอในสำรวจจะเล่นตามปกติของ Instagram
 Turn on Tap to play to use this choice.	เปิด "แตะเพื่อเล่น" เพื่อใช้ตัวเลือกนี้
 Resume long videos	เล่นวิดีโอยาวต่อจากเดิม
 Videos and reels over two minutes pick up where you left off. Seek to start elsewhere. Live videos and ads start as usual.	วิดีโอและรีลส์ที่ยาวเกินสองนาทีจะเล่นต่อจากจุดที่คุณดูค้างไว้ เลื่อนแถบเวลาเพื่อเริ่มเล่นจากจุดอื่น ส่วนวิดีโอถ่ายทอดสดและโฆษณาจะเริ่มเล่นตามปกติ
 Default playback quality	คุณภาพการเล่นเริ่มต้น
-# context: description of the Default playback quality switch on the Playback page, with the list of qualities below it. A video that keeps stalling because the connection is too slow for its quality switches to the next lower quality that video offers (#599)
-Videos, reels and stories play at the quality below, starting with the next one you open. When your connection can't keep up, a video drops to the next lower quality.	วิดีโอ, รีลส์ และสตอรี่จะเล่นตามคุณภาพด้านล่าง โดยเริ่มจากรายการถัดไปที่คุณเปิด เมื่อการเชื่อมต่อตามไม่ทัน วิดีโอจะลดไปใช้คุณภาพที่ต่ำกว่าถัดไป
+# context: description of the Default playback quality switch on the Playback page, with the list of qualities below it
+Videos, reels and stories play at the quality below, starting with the next one you open.	วิดีโอ, รีลส์ และสตอรี่จะเล่นตามคุณภาพด้านล่าง โดยเริ่มจากรายการถัดไปที่คุณเปิด
+# context: title of a switch under Default playback quality on the Playback page. On, a video that keeps stalling because the connection is too slow for its quality switches to the next lower quality that video offers (#599); off, it keeps the quality picked (#761)
+Drop quality to keep playing	ลดคุณภาพเพื่อให้เล่นต่อได้
+# context: description of the Drop quality to keep playing switch
+When your connection can't keep up, a video drops to the next lower quality instead of stalling. Turn this off to keep the quality you picked.	เมื่อการเชื่อมต่อตามไม่ทัน วิดีโอจะลดลงไปเป็นคุณภาพที่ต่ำกว่าถัดไปแทนการหยุดค้าง ปิดตัวเลือกนี้เพื่อคงคุณภาพที่คุณเลือกไว้
 Playback quality	คุณภาพการเล่น
 Auto	อัตโนมัติ
 Data saver	โหมดประหยัดอินเทอร์เน็ต
@@ -297,6 +319,9 @@ Still scroll reels from Search and Explore	ยังคงเลื่อนด�
 With Stop Reels scrolling on, reels you open from Search, Explore, a hashtag or a place still move on when you swipe.	เมื่อเปิด "หยุดการเลื่อนดูรีลส์" รีลส์ที่คุณเปิดจากการค้นหา, สำรวจ, แฮชแท็ก หรือตำแหน่งที่ตั้งจะยังคงเปลี่ยนไปเมื่อคุณปัดหน้าจอ
 Still scroll reels from a song page	ยังคงเลื่อนดูรีลส์จากหน้าเพลงได้
 With Stop Reels scrolling on, reels you open from a song or audio page still move on when you swipe.	เมื่อเปิด "หยุดการเลื่อนดูรีลส์" รีลส์ที่คุณเปิดจากหน้าเพลงหรือหน้าเสียงจะยังคงเปลี่ยนไปเมื่อคุณปัดหน้าจอ
+# context: Reels page, a switch of its own after the three above (#656). It names the Messages page switch Swipe through a chat's reels by its label.
+Play only the reel you opened	เล่นเฉพาะรีลส์ที่คุณเปิด
+A reel you open from a post on Home, a suggested reels row or a message plays on its own. Swiping, pulling down and auto scroll won't move on to another reel, so it plays again when it ends. The Reels tab scrolls as usual. With Swipe through a chat's reels on, a chat's reels still swipe.	รีลส์ที่คุณเปิดจากโพสต์ในหน้าหลัก แถวรีลส์แนะนำ หรือข้อความ จะเล่นเพียงรีลส์เดียว การปัด การดึงลง และการเลื่อนอัตโนมัติจะไม่เปลี่ยนไปยังรีลส์อื่น รีลส์จึงเล่นซ้ำเมื่อจบ แท็บรีลส์ยังเลื่อนได้ตามปกติ เมื่อเปิด "ปัดดูรีลส์ของแชท" รีลส์ในแชทจะยังปัดได้
 A swipe in Reels no longer moves on to the next reel, and pulling down doesn't load new ones. The reel you opened still plays. Restart Instagram to see the change.	การปัดในรีลส์จะไม่เปลี่ยนไปยังรีลส์ถัดไปอีกต่อไป และการลากลงจะไม่โหลดรีลส์ใหม่ รีลส์ที่คุณเปิดอยู่จะยังคงเล่นต่อไป รีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
 Lock a reel at 2x (hold its edge, then slide down) and the next reels play at 2x too. Slide the lock off, or hold the edge and let go, to go back to normal speed.	ล็อกความเร็วรีลส์ไว้ที่ 2x (แตะขอบค้างไว้แล้วเลื่อนลง) แล้วรีลส์ถัดไปจะเล่นที่ความเร็ว 2x เช่นกัน เลื่อนเพื่อปลดล็อก หรือแตะขอบค้างไว้แล้วปล่อย เพื่อกลับสู่ความเร็วปกติ
 Open links in external browser	เปิดลิงก์ในเบราว์เซอร์ภายนอก
@@ -313,6 +338,12 @@ Stop swipe to create	หยุดการปัดเพื่อสร้า�
 Full resolution photos	รูปภาพความละเอียดเต็ม
 Loads photos in your feed, carousels and opened posts at the largest size Instagram offers. This can use more data.	โหลดรูปภาพในฟีดของคุณ, โพสต์แบบเลื่อนดูหลายรูป (Carousel) และโพสต์ที่เปิดดูด้วยขนาดที่ใหญ่ที่สุดที่ Instagram มีให้อยู่ ซึ่งอาจใช้อินเทอร์เน็ตมากขึ้น
 A sideways swipe on Home no longer opens the camera. The + button and every other way into the camera still work.	การปัดหน้าจอไปด้านข้างในหน้าหลักจะไม่เปิดกล้องอีกต่อไป โดยปุ่ม + และวิธีอื่นๆ ในการเข้าถึงกล้องจะยังคงใช้งานได้ตามปกติ
+# context: a switch in HushGram settings > Feed, right after Stop swipe to create; Messages is Instagram's inbox, named as in Swipe left for Messages (#770)
+Stop swipe to Messages	หยุดการปัดเพื่อเปิดข้อความ
+# context: summary under Stop swipe to Messages; the Messages button is the inbox button at the top of Home or on the tab bar (#770)
+A swipe left on Home no longer opens Messages. The Messages button still does.	การปัดซ้ายในหน้าหลักจะไม่เปิดข้อความอีกต่อไป ปุ่มข้อความยังใช้งานได้
+Swipe left for Messages	ปัดซ้ายเพื่อเปิดข้อความ
+Swiping left on Home opens Messages, like Instagram used to. Carousels and the stories row still slide as before.	การปัดซ้ายในหน้าหลักจะเปิดข้อความ เหมือน Instagram แบบเดิม โพสต์แบบเลื่อนดูหลายรูปและแถวสตอรี่ยังคงปัดได้ตามปกติ
 Meta AI	Meta AI
 Hide Meta AI in search and Home's bar	ซ่อน Meta AI ในการค้นหาและแถบหน้าหลัก
 Gives Search and your messages a plain search bar and removes Meta AI's buttons, follow-up bar and inbox row. Restart Instagram to see the change.	เปลี่ยนแถบค้นหาในการค้นหาและข้อความของคุณให้เป็นแถบค้นหาแบบธรรมดา และลบปุ่ม, แถบคำถามต่อเนื่อง และแถวในกล่องข้อความเข้าของ Meta AI ออก รีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
@@ -372,6 +403,8 @@ Hide Add Yours cards between stories	ซ่อนการ์ด "ตาคุ�
 Leaves out the Add Yours cards, like Popular Add Yours and Join a trending Add Yours, that Instagram puts between the stories you tap through. The stories themselves stay.	ไม่แสดงการ์ด "ตาคุณแล้ว" เช่น สติกเกอร์ตาคุณแล้วยอดนิยม และเข้าร่วมสติกเกอร์ตาคุณแล้วที่กำลังมาแรง ที่ Instagram แทรกไว้ระหว่างสตอรี่ที่คุณแตะดู โดยสตอรี่ยังคงแสดงตามปกติ
 Download feed photos	ดาวน์โหลดรูปภาพบนฟีด
 The same Download on a photo post, and on a carousel showing a photo. Saves the largest size Instagram has.	ตัวเลือก "ดาวน์โหลด" แบบเดียวกันสำหรับโพสต์รูปภาพ และโพสต์แบบเลื่อนดูหลายรูป (Carousel) ที่กำลังแสดงรูปภาพ โดยจะบันทึกด้วยขนาดที่ใหญ่ที่สุดที่ Instagram มี
+Save photos at full size	บันทึกรูปภาพในขนาดเต็ม
+Download feed photos saves a photo at the size it was posted, not the 1080 pixel copy Instagram shows. Grid pictures load larger too, which uses more data. Restart Instagram to see the change.	"ดาวน์โหลดรูปภาพบนฟีด" จะบันทึกรูปภาพในขนาดที่โพสต์ไว้ แทนสำเนา 1080 พิกเซลที่ Instagram แสดง รูปภาพในตารางจะโหลดใหญ่ขึ้นด้วย ซึ่งใช้ข้อมูลมากขึ้น โปรดรีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
 the start-up fix for x86 devices	การแก้ไขปัญหาการเริ่มต้นสำหรับอุปกรณ์ x86
 # context: toasts when a long press of Home gave up waiting on Instagram's developer options to load
 Pure black dark mode	โหมดมืดสีดำสนิท
@@ -388,7 +421,9 @@ Leaves New group out of the share sheet, and the button that sends to the people
 Hide the search bar	ซ่อนแถบค้นหา
 Takes the search bar off the top of the share sheet. The people you can send to still show.	นำแถบค้นหาออกจากด้านบนของเมนูแชร์ โดยบุคคลที่คุณสามารถส่งถึงจะยังคงแสดงอยู่
 Story ring size	ขนาดวงแหวนสตอรี่
-Draws the rings in the stories row at the top of Home at the size below, and the rings of stories you haven't watched in the color below. Restart Instagram to see a change.	แสดงวงแหวนในแถวสตอรี่ที่ด้านบนของหน้าหลักตามขนาดด้านล่าง และแสดงวงแหวนของสตอรี่ที่คุณยังไม่ได้ดูตามสีด้านล่าง โปรดรีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
+Hide rings outside the stories row	ซ่อนวงแหวนนอกแถวสตอรี่
+Takes the story and live rings off profile pictures on posts, comments, reels and profiles. The pictures stay, and so do the rings in the stories row.	เอาวงแหวนสตอรี่และวงแหวนไลฟ์ออกจากรูปโปรไฟล์ในโพสต์ ความคิดเห็น รีลส์ และโปรไฟล์ รูปยังอยู่ และวงแหวนในแถวสตอรี่ก็ยังอยู่
+Draws the rings in the stories row at the top of Home at the size below, and the rings of stories you haven't watched in the color below. Story rings take the thickness below. Restart Instagram to see a change.	แสดงวงแหวนในแถวสตอรี่ที่ด้านบนของหน้าหลักตามขนาดด้านล่าง และแสดงวงแหวนของสตอรี่ที่คุณยังไม่ได้ดูตามสีด้านล่าง วงแหวนสตอรี่จะหนาตามที่เลือกด้านล่าง โปรดรีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
 Ring size	ขนาดวงแหวน
 Instagram's size	ขนาดตาม Instagram
 The rings are the size Instagram picks for your screen.	วงแหวนมีขนาดตามที่ Instagram เลือกให้สำหรับหน้าจอของคุณ
@@ -435,6 +470,11 @@ Keep Featured off the heart's dot	ไม่ให้รายการแนะ�
 Stops the red dot on the heart from showing up for Featured alone. Likes, comments and new followers still light it.	ป้องกันไม่ให้จุดสีแดงบนรูปหัวใจแสดงขึ้นมาสำหรับรายการแนะนำเพียงอย่างเดียว ทั้งนี้การกดถูกใจ ความคิดเห็น และผู้ติดตามใหม่จะยังคงทำให้จุดแสดงอยู่
 Hide highlights	ซ่อนไฮไลท์
 Takes the row of story highlights off profiles, yours included. Bios, counts and posts stay, and so does Add to highlight on your stories.	นำแถวไฮไลท์สตอรี่ออกจากโปรไฟล์ รวมถึงโปรไฟล์ของคุณด้วย ทั้งนี้ประวัติย่อ จำนวนต่างๆ และโพสต์จะยังคงอยู่ รวมถึง "เพิ่มลงในไฮไลท์" บนสตอรี่ของคุณด้วย
+# context: "Followers" and "Following" are the two buttons under a profile's name, beside the post count; use the words Instagram shows there in this language (#771)
+Hide follower counts	ซ่อนจำนวนผู้ติดตาม
+Takes the numbers off Followers and Following at the top of profiles, yours included. The words stay, and a tap still opens the list.	นำตัวเลขออกจากผู้ติดตามและกำลังติดตามที่ด้านบนของโปรไฟล์ รวมถึงโปรไฟล์ของคุณ คำยังคงอยู่ และแตะเพื่อเปิดรายการได้เหมือนเดิม
+Hide Followers and Following	ซ่อนผู้ติดตามและกำลังติดตาม
+Takes the Followers and Following buttons off the top of profiles, yours included, with no gap left. The post count stays.	นำปุ่มผู้ติดตามและกำลังติดตามออกจากด้านบนของโปรไฟล์ รวมถึงโปรไฟล์ของคุณ โดยไม่เหลือช่องว่าง จำนวนโพสต์ยังคงอยู่
 Hide the Threads button	ซ่อนปุ่ม Threads
 Takes the Threads button off the top of profiles, yours included. The menu and the other buttons stay where they were.	นำปุ่ม Threads ออกจากด้านบนของโปรไฟล์ รวมถึงโปรไฟล์ของคุณด้วย ทั้งนี้เมนูและปุ่มอื่นๆ จะยังคงอยู่ที่เดิม
 Show profile posts as a list	แสดงโพสต์บนโปรไฟล์เป็นรายการ
@@ -444,12 +484,19 @@ Puts a calendar on a profile's top bar. Pick a day and the posts grid goes back 
 Open the profile's posts first	เปิดโพสต์ของโปรไฟล์ก่อน
 Still loading, try again	กำลังโหลด โปรดลองอีกครั้ง
 Going to that date	กำลังไปยังวันที่ดังกล่าว
+# context: Profiles settings; Reels is the reels tab on a profile, Latest and Most viewed are the two sorts Instagram's arrow next to it offers (#679)
+Sort reels on profiles	จัดเรียงรีลในโปรไฟล์
+Puts the arrow next to Reels on every profile, so you can sort them by Latest or Most viewed where Instagram took the choice away.	แสดงลูกศรข้าง Reels ในทุกโปรไฟล์ เพื่อให้คุณจัดเรียงตามล่าสุดหรือมีผู้ดูมากที่สุดได้ แม้ในโปรไฟล์ที่ Instagram นำตัวเลือกนี้ออกไปแล้ว
 The cards of people and creators to follow that Instagram puts between reels. Every reel still plays.	การ์ดแนะนำบุคคลและครีเอเตอร์ให้ติดตามที่ Instagram แทรกไว้ระหว่างรีลส์ ทั้งนี้ทุกรีลส์จะยังคงเล่นได้ตามปกติ
+Hide stories in Reels	ซ่อนสตอรี่ในรีลส์
+The Catch up with friends pages of stories that Instagram puts between reels. Stories stay at the top of Home.	หน้าสตอรี่ของเพื่อนที่ Instagram แทรกไว้ระหว่างรีลส์ ส่วนสตอรี่ด้านบนของหน้าหลักยังอยู่เหมือนเดิม
 Leaves out reels with a Paid partnership label, and reels Instagram marks as boosted. Ads have their own switch.	เว้นรีลส์ที่มีป้ายกำกับ "ความร่วมมือที่ได้รับค่าตอบแทน" และรีลส์ที่ Instagram ระบุว่าได้รับการโปรโมต ทั้งนี้โฆษณาจะมีสวิตช์แยกต่างหาก
 Turn on Start Home on Following to use this choice.	เปิดใช้งาน "เปิดหน้าหลักที่กำลังติดตาม" เพื่อใช้ตัวเลือกนี้
 # context: Settings page: the summary of a greyed-out slider in place of its value; %1$s is the title of the switch it waits on, like Glass tab bar
 Turn on %1$s to use this slider.	เปิดใช้งาน %1$s เพื่อใช้แถบเลื่อนนี้
 Turn on Story ring size to use this choice.	เปิดใช้งาน "ขนาดวงแหวนสตอรี่" เพื่อใช้ตัวเลือกนี้
+# context: Settings page, Reels: the line under the greyed-out Fill the screen switch while Show the whole reel is on
+Turn off Show the whole reel to use this choice.	ปิดใช้งาน "แสดงรีลส์ทั้งคลิป" เพื่อใช้ตัวเลือกนี้
 Turn on Default playback quality to use this choice.	เปิดใช้งาน "คุณภาพการเล่นเริ่มต้น" เพื่อใช้ตัวเลือกนี้
 Updating remembered positions...	กำลังอัปเดตตำแหน่งที่จำไว้...
 Undo cleared positions	เลิกทำการล้างตำแหน่งที่จำไว้
@@ -514,6 +561,9 @@ Reply with a comment's GIF	ตอบกลับด้วย GIF ของคว
 When a comment has a GIF, its menu gets a GIF reply that sends that same GIF back as your reply, animated.	เมื่อความคิดเห็นมี GIF เมนูของความคิดเห็นนั้นจะมีตัวเลือก "ตอบกลับด้วย GIF" ซึ่งจะส่ง GIF นั้นกลับไปเป็นการตอบกลับของคุณแบบเคลื่อนไหว
 Show a comment GIF's name	แสดงชื่อ GIF ของความคิดเห็น
 When a comment has a GIF or sticker, its menu shows its name. Tap the name to copy it.	เมื่อความคิดเห็นมี GIF หรือสติกเกอร์ เมนูจะแสดงชื่อของ GIF หรือสติกเกอร์นั้น แตะที่ชื่อเพื่อคัดลอก
+Send saved GIFs as GIFs	ส่ง GIF ที่บันทึกไว้เป็น GIF
+A comment GIF you saved with Save comment photo, picked from your gallery in the comment box, goes up right away as the same GIF, animated. Other pictures go up as before.	GIF ในความคิดเห็นที่คุณบันทึกด้วย "บันทึกรูปภาพในความคิดเห็น" เมื่อเลือกจากแกลเลอรีในช่องแสดงความคิดเห็น จะโพสต์ทันทีเป็น GIF เดิมที่ยังเคลื่อนไหว ส่วนรูปภาพอื่นจะอัปโหลดเหมือนเดิม
+Couldn't send this GIF	ไม่สามารถส่ง GIF นี้ได้
 GIF name	ชื่อ GIF
 GIF name copied	คัดลอกชื่อ GIF แล้ว
 Couldn't copy the GIF name	ไม่สามารถคัดลอกชื่อ GIF ได้
@@ -541,6 +591,8 @@ Seek bar like DM videos	แถบเลื่อนเวลาเหมือ�
 Gives reels the seek bar of a video in a chat, a thin gray line that turns white as it plays, with a big round white handle. The time shows above it. Drag it to seek. When Bigger seek bar on reels is on too, this look wins. It also keeps the bar on short reels.	แสดงแถบเลื่อนเวลาของวิดีโอในแชทให้กับรีลส์ ซึ่งเป็นเส้นบางสีเทาที่จะเปลี่ยนเป็นสีขาวขณะเล่น พร้อมปุ่มควบคุมทรงกลมสีขาวขนาดใหญ่ เวลาจะแสดงอยู่ด้านบน ลากเพื่อเลื่อนตำแหน่ง หากเปิด "แถบเลื่อนเวลาขนาดใหญ่ขึ้นบนรีลส์" ไว้ด้วย รูปลักษณ์นี้จะมีความสำคัญกว่า และยังคงแสดงแถบบนรีลส์สั้นๆ อีกด้วย
 Seek bar on photos with music	แถบเลื่อนเวลาบนรูปภาพพร้อมเพลง
 Reels that are a photo with a song get the same seek bar and time as a video reel, following the song. Drag it to seek.	รีลส์ที่เป็นรูปภาพพร้อมเพลงจะได้รับแถบเลื่อนเวลาและเวลาเหมือนกับวิดีโอรีลส์ โดยเป็นไปตามเพลง ลากเพื่อเลื่อนตำแหน่ง
+Hide the seek bar on reels	ซ่อนแถบเลื่อนเวลาบนรีลส์
+Takes the seek bar off the bottom of every reel, long ones too. Drag sideways along the bottom edge of a reel to bring it back and seek. Keep a seek bar and the seek bar looks above win over it. Restart Instagram to see the change.	นำแถบเลื่อนเวลาออกจากด้านล่างของทุกรีลส์ รวมถึงรีลส์ที่ยาว ลากไปด้านข้างตามขอบล่างของรีลส์เพื่อให้แถบกลับมาและเลื่อนเวลา แสดงแถบเลื่อนเวลาเสมอและรูปแบบแถบด้านบนจะมีผลก่อน รีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
 Blur the bars around a reel	เบลอแถบรอบรีลส์
 A reel that doesn't fill the screen shows a blurred copy of itself above and below it instead of black bars, and the strip under the tab bar and the band behind the clock show the reel blurred too. The copy shows only where a reel leaves room, as with Show the whole reel on. Open Reels again after a change.	รีลส์ที่ไม่เต็มหน้าจอจะแสดงภาพรีลส์แบบเบลอที่ด้านบนและด้านล่างแทนแถบสีดำ รวมถึงแถบใต้แถบแท็บและแถบด้านหลังนาฬิกาจะแสดงภาพรีลส์แบบเบลอด้วย ภาพสำเนาจะแสดงเฉพาะบริเวณที่รีลส์เหลือพื้นที่ไว้ เช่น เมื่อเปิด "แสดงรีลส์ทั้งคลิป" เปิดรีลส์อีกครั้งหลังจากเปลี่ยนแปลง
 # Chosen navigation long-press settings entry. Account tab availability varies.
@@ -633,9 +685,11 @@ Stop after the chat's reels	หยุดหลังจากดูรีลส�
 Reels you opened from a chat end after the last one shared in that chat, with no suggested reels after it. Works with Swipe through a chat's reels on.	รีลส์ที่คุณเปิดจากแชทจะสิ้นสุดลงหลังจากรีลส์สุดท้ายที่แชร์ในแชทนั้น โดยไม่มีรีลส์แนะนำต่อท้าย ทำงานเมื่อเปิดใช้งาน "ปัดดูรีลส์ของแชท"
 Adds Download cover under Download. It saves the still picture a reel shows before it plays, at its largest size.	เพิ่ม "ดาวน์โหลดภาพหน้าปก" ใต้ "ดาวน์โหลด" จะบันทึกภาพนิ่งที่รีลส์แสดงก่อนเล่นด้วยขนาดที่ใหญ่ที่สุด
 Adds Download audio under Download. It saves the sound of the reel as an audio file.	เพิ่ม "ดาวน์โหลดเสียง" ใต้ "ดาวน์โหลด" จะบันทึกเสียงของรีลส์เป็นไฟล์เสียง
+Download full song	ดาวน์โหลดเพลงเต็ม
+Adds Download full song under Download on reels that use a song from Instagram's music, and a Download icon beside Save on a song's page. Both save the whole song as an audio file, not only the part the reel plays.	เพิ่ม "ดาวน์โหลดเพลงเต็ม" ใต้ "ดาวน์โหลด" ในรีลส์ที่ใช้เพลงจากคลังเพลงของ Instagram และเพิ่มไอคอนดาวน์โหลดข้าง "บันทึก" ในหน้าของเพลง ทั้งสองแบบจะบันทึกทั้งเพลงเป็นไฟล์เสียง ไม่ใช่แค่ส่วนที่รีลส์เล่น
 After the reels you pick below, swiping in Reels stops until Instagram has been in the background for the time you pick. A reel you open from a message or a post still plays.	หลังจากดูรีลส์ตามจำนวนที่คุณเลือกด้านล่าง การปัดในรีลส์จะหยุดลงจนกว่า Instagram จะทำงานในเบื้องหลังตามระยะเวลาที่คุณเลือก ทั้งนี้รีลส์ที่คุณเปิดจากข้อความหรือโพสต์จะยังคงเล่นได้ตามปกติ
 Find the reel you came from	ค้นหารีลส์ที่คุณเปิดมา
-Open a creator's profile from a reel, then their Reels tab, and it scrolls to that reel and outlines it for a moment. A photo reel is found in their posts. Stop looking ends the search where it is.	เปิดโปรไฟล์ของครีเอเตอร์จากรีลส์ จากนั้นไปที่แท็บรีลส์ของพวกเขา แล้วระบบจะเลื่อนไปยังรีลส์นั้นพร้อมทั้งเน้นเส้นขอบไว้ครู่หนึ่ง รีลส์ที่เป็นรูปภาพจะพบได้ในโพสต์ของพวกเขา การแตะ "หยุดค้นหา" จะสิ้นสุดการค้นหา ณ ตำแหน่งนั้น
+Open a creator's profile from a reel, then their Reels tab, and it scrolls to that reel and labels it You just watched for a few seconds. A photo reel is found in their posts. Stop looking ends the search where it is.	เปิดโปรไฟล์ของครีเอเตอร์จากรีลส์ จากนั้นไปที่แท็บรีลส์ของพวกเขา แล้วระบบจะเลื่อนไปยังรีลส์นั้นพร้อมทั้งติดป้าย "เพิ่งดูไป" ไว้สองสามวินาที รีลส์ที่เป็นรูปภาพจะพบได้ในโพสต์ของพวกเขา การแตะ "หยุดค้นหา" จะสิ้นสุดการค้นหา ณ ตำแหน่งนั้น
 Wait for a tap to find it	รอการแตะก่อนจึงค้นหา
 When the reel isn't on the first screen, the profile shows a Find the reel button instead of scrolling on its own.	เมื่อรีลส์ไม่ได้อยู่บนหน้าจอแรก โปรไฟล์จะแสดงปุ่ม "ค้นหารีลส์" แทนที่จะเลื่อนโดยอัตโนมัติ
 Find the reel	ค้นหารีลส์
@@ -643,6 +697,7 @@ Stop looking	หยุดค้นหา
 Couldn't find the reel you came from	ไม่พบรีลส์ที่คุณเปิดมา
 That's a trial reel, so it isn't on their profile	นั่นเป็นรีลส์ทดลอง จึงไม่ได้อยู่บนโปรไฟล์ของพวกเขา
 That reel isn't on their profile. It might be a trial reel.	รีลส์นั้นไม่ได้อยู่บนโปรไฟล์ของพวกเขา อาจเป็นรีลส์ทดลอง
+You just watched	เพิ่งดูไป
 Clear saved copies now	ล้างสำเนาที่บันทึกไว้ตอนนี้
 Clear the media cache	ล้างแคชสื่อ
 Couldn't clear the saved copies. Try again.	ไม่สามารถล้างสำเนาที่บันทึกไว้ได้ โปรดลองอีกครั้ง
@@ -710,6 +765,12 @@ Takes the Comment button and the comment count off the posts in your feed.	น�
 # context: Comments: a second Hide comments switch that takes the Reply button off each comment in a comment sheet (#619). Reply and View more replies are Instagram's own labels under a comment; use this language's Instagram words for them.
 Hide Reply on comments	ซ่อน "ตอบกลับ" ในความคิดเห็น
 Takes Reply off each comment in a post's or reel's comments. View more replies stays, so you can still open them.	นำ "ตอบกลับ" ออกจากทุกความคิดเห็นในโพสต์หรือรีลส์ ส่วน "ดูการตอบกลับเพิ่มเติม" ยังอยู่ คุณจึงยังเปิดดูการตอบกลับได้
+# context: Comments: a Hide comments switch that takes the heart (the like button) and the like count under it off each comment in a comment sheet (#762).
+Hide likes on comments	ซ่อนถูกใจในความคิดเห็น
+Takes the heart and the like count off each comment in a post's or reel's comments.	นำหัวใจและจำนวนถูกใจออกจากทุกความคิดเห็นในโพสต์หรือรีล
+# context: Comments: a Hide comments switch that takes the comment box off the bottom of a comment sheet (#762). Comment box is the field where you type a comment; Post is Instagram's own label on its send button, use this language's Instagram word for it.
+Hide the comment box	ซ่อนช่องแสดงความคิดเห็น
+Takes the comment box, with your picture and Post, off the bottom of a post's or reel's comments. Turn it off when you want to comment.	นำช่องแสดงความคิดเห็นพร้อมรูปของคุณและปุ่ม "โพสต์" ออกจากด้านล่างของความคิดเห็นในโพสต์หรือรีล ปิดสวิตช์นี้เมื่อคุณต้องการแสดงความคิดเห็น
 # context: Comments: the switch that hides the row of quick emoji above the comment box (#248). Comment box is the field where you type a comment.
 Hide the emoji row	ซ่อนแถวอิโมจิ
 Takes the row of quick emoji off above the comment box. The box itself stays.	นำแถวอิโมจิด่วนด้านบนช่องแสดงความคิดเห็นออก ทั้งนี้ช่องแสดงความคิดเห็นจะยังคงอยู่
@@ -757,7 +818,7 @@ That isn't a domain. Try one like example.com.	นั่นไม่ใช่โ
 The heart plays %1$s when you double tap a post.	รูปหัวใจจะเล่นภาพเคลื่อนไหว %1$s เมื่อคุณแตะสองครั้งที่โพสต์
 The heart that pops up when you double tap a post plays the animation you pick below. They're animations Instagram made for its Rings creators.	รูปหัวใจที่ปรากฏขึ้นเมื่อคุณแตะสองครั้งที่โพสต์จะเล่นภาพเคลื่อนไหวที่คุณเลือกด้านล่าง ซึ่งเป็นภาพเคลื่อนไหวที่ Instagram สร้างขึ้นสำหรับครีเอเตอร์ Rings
 Turn on Change the like animation to use this choice.	เปิดใช้งาน "เปลี่ยนภาพเคลื่อนไหวการกดถูกใจ" เพื่อใช้ตัวเลือกนี้
-When Instagram has more than 500 MB of saved photos and videos, deletes the photos as you leave it and the videos the next time it starts. Your sign-in, drafts and settings stay.	เมื่อ Instagram มีรูปภาพและวิดีโอที่บันทึกไว้มากกว่า 500 MB จะลบรูปภาพเมื่อคุณออกจากแอป และลบวิดีโอในครั้งถัดไปที่แอปเริ่มทำงาน ทั้งนี้การเข้าสู่ระบบ แบบร่าง และการตั้งค่าของคุณจะยังคงอยู่
+When Instagram's saved photos and videos pass the limit below, deletes the photos as you leave it and the videos the next time it starts. Your sign-in, drafts and settings stay.	เมื่อรูปภาพและวิดีโอที่ Instagram บันทึกไว้เกินขีดจำกัดด้านล่าง จะลบรูปภาพเมื่อคุณออกจากแอป และลบวิดีโอเมื่อเริ่มแอปครั้งถัดไป การลงชื่อเข้าใช้ ฉบับร่าง และการตั้งค่ายังคงอยู่
 Ask before a like	ถามก่อนกดถูกใจ
 Ask before a refresh	ถามก่อนรีเฟรช
 Continue	ดำเนินการต่อ
@@ -795,6 +856,10 @@ Copy media link	คัดลอกลิงก์สื่อ
 Couldn't copy the media link	ไม่สามารถคัดลอกลิงก์สื่อได้
 Details	รายละเอียด
 Details in a post's menu	รายละเอียดในเมนูของโพสต์
+Block in a post's menu	บล็อกในเมนูของโพสต์
+Adds Block to the menu of someone else's feed post. It opens Instagram's own block sheet, so nothing happens until you confirm there.	เพิ่มบล็อกในเมนูของโพสต์ในฟีดของคนอื่น โดยจะเปิดหน้าบล็อกของ Instagram เอง จึงไม่มีอะไรเกิดขึ้นจนกว่าคุณจะยืนยันที่นั่น
+Speed in a post's menu	ความเร็วในเมนูของโพสต์
+Adds Playback speed to a feed video's menu. Pick a speed from 0.5x to 3x for the video that's playing.	เพิ่มความเร็วในการเล่นในเมนูของวิดีโอในฟีด เลือกความเร็วตั้งแต่ 0.5x ถึง 3x สำหรับวิดีโอที่กำลังเล่นอยู่
 Media ID %1$s	ID สื่อ %1$s
 Media link	ลิงก์สื่อ
 Media link copied. It stops working after a few days.	คัดลอกลิงก์สื่อแล้ว ลิงก์จะหยุดทำงานหลังจากผ่านไปสองสามวัน
@@ -817,7 +882,7 @@ Cancel saving this voice message	ยกเลิกการบันทึก�
 Download voice messages	ดาวน์โหลดข้อความเสียง
 Following each other	กำลังติดตามซึ่งกันและกัน
 Hide the comment bar on reposted reels	ซ่อนแถบความคิดเห็นในรีลส์ที่โพสต์ซ้ำ
-Puts the answer in a chip under the profile's posts, followers and following counts instead, and says Following each other when you follow them too.	แสดงคำตอบเป็นชิปใต้จำนวนโพสต์ ผู้ติดตาม และกำลังติดตามของโปรไฟล์แทน และจะแสดงว่า "กำลังติดตามซึ่งกันและกัน" เมื่อคุณติดตามพวกเขากลับด้วย
+Puts the answer in a chip under the profile's posts, followers and following counts instead, and says Following each other when you follow them too. Tap the chip to see everything else Instagram has said about you two, like Close Friends, mutes and restrictions.	แสดงคำตอบเป็นชิปใต้จำนวนโพสต์ ผู้ติดตาม และกำลังติดตามของโปรไฟล์แทน และจะแสดงว่า "กำลังติดตามซึ่งกันและกัน" เมื่อคุณติดตามพวกเขากลับด้วย แตะชิปเพื่อดูข้อมูลอื่นๆ ทั้งหมดที่ Instagram บอกเกี่ยวกับคุณทั้งสอง เช่น เพื่อนสนิท การปิดเสียง และการจำกัด
 Saving a voice message	กำลังบันทึกข้อความเสียง
 Show it as a chip	แสดงเป็นชิป
 Follow label	ป้ายกำกับการติดตาม
@@ -831,7 +896,7 @@ The Add comment bar under a reel you open from a profile's reposts. The comment 
 Hide the comment bar on all reels	ซ่อนแถบความคิดเห็นในรีลส์ทั้งหมด
 The Add a comment bar under every reel, including the ones in the Reels tab. The comment button still opens the comments.	แถบ "เพิ่มความคิดเห็น" ใต้ทุกรีลส์ รวมถึงรีลส์ในแท็บรีลส์ด้วย ปุ่มความคิดเห็นจะยังคงเปิดความคิดเห็นได้ตามเดิม
 Keep the comment bar's space	เว้นพื้นที่ของแถบความคิดเห็นไว้
-Leaves an empty band where a hidden comment bar was on reels you open from a post or a profile, so the reel, its buttons and the seek bar don't move down.	เว้นแถบว่างไว้ตรงจุดที่เคยมีแถบความคิดเห็นที่ถูกซ่อนในรีลส์ที่คุณเปิดจากโพสต์หรือโปรไฟล์ เพื่อไม่ให้รีลส์ ปุ่มต่างๆ และแถบเลื่อนเวลาเลื่อนลงไปด้านล่าง
+Leaves an empty black band where a hidden comment bar was on reels outside the Reels tab, like the ones you open from Explore or a profile, so the reel, its buttons and the seek bar don't move down.	เว้นแถบสีดำว่างไว้ตรงจุดที่เคยมีแถบความคิดเห็นที่ถูกซ่อนในรีลส์นอกแท็บรีลส์ เช่นรีลส์ที่คุณเปิดจากสำรวจหรือโปรไฟล์ เพื่อไม่ให้รีลส์ ปุ่มต่างๆ และแถบเลื่อนเวลาเลื่อนลงไปด้านล่าง
 Adds Copy username and Copy bio to the menu on someone's profile. Each copies the text exactly as the account has it.	เพิ่ม "คัดลอกชื่อผู้ใช้" และ "คัดลอกประวัติ" ในเมนูบนโปรไฟล์ของผู้อื่น โดยแต่ละรายการจะคัดลอกข้อความตามที่บัญชีนั้นระบุไว้ทุกประการ
 Adds View profile picture to the menu on someone's profile. Opens their picture full screen at the largest size Instagram has, with pinch zoom and a Save button.	เพิ่ม "ดูรูปโปรไฟล์" ในเมนูบนโปรไฟล์ของผู้อื่น โดยจะเปิดรูปภาพแบบเต็มหน้าจอในขนาดใหญ่ที่สุดที่ Instagram มี พร้อมการบีบนิ้วเพื่อซูมและปุ่มบันทึก
 Bio	ประวัติ
@@ -887,6 +952,8 @@ Solid story rings	วงแหวนสตอรี่สีทึบ
 Story rings are one solid shade of the color you picked instead of running light to dark. Restart Instagram to see the change.	วงแหวนสตอรี่จะเป็นสีเดียวทึบตามสีที่คุณเลือกแทนที่จะไล่ระดับจากสว่างไปมืด โปรดรีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
 Backgrounds in the accent color	พื้นหลังเป็นสีเน้น
 Screens, panels, cards and menus take a dark or light shade of the color you picked. Story and reel viewers keep their own background. Wins over Pure black dark mode. Restart Instagram to see the change.	หน้าจอ แผงควบคุม การ์ด และเมนูจะเปลี่ยนเป็นโทนสีเข้มหรือสว่างของสีที่คุณเลือก ส่วนหน้าจอแสดงสตอรี่และรีลส์จะยังคงใช้พื้นหลังเดิม มีผลเหนือกว่า "โหมดมืดสีดำสนิท" โปรดรีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
+Classic colors	สีแบบคลาสสิก
+Dark mode turns navy blue with charcoal gray panels, and light mode turns off-white. Story and reel viewers keep their own background. Wins over Pure black dark mode and Backgrounds in the accent color. Restart Instagram to see the change.	โหมดมืดจะเปลี่ยนเป็นสีกรมท่าพร้อมแผงสีเทาถ่าน ส่วนโหมดสว่างจะเปลี่ยนเป็นสีขาวนวล หน้าจอแสดงสตอรี่และรีลส์จะยังคงใช้พื้นหลังเดิม มีผลเหนือกว่า "โหมดมืดสีดำสนิท" และ "พื้นหลังเป็นสีเน้น" โปรดรีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
 # context: Layout list under Accent color; its choices are Instagram blue and the colors below
 Color	สี
 Instagram blue	สีน้ำเงิน Instagram
@@ -928,6 +995,12 @@ Half a second	ครึ่งวินาที
 On this Instagram build it covers %1$d of %2$d routes. The diagnostic report lists the rest.	ในบิลด์ Instagram นี้ครอบคลุม %1$d จาก %2$d เส้นทาง รายงานการวินิจฉัยจะแสดงรายการที่เหลือ
 Hide suggested accounts in Messages	ซ่อนบัญชีที่แนะนำในข้อความ
 Takes the accounts Instagram suggests off the bottom of your messages. Your chats and follow requests stay. Restart Instagram to see the change.	นำบัญชีที่ Instagram แนะนำออกจากด้านล่างของข้อความของคุณ โดยแชทและคำขอติดตามจะยังคงอยู่ โปรดรีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
+# context: switch on the Messages page after Hide suggested accounts in Messages; New message is Instagram's own label for the pencil button in the inbox top bar and the screen it opens (#762)
+Hide the New message button	ซ่อนปุ่มข้อความใหม่
+Takes the pencil button for a new message off the top of your messages.	นำปุ่มรูปดินสอสำหรับข้อความใหม่ออกจากด้านบนของข้อความของคุณ
+# context: switch right after it; Suggested is the header Instagram puts over the people listed on the New message screen before you type, and new group is the screen for starting a group chat (#762)
+Hide suggestions in New message	ซ่อนคำแนะนำในข้อความใหม่
+Takes the Suggested people off the New message and new group screens. Search still finds anyone.	นำคนที่แนะนำออกจากหน้าข้อความใหม่และกลุ่มใหม่ การค้นหายังคงหาได้ทุกคน
 A light tick each time the highlight slides past a tab, so it follows the bar as you tap or swipe between screens.	มีการสั่นเบาๆ ทุกครั้งที่ไฮไลต์เลื่อนผ่านแท็บ เพื่อให้การสั่นตอบสนองสัมพันธ์กับแถบเมื่อคุณแตะหรือปัดระหว่างหน้าจอ
 Blur behind the tab bar	เบลอด้านหลังแถบแท็บ
 Blurs what's behind the pill on Android 12 and newer. Off, the pill is a frosted tint.	เบลอสิ่งที่อยู่ด้านหลังแถบเม็ดยาใน Android 12 ขึ้นไป หากปิด แถบเม็ดยาจะเป็นสีกระจกฝ้า
@@ -951,6 +1024,10 @@ Adds a bookmark to the tabs on your own profile that opens Saved. Restart Instag
 Fast scroll in Saved	เลื่อนเร็วใน "บันทึกแล้ว"
 # context: Profiles > summary of Fast scroll in Saved; collections are Instagram's saved collections (#644)
 Shows a handle at the right edge of Saved and your collections while they scroll. Drag it to jump through them.	แสดงที่จับที่ขอบขวาของ "บันทึกแล้ว" และคอลเลกชันของคุณขณะเลื่อน ลากเพื่อข้ามไปอย่างรวดเร็ว
+# context: Profiles > switch right after Fast scroll in Saved; New collection is Instagram's own label for the + at the top right of Saved that starts a new saved collection (#762)
+Hide the New collection button	ซ่อนปุ่มคอลเลกชันใหม่
+# context: Profiles > summary of Hide the New collection button; Saved is Instagram's own Saved page (#762)
+Takes the + for a new collection off the top of Saved. Your collections stay.	นำปุ่ม + สำหรับคอลเลกชันใหม่ออกจากด้านบนของ "บันทึกแล้ว" คอลเลกชันของคุณยังอยู่
 Battery	แบตเตอรี่
 Stop the background heartbeat	หยุดสัญญาณชีพในเบื้องหลัง
 Instagram wakes your phone every minute or two, screen off included, only to note that it is still running. This stops that. Messages, notifications and everything you see are unaffected.	Instagram ปลุกโทรศัพท์ของคุณทุกหนึ่งถึงสองนาที แม้กระทั่งในขณะปิดหน้าจอ เพียงเพื่อบันทึกว่าแอปยังคงทำงานอยู่ การตั้งค่านี้จะหยุดการทำงานดังกล่าว โดยข้อความ การแจ้งเตือน และทุกสิ่งที่คุณเห็นจะไม่ได้รับผลกระทบ
@@ -967,6 +1044,12 @@ Unlock this chat	ปลดล็อคแชทนี้
 Locked chats	แชทที่ล็อคไว้
 Lock single chats. A locked chat opens only once you unlock it the way Unlock with says, and its notifications say only that a message came.	ล็อคแชทแต่ละรายการ แชทที่ล็อคไว้จะเปิดได้ก็ต่อเมื่อคุณปลดล็อคตามวิธีที่ระบุไว้ใน "ปลดล็อคด้วย" และการแจ้งเตือนจะระบุเพียงว่ามีข้อความเข้ามาเท่านั้น
 Open a chat in Instagram, then come back here to lock it.	เปิดแชทใน Instagram แล้วกลับมาที่นี่เพื่อล็อคแชท
+# context: Lock rows under Messages; a Saved collection is one of the folders Instagram's Saved keeps posts in. Unlock with is the row that picks the phone lock or a PIN (#678)
+This collection is locked	คอลเลกชันนี้ถูกล็อกอยู่
+Unlock this collection	ปลดล็อกคอลเลกชันนี้
+Locked collections	คอลเลกชันที่ล็อกไว้
+Lock single collections in Saved. Long press one there to lock it or take its lock off. A locked collection opens only once you unlock it the way Unlock with says. Saving a post to it never asks.	ล็อกคอลเลกชันใน "บันทึกแล้ว" ทีละรายการ กดค้างที่คอลเลกชันในหน้านั้นเพื่อล็อกหรือเอาการล็อกออก คอลเลกชันที่ล็อกไว้จะเปิดได้ก็ต่อเมื่อคุณปลดล็อกตามวิธีที่ระบุไว้ใน "ปลดล็อกด้วย" การบันทึกโพสต์ลงในคอลเลกชันนั้นจะไม่ถามอะไรเลย
+Long press a collection in Saved to lock it, or open one and come back here.	กดค้างที่คอลเลกชันใน "บันทึกแล้ว" เพื่อล็อก หรือเปิดคอลเลกชันแล้วกลับมาที่นี่
 %1$s (opened last)	%1$s (เปิดล่าสุด)
 %1$s is locked	%1$s ถูกล็อคแล้ว
 %1$s is unlocked	%1$s ปลดล็อคแล้ว
@@ -1049,7 +1132,7 @@ A tap on a reel pauses it, and another tap plays it again.	การแตะท
 A tap on a playing reel turns its sound off or on and keeps it playing. A reel that's paused still plays on a tap.	การแตะที่รีลส์ที่กำลังเล่นอยู่จะเป็นการปิดหรือเปิดเสียงและเล่นต่อไป ส่วนรีลส์ที่หยุดชั่วคราวอยู่จะเล่นต่อเมื่อแตะ
 A tap on a reel does what Instagram does.	การแตะที่รีลส์จะเป็นไปตามการทำงานเดิมของ Instagram
 Keep playing	เล่นต่อไป
-A tap on a playing reel does nothing, so a stray touch doesn't stop it. A reel that's paused still plays on a tap.	การแตะที่รีลส์ที่กำลังเล่นอยู่จะไม่เกิดอะไรขึ้น เพื่อไม่ให้การแตะโดยไม่ได้ตั้งใจหยุดการเล่น ส่วนรีลส์ที่หยุดชั่วคราวอยู่จะเล่นต่อเมื่อแตะ
+A tap on a playing reel does nothing, so a stray touch doesn't stop it. A tap right on the play icon still pauses it, and a paused reel plays on a tap.	การแตะที่รีลส์ที่กำลังเล่นอยู่จะไม่เกิดอะไรขึ้น เพื่อไม่ให้การแตะโดยไม่ได้ตั้งใจหยุดการเล่น การแตะตรงไอคอนเล่นยังคงหยุดชั่วคราวได้ ส่วนรีลส์ที่หยุดชั่วคราวอยู่จะเล่นต่อเมื่อแตะ
 Keep reels muted on the volume keys	ให้รีลส์ปิดเสียงไว้เมื่อกดปุ่มปรับระดับเสียง
 Volume up still raises the phone's volume, but a muted reel stays muted until you unmute it.	ปุ่มเพิ่มระดับเสียงจะยังคงเพิ่มเสียงของโทรศัพท์ แต่รีลส์ที่ปิดเสียงไว้จะยังคงปิดเสียงอยู่จนกว่าคุณจะเปิดเสียงเอง
 Start stories with sound	เริ่มเล่นสตอรี่พร้อมเปิดเสียง
@@ -1111,6 +1194,8 @@ Never. Pick a time and the tab bar slides away once a reel has played that long 
 On Reels, the tab bar slides away after %1$d seconds without a touch. Tap the bottom edge of the screen, change tab or press Back to bring it back. Restart Instagram after changing it.	ในรีลส์ แถบแท็บจะเลื่อนออกไปหลังจาก %1$d วินาทีโดยไม่มีการแตะหน้าจอ แตะขอบล่างของหน้าจอ เปลี่ยนแท็บ หรือกดปุ่มย้อนกลับเพื่อเรียกแถบแท็บกลับมา โปรดรีสตาร์ท Instagram หลังจากเปลี่ยนการตั้งค่านี้
 Start feed videos with sound	เริ่มเล่นวิดีโอบนฟีดพร้อมเปิดเสียง
 Videos on Home play with their sound on, the same as tapping a video's speaker. Mute one and the ones after it stay muted. Your phone's ringer and volume still count, so on silent or with the volume down, they stay quiet.	วิดีโอบนหน้าหลักจะเล่นพร้อมกับเปิดเสียง เช่นเดียวกับการแตะที่ลำโพงของวิดีโอ หากคุณปิดเสียงวิดีโอหนึ่ง วิดีโอถัดไปก็จะยังคงปิดเสียงอยู่ ทั้งนี้เสียงเรียกเข้าและระดับเสียงของโทรศัพท์จะยังมีผล ดังนั้นในโหมดเงียบหรือเมื่อเบาเสียงลง วิดีโอจะไม่มีเสียง
+Start feed videos muted	เริ่มเล่นวิดีโอบนฟีดแบบปิดเสียง
+Videos on Home start silent, even after you turn the sound on in Reels, so reels keep their sound. Tap a video's speaker to hear that one. Wins over Start feed videos with sound.	วิดีโอบนหน้าหลักจะเริ่มแบบปิดเสียง แม้หลังจากคุณเปิดเสียงในรีลส์แล้ว เพื่อให้รีลส์ยังคงมีเสียง แตะที่ลำโพงของวิดีโอเพื่อฟังวิดีโอนั้น มีผลเหนือกว่า เริ่มเล่นวิดีโอบนฟีดพร้อมเปิดเสียง
 Tap a feed video to pause it	แตะวิดีโอบนฟีดเพื่อหยุดชั่วคราว
 Tap the video playing in a feed to pause it in place instead of opening it in Reels, and tap it again to play it. Ads keep Instagram's own tap.	แตะวิดีโอที่กำลังเล่นอยู่ในฟีดเพื่อหยุดเล่นชั่วคราวตรงนั้นแทนที่จะเปิดในรีลส์ และแตะอีกครั้งเพื่อเล่นต่อ ทั้งนี้โฆษณาจะยังคงใช้การแตะตามเดิมของ Instagram
 Hold for 2x on feed videos	กดค้างเพื่อเล่น 2 เท่าในวิดีโอบนฟีด
@@ -1164,6 +1249,8 @@ Open settings with a long press on your profile's menu	เปิดการต�
 A long press on the menu button, the three lines at the top right of your own profile, opens HushGram. A tap still opens Instagram's menu, and other profiles stay the same.	การกดค้างที่ปุ่มเมนู (ขีดสามขีดที่มุมขวาบนของโปรไฟล์คุณเอง) จะเปิด HushGram ส่วนการแตะจะยังคงเปิดเมนูของ Instagram ตามเดิม และโปรไฟล์ของผู้อื่นจะยังคงเหมือนเดิม
 Hide the top bar on the Reels tab	ซ่อนแถบด้านบนในแท็บรีลส์
 Takes away the row at the top of the Reels tab, with the Reels title, the camera button and anything else Instagram puts there. Reels you open from a profile, a post or a chat keep theirs. The camera still opens from Home.	นำแถวที่ด้านบนสุดของแท็บรีลส์ออก ซึ่งรวมถึงชื่อรีลส์ ปุ่มกล้อง และสิ่งอื่นๆ ที่ Instagram ใส่ไว้ตรงนั้น ส่วนรีลส์ที่คุณเปิดจากโปรไฟล์ โพสต์ หรือแชทจะยังคงมีแถบดังกล่าว ทั้งนี้กล้องยังคงเปิดได้จากหน้าหลักตามเดิม
+Hide the top bar on other reels	ซ่อนแถบด้านบนในรีลส์อื่นๆ
+Takes the back arrow and the title off the top of reels you open from Explore, a profile, a post, Saved or a chat. Your phone's back button or gesture still goes back.	นำลูกศรย้อนกลับและชื่อออกจากด้านบนของรีลส์ที่คุณเปิดจากสำรวจ โปรไฟล์ โพสต์ บันทึกแล้ว หรือแชท ปุ่มหรือท่าทางย้อนกลับของโทรศัพท์ยังคงใช้ย้อนกลับได้ตามเดิม
 Hide the Create button on reels	ซ่อนปุ่มสร้างในรีลส์
 Takes the plus button that opens the camera off the top of reels, on the Reels tab and everywhere else, and closes up the gap. The rest of the bar stays.	นำปุ่มเครื่องหมายบวกสำหรับเปิดกล้องออกจากด้านบนของรีลส์ ทั้งในแท็บรีลส์และที่อื่นๆ พร้อมทั้งปิดช่องว่าง ส่วนแถบที่เหลือจะยังคงอยู่
 Hide Your algorithm on reels	ซ่อน "อัลกอริทึมของคุณ" ในรีลส์
@@ -1175,7 +1262,7 @@ Show the Friends tab on Reels	แสดงแท็บเพื่อนใน�
 Adds the Friends tab to the top of the Reels tab if your account never got it. What's in it still comes from Instagram, so it can be empty. Hide the Friends tab wins.	เพิ่มแท็บ "เพื่อน" ที่ด้านบนสุดของแท็บรีลส์หากบัญชีของคุณไม่เคยได้รับแท็บนี้ เนื้อหาภายในยังคงมาจาก Instagram จึงอาจว่างเปล่าได้ การตั้งค่า "ซ่อนแท็บเพื่อน" จะมีผลเหนือกว่า
 # context: Reels settings and the list held open from the Friends tab at the top of the Reels tab. Friends tab wording matches the Hide the Friends tab row above it. The last two are short toasts.
 Hold the Friends tab to pick friends	กดแท็บเพื่อนค้างไว้เพื่อเลือกเพื่อน
-Hold the Friends tab on Reels and pick from the friends it has shown you. It then keeps only reels they liked or shared. A page with none of them keeps one reel so the next page can load.	กดแท็บ "เพื่อน" ในรีลส์ค้างไว้ แล้วเลือกจากเพื่อนที่แสดงขึ้นมา จากนั้นจะเก็บไว้เฉพาะรีลส์ที่พวกเขาถูกใจหรือแชร์เท่านั้น หน้าที่ไม่มีเพื่อนเหล่านี้จะคงรีลส์ไว้หนึ่งคลิปเพื่อให้สามารถโหลดหน้าถัดไปได้
+Hold the Friends tab on Reels and pick from the friends it has shown you. It then keeps only reels they liked or shared.	กดแท็บ "เพื่อน" ในรีลส์ค้างไว้ แล้วเลือกจากเพื่อนที่แสดงขึ้นมา จากนั้นจะเก็บไว้เฉพาะรีลส์ที่พวกเขาถูกใจหรือแชร์เท่านั้น
 Pick friends	เลือกเพื่อน
 Open the Friends tab first.	เปิดแท็บเพื่อนก่อน
 No friends to pick yet.	ยังไม่มีเพื่อนให้เลือก
@@ -1195,6 +1282,19 @@ At once	ทันที
 Tapping the video, double-tapping it to like, and Save and Download don't count as a touch, so the buttons stay faded.	การแตะวิดีโอ การแตะสองครั้งเพื่อกดถูกใจ รวมถึงการบันทึกและดาวน์โหลดจะไม่นับว่าเป็นการสัมผัส ปุ่มจึงยังคงจางอยู่
 Off. It can fade a reel's buttons while the screen sits untouched, so they don't burn into an OLED screen.	ปิดอยู่ สามารถทำให้ปุ่มของรีลส์จางลงได้ในขณะที่ไม่มีการสัมผัสหน้าจอ เพื่อไม่ให้เกิดภาพหน้าจอไหม้บนหน้าจอ OLED
 Takes the Save button out of the column of buttons beside a reel, and the count under it. Posts in your feed keep theirs.	นำปุ่มบันทึกและจำนวนใต้ปุ่มออกจากคอลัมน์ปุ่มข้างรีลส์ โดยโพสต์ในฟีดของคุณจะยังคงมีปุ่มนี้อยู่
+# context: Reels settings: five switches after Hide the Save button on reels (#719), each taking only the number under one button in the column beside a reel; use the button names of the rows above
+Hide like counts on reels	ซ่อนจำนวนถูกใจในรีลส์
+Takes away the number under the heart beside a reel. The heart stays.	นำตัวเลขใต้รูปหัวใจข้างรีลส์ออก รูปหัวใจยังอยู่
+Hide comment counts on reels	ซ่อนจำนวนความคิดเห็นในรีลส์
+Takes away the number under the Comment button beside a reel. The button stays.	นำตัวเลขใต้ปุ่มความคิดเห็นข้างรีลส์ออก ปุ่มยังอยู่
+Hide repost counts on reels	ซ่อนจำนวนรีโพสต์ในรีลส์
+Takes away the number under the Repost button beside a reel. The button stays.	นำตัวเลขใต้ปุ่มรีโพสต์ข้างรีลส์ออก ปุ่มยังอยู่
+Hide share counts on reels	ซ่อนจำนวนแชร์ในรีลส์
+Takes away the number under the Share button beside a reel. The button stays.	นำตัวเลขใต้ปุ่มแชร์ข้างรีลส์ออก ปุ่มยังอยู่
+Hide save counts on reels	ซ่อนจำนวนบันทึกในรีลส์
+Takes away the number under the Save button beside a reel. The button stays.	นำตัวเลขใต้ปุ่มบันทึกข้างรีลส์ออก ปุ่มยังอยู่
+Hide the pause icon on reels	ซ่อนไอคอนหยุดชั่วคราวในรีลส์
+A paused reel shows just its frame, without the big pause icon and the sound button over it. Tap the reel to play it again.	รีลส์ที่หยุดไว้จะแสดงแค่ภาพ ไม่มีไอคอนหยุดชั่วคราวขนาดใหญ่และปุ่มเสียงทับอยู่ แตะรีลส์เพื่อเล่นต่อ
 Keep clear mode on	เปิดโหมดล้างหน้าจอค้างไว้
 Turn on Instagram's clear mode on a reel and the next reels open in it too. Leave clear mode yourself and the next reels show their buttons again.	เปิดโหมดล้างหน้าจอของ Instagram บนรีลส์ แล้วรีลส์ถัดไปก็จะเปิดในโหมดนี้ด้วยเช่นกัน หากคุณออกจากโหมดล้างหน้าจอด้วยตนเอง รีลส์ถัดไปจะแสดงปุ่มต่างๆ อีกครั้ง
 # context: Reels settings: a switch under Keep clear mode on (#138). Clear mode is the name used for Instagram's own mode that hides a reel's buttons; Allow screenshots is HushGram's switch of that name
@@ -1206,6 +1306,12 @@ Stops the short buzz Instagram plays when a reel opens in clear mode. With Keep 
 # context: Reels settings: a switch under Don't vibrate in clear mode (#480). It keeps the seek bar on screen in clear mode; seek bar and clear mode use the same words as Keep a seek bar and Keep clear mode on
 Always show seek bar in clear mode	แสดงแถบเลื่อนเวลาในโหมดล้างหน้าจอตลอดเวลา
 Keeps the seek bar on a reel in clear mode, and you can still drag it, while the other buttons stay hidden. Short reels get a bar too, in clear mode or not.	คงแถบเลื่อนเวลาบนรีลส์ไว้ในโหมดล้างหน้าจอ และคุณยังสามารถลากแถบดังกล่าวได้ ในขณะที่ปุ่มอื่นๆ จะยังคงซ่อนอยู่ โดยรีลส์สั้นจะมีแถบนี้ด้วยเช่นกัน ไม่ว่าจะอยู่ในโหมดล้างหน้าจอหรือไม่ก็ตาม
+# context: Reels settings: a switch under Always show seek bar in clear mode (#744). A two-finger pinch on a reel turns Instagram's clear mode on and off; clear mode uses the same words as Keep clear mode on, and Pinch to zoom is the Reels switch of that name
+Pinch for clear mode	จีบนิ้วเพื่อเข้าโหมดล้างหน้าจอ
+Pinch a reel with two fingers to turn clear mode on, and pinch again to leave it. While Pinch to zoom is on, two fingers zoom instead.	จีบนิ้วสองนิ้วบนรีลส์เพื่อเปิดโหมดล้างหน้าจอ และจีบอีกครั้งเพื่อออก ขณะที่เปิดจีบนิ้วเพื่อซูมอยู่ สองนิ้วจะซูมแทน
+# context: Reels settings: a switch under Pinch for clear mode (#744). It hides the round exit button a reel shows in clear mode, the button that leaves clear mode; Pinch to zoom is the Reels switch of that name
+Hide the exit button in clear mode	ซ่อนปุ่มออกในโหมดล้างหน้าจอ
+Takes away the round button a reel shows in clear mode, so a pinch is how you leave it. The button stays while Pinch to zoom is on.	เอาปุ่มกลมที่รีลส์แสดงในโหมดล้างหน้าจอออก คุณจึงออกด้วยการจีบนิ้ว ปุ่มจะยังอยู่ขณะที่เปิดจีบนิ้วเพื่อซูม
 Unlock with	ปลดล็อกด้วย
 Phone lock	การล็อกโทรศัพท์
 HushGram PIN	PIN ของ HushGram
@@ -1238,6 +1344,9 @@ Under a name in your messages and in a chat, the exact time they were last on, l
 Active at %1$s	ใช้งานเมื่อ %1$s
 Active yesterday at %1$s	ใช้งานเมื่อวานนี้เวลา %1$s
 Active %1$s at %2$s	ใช้งานเมื่อ %1$s เวลา %2$s
+# context: Messages settings; Active now is Instagram's presence label under a name in your messages and in a chat, shown for six and a half minutes after someone leaves (#683)
+Shorter Active now	แสดงกำลังใช้งานสั้นลง
+Someone shows as Active now for one minute after they leave, like on the website, instead of six and a half. Restart Instagram to see the change.	หลังจากผู้นั้นออกไป จะแสดง "กำลังใช้งาน" เพียงหนึ่งนาทีเหมือนบนเว็บไซต์ แทนที่จะเป็นหกนาทีครึ่ง รีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
 Rounded corners on posts	มุมโค้งมนบนโพสต์
 Rounds the corners of a post's photo, video and carousel pages in Home and Following. Posts you scroll to after a change show it. Stories, profiles and Explore stay as they were.	ปรับมุมของรูปภาพ วิดีโอ และหน้ารูปภาพแบบเลื่อนของโพสต์ให้โค้งมนในหน้าหลักและกำลังติดตาม โพสต์ที่คุณเลื่อนไปเจอหลังจากการเปลี่ยนแปลงจะแสดงผลตามนี้ ส่วนสตอรี่ โปรไฟล์ และสำรวจจะยังคงเหมือนเดิม
 Corner size	ขนาดมุมโค้ง
@@ -1285,6 +1394,7 @@ Hide the reply bar on reels from chats	ซ่อนแถบตอบกลั�
 The Reply to box under a reel you open from a chat, with its reactions and plus button. The chat's own message box stays.	กล่อง "ตอบกลับ..." ใต้รีลส์ที่คุณเปิดจากแชท รวมถึงการแสดงความรู้สึกและปุ่มบวก โดยกล่องข้อความของแชทเองจะยังคงอยู่
 # context: Layout list title; it picks the font Instagram's text draws in
 Font	แบบอักษร
+Text size	ขนาดข้อความ
 # context: the three choices in the Font list
 Instagram's font	แบบอักษรของ Instagram
 Your phone's font	แบบอักษรของโทรศัพท์คุณ
@@ -1304,7 +1414,7 @@ Hide AI-labeled reels	ซ่อนรีลส์ที่มีป้ายก�
 Leaves out reels that carry Instagram's own AI label. A reel without that label stays, even if AI made it.	ละเว้นรีลส์ที่มีป้ายกำกับ AI ของ Instagram โดยรีลส์ที่ไม่มีป้ายกำกับดังกล่าวจะยังคงอยู่ แม้ว่าจะสร้างโดย AI ก็ตาม
 # context: Downloads switch under Download button on feed posts; on a carousel the icon saves every page instead of asking which
 Save every page without asking	บันทึกทุกหน้าโดยไม่ต้องถาม
-On a carousel, the download icon saves all of its pages at once instead of asking.	ในโพสต์รูปภาพแบบเลื่อน ไอคอนดาวน์โหลดจะบันทึกทุกหน้าพร้อมกันในครั้งเดียวแทนที่จะถาม
+On a carousel, the download icon saves all of its pages at once instead of asking. A photo with music saves as a photo.	ในโพสต์รูปภาพแบบเลื่อน ไอคอนดาวน์โหลดจะบันทึกทุกหน้าพร้อมกันในครั้งเดียวแทนที่จะถาม รูปภาพที่มีเพลงจะบันทึกเป็นรูปภาพ
 # context: Reels switch Hide reels by caption words, its Blocked words list row and that row's summary; %1$d is how many words
 Hide reels by caption words	ซ่อนรีลส์ตามคำในคำบรรยาย
 Also on Home	บนหน้าหลักด้วยเช่นกัน
@@ -1368,6 +1478,9 @@ Once Burn-in guard fades the buttons, they stay faded on Reels whatever you tap 
 # context: Profiles: switches next to Hide the Threads button. Create is the plus at the top of your own profile (#254); Share profile and Edit profile are Instagram's own button names (#253)
 Hide the Create button	ซ่อนปุ่มสร้าง
 Takes the plus for new posts off the top of your own profile. The other buttons stay where they were.	นำเครื่องหมายบวกสำหรับสร้างโพสต์ใหม่ออกจากด้านบนโปรไฟล์ของคุณ โดยปุ่มอื่นๆ จะยังคงอยู่ที่เดิม
+# context: switch on the Profiles page after Hide the Create button; the prompt is the big picture, heading and Create button Instagram shows in place of the grid on your own profile before your first post (#762)
+Hide the empty profile prompt	ซ่อนข้อความชวนบนโปรไฟล์ว่าง
+Takes the big prompt for your first post off your own profile while it has no posts. Other people's profiles stay as they are.	นำข้อความใหญ่ที่ชวนให้ลงโพสต์แรกออกจากโปรไฟล์ของคุณเองขณะที่ยังไม่มีโพสต์ โปรไฟล์ของคนอื่นจะยังคงเหมือนเดิม
 Hide Share profile	ซ่อนแชร์โปรไฟล์
 Takes the Share profile button off your profile, and Edit profile stretches to fill the space.	นำปุ่ม "แชร์โปรไฟล์" ออกจากโปรไฟล์ของคุณ และปุ่ม "แก้ไขโปรไฟล์" จะขยายเพื่อเติมเต็มพื้นที่
 # context: Profiles: switches that hide Subscribe and the arrow at the end of the action buttons on someone's profile, which opens a menu of the buttons that didn't fit (#248). Subscribe is Instagram's own button label, as in the Feed switch that hides Follow and Subscribe.
@@ -1381,6 +1494,9 @@ Scrolling a list down leaves the liquid pill as it is, every tab in place. Resta
 # context: a switch under Glass tab bar that makes the standard pill (the one without the liquid look) smaller while a list scrolls down, and its description. Liquid glass look and Hide the tab bar as you scroll are the names of two other switches on the same page (#638)
 Shrink the pill as you scroll	ย่อแถบแคปซูลขณะเลื่อนหน้าจอ
 With Liquid glass look off, scrolling a list down makes the pill smaller, and scrolling up or changing tab brings it back to full size. Hide the tab bar as you scroll takes over when it's on. Restart Instagram after changing it.	เมื่อปิดรูปลักษณ์กระจกเหลว การเลื่อนรายการลงจะทำให้แถบแคปซูลเล็กลง และการเลื่อนขึ้นหรือเปลี่ยนแท็บจะทำให้กลับเป็นขนาดเต็ม หากเปิดซ่อนแถบแท็บขณะเลื่อนหน้าจออยู่ จะใช้การตั้งค่านั้นแทน รีสตาร์ท Instagram หลังจากเปลี่ยนแปลงการตั้งค่า
+# context: a switch under Glass tab bar (#720) that gives the standard pill (the one without the liquid look) the look of Android's own Material 3 bars, and its description. Material is Google's design name, keep it; Liquid glass look is the name of another switch
+Material look	รูปลักษณ์ Material
+With Liquid glass look off, the pill looks like Android's own Material 3 bars. It's solid, with no blur, in your phone's colors on Android 12 and newer, and a round marker sits on the tab you're on. Restart Instagram after changing it.	เมื่อปิดรูปลักษณ์กระจกเหลว แถบแคปซูลจะดูเหมือนแถบ Material 3 ของ Android เป็นสีทึบไม่มีการเบลอ ใช้สีของโทรศัพท์คุณบน Android 12 ขึ้นไป และมีเครื่องหมายทรงกลมอยู่บนแท็บที่คุณเปิดอยู่ รีสตาร์ท Instagram หลังจากเปลี่ยนแปลงการตั้งค่า
 # context: Layout: Glass tab bar's switch that makes the liquid pill's rim bend and mirror what's behind it like glass (#369)
 Bend light at the edges	หักเหแสงที่ขอบ
 # context: Ghost mode: the row and dialog picking which switches Ghost mode turns (#251). %1$s is a list of switch names
@@ -1436,11 +1552,17 @@ Left off your profile: %1$s. The grid of posts stays.	นำออกจาก�
 Left off other profiles: %1$s. The grid of posts stays.	นำออกจากโปรไฟล์ของผู้อื่น: %1$s ตารางโพสต์จะยังคงอยู่
 Reposts	รีโพสต์
 Tagged	แท็กแล้ว
+# context: Instagram's Subscriptions tab on a creator's profile, a choice in the Tabs on your profile and Tabs on other profiles lists under Profiles (#721), next to Reels, Reposts and Tagged. Use Instagram's own name for that tab
+Subscriptions	การสมัครสมาชิก
 # context: Show all recent searches switch under Explore; See all is Instagram's own row under the recent searches
 Show all recent searches	แสดงการค้นหาล่าสุดทั้งหมด
 Lists every recent search under the search bar, not just the first few. See all and the x on each row work as before.	แสดงรายการค้นหาล่าสุดทั้งหมดใต้แถบค้นหา ไม่ใช่แค่สองสามรายการแรก โดย "ดูทั้งหมด" และเครื่องหมาย x ในแต่ละแถวจะยังคงทำงานเหมือนเดิม
 Hide the call buttons in chats	ซ่อนปุ่มโทรในแชท
 Takes the voice and video call buttons off the top of a chat. The name keeps its room. Turn it off and they're back the next time a chat opens.	นำปุ่มโทรด้วยเสียงและวิดีโอคอลออกจากด้านบนของแชท โดยชื่อจะยังคงมีพื้นที่ตามเดิม หากปิดการตั้งค่านี้ ปุ่มจะกลับมาในครั้งต่อไปที่เปิดแชท
+Hide Blend in chats	ซ่อน Blend ในแชท
+Takes the Blend button off the top of a chat. Turn it off and it's back the next time a chat opens.	นำปุ่ม Blend ออกจากด้านบนของแชท หากปิดไว้ ปุ่มจะกลับมาเมื่อเปิดแชทครั้งถัดไป
+Hide the back button in chats	ซ่อนปุ่มย้อนกลับในแชท
+Leaves the back arrow off the top left of a chat, and the picture and the name move over. Swipe back or use the phone's back button to leave the chat. Shows the next time a chat opens.	นำลูกศรย้อนกลับออกจากมุมซ้ายบนของแชท แล้วรูปและชื่อจะเลื่อนมาแทนที่ ปัดย้อนกลับหรือใช้ปุ่มย้อนกลับของโทรศัพท์เพื่อออกจากแชท จะมีผลเมื่อเปิดแชทครั้งถัดไป
 Hide the Community Standards reminder	ซ่อนการแจ้งเตือนมาตรฐานชุมชน
 Takes the banner reminding you to be respectful off the bottom of a chat.	นำแบนเนอร์ที่เตือนให้คุณสุภาพออกจากด้านล่างของแชท
 Buttons in the message box	ปุ่มในกล่องข้อความ
@@ -1540,6 +1662,8 @@ Pinch to zoom	จีบนิ้วเพื่อซูม
 Two fingers zoom into a playing reel, the way a photo zooms. Lift them and it goes back. Restart Instagram to see the change.	ใช้สองนิ้วเพื่อซูมรีลส์ที่กำลังเล่น เช่นเดียวกับการซูมรูปภาพ ยกนิ้วขึ้นแล้วหน้าจอจะกลับเป็นปกติ รีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
 Double tap to skip	แตะสองครั้งเพื่อข้าม
 A double tap on the left side of a reel goes back, and on the right side it goes ahead, as far as Skip length says. A double tap in the middle still likes it. Reels no longer than that don't skip.	การแตะสองครั้งที่ด้านซ้ายของรีลส์จะย้อนกลับ และแตะสองครั้งที่ด้านขวาจะเดินหน้า ตามระยะการข้าม การแตะสองครั้งตรงกลางจะยังคงเป็นการกดถูกใจ รีลส์ที่ไม่ยาวกว่านั้นจะไม่ข้าม
+Show the skip arrows	แสดงลูกศรการข้าม
+Two arrows flash on the side you double tapped, with the seconds skipped under them, like on feed videos.	ลูกศรสองอันจะกะพริบที่ด้านที่คุณแตะสองครั้ง พร้อมจำนวนวินาทีที่ข้ามอยู่ด้านล่าง เหมือนในวิดีโอฟีด
 Hide the 2x popup	ซ่อนป๊อปอัป 2x
 Takes the 2x label off a reel while you hold it to play faster. The speed-up still works.	นำป้ายกำกับ 2x ออกจากรีลส์ในขณะที่คุณกดค้างไว้เพื่อให้เล่นเร็วขึ้น โดยการเร่งความเร็วยังคงทำงานได้ตามปกติ
 Mute notification types	ปิดเสียงเตือนตามประเภทการแจ้งเตือน
@@ -1551,11 +1675,27 @@ Unmute all	ยกเลิกการปิดเสียงทั้งหม
 Settings button on Home's header	ปุ่มการตั้งค่าบนส่วนหัวของหน้าหลัก
 Adds a gear at the top of Home that opens HushGram settings. Restart Instagram to see the change.	เพิ่มไอคอนรูปฟันเฟืองที่ด้านบนของหน้าหลักเพื่อเปิดการตั้งค่า HushGram รีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
 Download button on stories	ปุ่มดาวน์โหลดบนสตอรี่
-Puts a Download button at the top of a story, beside the three dots. One tap saves the photo or video in front, the same as Download in the menu.	เพิ่มปุ่มดาวน์โหลดที่ด้านบนของสตอรี่ ข้างจุดสามจุด แตะครั้งเดียวจะบันทึกรูปภาพหรือวิดีโอที่อยู่ตรงหน้า เช่นเดียวกับปุ่ม "ดาวน์โหลด" ในเมนู
+Puts a Download button at the top of a story, beside the three dots. One tap saves the photo or video in front, the same as Download in the menu. Press and hold for Save all, to save every story in the set you're watching.	เพิ่มปุ่มดาวน์โหลดที่ด้านบนของสตอรี่ ข้างจุดสามจุด แตะครั้งเดียวจะบันทึกรูปภาพหรือวิดีโอที่อยู่ตรงหน้า เช่นเดียวกับปุ่ม "ดาวน์โหลด" ในเมนู กดค้างเพื่อเลือก "บันทึกทั้งหมด" ซึ่งจะบันทึกทุกสตอรี่ในชุดที่กำลังดู
 Start reels muted	เริ่มเล่นรีลส์แบบปิดเสียง
 Every reel starts silent, wherever you open it from. The volume keys or the speaker icon unmute it. Wins over Start reels with sound.	รีลส์ทุกคลิปจะเริ่มเล่นแบบไม่มีเสียง ไม่ว่าจะเปิดจากที่ใดก็ตาม ปุ่มปรับระดับเสียงหรือไอคอนลำโพงจะเปิดเสียง การตั้งค่านี้จะมีความสำคัญเหนือกว่า "เริ่มเล่นรีลส์แบบมีเสียง"
 Hide captions	ซ่อนคำบรรยาย
 Takes the caption off posts in your feed and off reels. The post stays, and the comments sheet still shows it.	นำคำบรรยายออกจากโพสต์ในฟีดและรีลส์ของคุณ โดยโพสต์จะยังคงอยู่ และแผ่นข้อคิดเห็นจะยังคงแสดงคำบรรยายดังกล่าว
+# context: "more" is the word Instagram puts at the end of a cut caption in the feed; use the word Instagram shows there in this language (#771)
+Expand captions	ขยายคำบรรยาย
+Shows more of a post's caption in your feed before "more", the whole caption to start. Reels and stories stay as they are.	แสดงคำบรรยายของโพสต์ในฟีดได้มากขึ้นก่อน "เพิ่มเติม" โดยเริ่มต้นจะแสดงคำบรรยายทั้งหมด รีลส์และสตอรี่จะยังคงเหมือนเดิม
+Caption lines before more	จำนวนบรรทัดก่อน "เพิ่มเติม"
+The whole caption shows, with no "more" to tap.	แสดงคำบรรยายทั้งหมด โดยไม่มี "เพิ่มเติม" ให้แตะ
+Captions longer than that end with "more", which opens the rest.	คำบรรยายที่ยาวกว่านั้นจะจบด้วย "เพิ่มเติม" ซึ่งแตะเพื่อเปิดส่วนที่เหลือได้
+Turn on Expand captions to use this choice.	เปิด "ขยายคำบรรยาย" เพื่อใช้ตัวเลือกนี้
+Whole caption	คำบรรยายทั้งหมด
+1 line	1 บรรทัด
+2 lines	2 บรรทัด
+3 lines	3 บรรทัด
+4 lines	4 บรรทัด
+5 lines	5 บรรทัด
+6 lines	6 บรรทัด
+8 lines	8 บรรทัด
+10 lines	10 บรรทัด
 Keep Home's top bar	คงแถบด้านบนของหน้าหลักไว้
 Keeps the Instagram logo and the buttons beside it at the top of Home while you scroll, instead of sliding them away.	คงโลโก้ Instagram และปุ่มต่างๆ ข้างโลโก้ไว้ที่ด้านบนของหน้าหลักขณะที่คุณเลื่อน แทนที่จะเลื่อนหายไป
 # context: Feed settings: the See-through top bar switch, right under Keep Home's top bar (#418). It blurs the posts that scroll under Home's header, the bar with the Instagram logo.
@@ -1569,6 +1709,9 @@ Find a post, reel, story or profile you saw before.	ค้นหาโพสต�
 Recently seen	ดูล่าสุด
 Open profile	เปิดโปรไฟล์
 Remove from history	ลบออกจากประวัติ
+# context: the viewing history page's button that switches its rows to a grid of big pictures, then back
+Show as grid	แสดงแบบตาราง
+Show as list	แสดงแบบรายการ
 Viewing history	ประวัติการรับชม
 Nothing here yet. With Keep a viewing history on, what you look at shows up here.	ยังไม่มีข้อมูลที่นี่ เมื่อเปิด "บันทึกประวัติการรับชม" สิ่งที่คุณดูจะปรากฏขึ้นที่นี่
 Post	โพสต์
@@ -1613,6 +1756,9 @@ Puts a Lens icon beside a reel. Tap it and Google Lens opens on what's showing, 
 # context: Stories settings: the same Lens button, in the story header beside the three dots (#303)
 Copy text button on stories	ปุ่มคัดลอกข้อความในสตอรี่
 Puts a Lens icon at the top of a story, beside the three dots. Tap it and Google Lens opens on what's showing, so you can select and copy its text.	แสดงไอคอน Lens ที่ด้านบนของสตอรี่ ข้างจุดสามจุด แตะที่ไอคอนเพื่อเปิด Google Lens บนเนื้อหาที่แสดงอยู่ คุณจึงสามารถเลือกและคัดลอกข้อความได้
+# context: Stories settings switch (#647). It moves the Mark as seen and Download buttons from the top of a story to the bottom row, beside Instagram's own Like and Share buttons (use the app's labels).
+Story buttons at the bottom	ปุ่มสตอรี่ด้านล่าง
+Moves the Mark as seen and Download buttons to the bottom right of a story, next to Like and Share, where your thumb is. Stories without Like and Share keep them at the top.	ย้ายปุ่มทำเครื่องหมายว่าดูแล้วและปุ่มดาวน์โหลดไปที่มุมขวาล่างของสตอรี่ ข้างปุ่มถูกใจและแชร์ ตรงที่นิ้วโป้งกดได้ง่าย สตอรี่ที่ไม่มีปุ่มถูกใจและแชร์จะยังแสดงปุ่มเหล่านี้ไว้ด้านบน
 # context: the spoken label of that Lens icon, for screen readers
 Copy text	คัดลอกข้อความ
 # context: title of the share sheet offered when Google Lens isn't installed; the apps listed below it read the picture's text
@@ -1721,11 +1867,17 @@ Couldn't read that picture.	ไม่สามารถอ่านรูปภ�
 This launcher can't add it.	ลอนเชอร์นี้ไม่สามารถเพิ่มได้
 Glass in chats	เอฟเฟกต์กระจกในแชท
 Gives a chat's top bar and message bar frosted glass and puts the back, call and video buttons on round glass circles. It shows the next time you open a chat. Needs Android 12 or newer for the blur.	เพิ่มเอฟเฟกต์กระจกฝ้าที่แถบด้านบนและแถบข้อความของแชท และวางปุ่มย้อนกลับ โทร และวิดีโอคอลบนวงกลมกระจกมน จะแสดงขึ้นในครั้งถัดไปที่คุณเปิดแชท ต้องใช้ Android 12 ขึ้นไปสำหรับเอฟเฟกต์เบลอ
+Center names in chats	จัดชื่อไว้ตรงกลางในแชท
+Puts the name and username at the top of a chat in the middle of the bar. A long name sits as near the middle as the call buttons leave room for.	วางชื่อและชื่อผู้ใช้ที่ด้านบนของแชทไว้ตรงกลางแถบ ชื่อที่ยาวจะอยู่ใกล้กลางที่สุดเท่าที่ปุ่มโทรเหลือที่ไว้ให้
+Glass top bar in chats	กระจกที่แถบด้านบนของแชท
+Turn it off to leave a chat's top bar as Instagram draws it, with no frosted band behind it. The round glass buttons and the glass message bar stay.	ปิดเพื่อให้แถบด้านบนของแชทเป็นแบบที่ Instagram แสดงตามปกติ โดยไม่มีแถบกระจกฝ้าด้านหลัง ปุ่มกระจกทรงกลมและแถบข้อความกระจกยังคงอยู่
+Top bar tint in chats	โทนสีของแถบด้านบนในแชท
+Message bar tint	โทนสีของแถบข้อความ
 # context: Reels switch Hide reels with few views, its summary, the Minimum views row, its dialog message and the row's summary, then the Minimum likes row, its dialog message, its summary and its summary at 0; %1$s is a number with thousands separators (#444)
 Hide reels with few views	ซ่อนรีลส์ที่มียอดดูน้อย
-Leaves out reels in the Reels tab with fewer views or likes than the numbers below. Reels from accounts you follow, reels sent to you and reels with no count still play.	ละเว้นรีลส์ในแท็บรีลส์ที่มียอดดูหรือยอดถูกใจน้อยกว่าจำนวนด้านล่างนี้ โดยรีลส์จากบัญชีที่คุณติดตาม รีลส์ที่ส่งถึงคุณ และรีลส์ที่ไม่มีจำนวนนับจะยังคงเล่นตามปกติ
+Leaves out reels in the Reels tab outside the numbers below. Reels from accounts you follow, reels sent to you and reels that don't show a number still play.	ละเว้นรีลส์ในแท็บรีลส์ที่อยู่นอกจำนวนด้านล่างนี้ โดยรีลส์จากบัญชีที่คุณติดตาม รีลส์ที่ส่งถึงคุณ และรีลส์ที่ไม่แสดงจำนวนจะยังคงเล่นตามปกติ
 Minimum views	ยอดดูขั้นต่ำ
-Reels with fewer views than this are left out. Type a whole number.	รีลส์ที่มียอดดูน้อยกว่านี้จะถูกละเว้น พิมพ์จำนวนเต็ม
+Reels with fewer views than this are left out. Type a whole number, or 0 to not look at views.	รีลส์ที่มียอดดูน้อยกว่านี้จะถูกละเว้น พิมพ์จำนวนเต็ม หรือพิมพ์ 0 หากไม่ต้องการพิจารณายอดดู
 Fewer than %1$s views	ยอดดูน้อยกว่า %1$s ครั้ง
 Minimum likes	ยอดถูกใจขั้นต่ำ
 Reels with fewer likes than this are left out. Type a whole number, or 0 to not look at likes.	รีลส์ที่มียอดถูกใจน้อยกว่านี้จะถูกละเว้น พิมพ์จำนวนเต็ม หรือพิมพ์ 0 หากไม่ต้องการพิจารณายอดถูกใจ
@@ -1752,6 +1904,21 @@ Home header text	ข้อความส่วนหัวของหน้า
 # context: placeholder in the empty Home header text field, where the person types their own words for the top of Home
 Your words	ข้อความของคุณ
 Words of your own at the top of Home, in place of Instagram's logo. Up to %1$d characters. Leave it blank to keep the logo.	ข้อความของคุณเองที่ด้านบนของหน้าหลักแทนที่โลโก้ของ Instagram สูงสุด %1$d ตัวอักษร เว้นว่างไว้เพื่อคงโลโก้เดิมไว้
+Header text font	แบบอักษรของข้อความส่วนหัว
+The bold font the words have always had.	แบบอักษรตัวหนาที่ข้อความใช้มาตลอด
+The phone's font at its regular weight.	แบบอักษรของโทรศัพท์ในน้ำหนักปกติ
+A bold font with serifs, like a newspaper's.	แบบอักษรตัวหนามีเชิง เหมือนในหนังสือพิมพ์
+Joined-up handwriting.	ลายมือเขียนแบบตัวต่อ
+Every letter the same width, like a typewriter.	ตัวอักษรทุกตัวกว้างเท่ากัน เหมือนเครื่องพิมพ์ดีด
+The font picked under Font, in bold. Bold while Instagram's own is picked there.	แบบอักษรที่เลือกไว้ใน แบบอักษร เป็นตัวหนา หากเลือกแบบอักษรของ Instagram ไว้ที่นั่นจะเป็นตัวหนา
+Bold	ตัวหนา
+Regular	ปกติ
+Serif	มีเชิง
+Script	ตัวเขียน
+Monospace	ความกว้างเท่ากัน
+Your font	แบบอักษรของคุณ
+Center the header text	จัดข้อความส่วนหัวไว้ตรงกลาง
+Puts your words or picture in the middle of the top of Home instead of where Instagram puts its logo.	วางข้อความหรือรูปภาพของคุณไว้ตรงกลางด้านบนของหน้าหลัก แทนตำแหน่งที่ Instagram วางโลโก้
 Instagram's logo stays at the top of Home.	โลโก้ของ Instagram จะยังคงอยู่ที่ด้านบนของหน้าหลัก
 The top of Home says %1$s.	ด้านบนของหน้าหลักจะแสดง %1$s
 Home header picture	รูปภาพส่วนหัวของหน้าหลัก
@@ -1765,10 +1932,12 @@ That isn't a picture.	นั่นไม่ใช่ไฟล์รูปภา�
 That picture is over %1$d MB.	รูปภาพนั้นมีขนาดเกิน %1$d MB
 Couldn't save the picture.	ไม่สามารถบันทึกรูปภาพได้
 Open a chat, tap the clock button next to the call buttons at the top, or long press the chat's name, and pick Jump to the first message or Jump to a date. The chat loads its older messages on its own, with a count and a Cancel button.	เปิดแชท แตะปุ่มนาฬิกาข้างปุ่มโทรที่ด้านบน หรือกดค้างที่ชื่อแชท แล้วเลือก "ข้ามไปยังข้อความแรก" หรือ "ข้ามไปยังวันที่" แชทจะโหลดข้อความเก่าโดยอัตโนมัติ พร้อมแสดงจำนวนนับและปุ่มยกเลิก
-Open a chat, tap the clock button next to the call buttons at the top, or long press the chat's name, and pick Export chat. The whole chat is saved as a text file in Downloads, HushGram folder, one line per message.	เปิดแชท แตะปุ่มนาฬิกาข้างปุ่มโทรที่ด้านบน หรือกดค้างที่ชื่อแชท แล้วเลือก "ส่งออกแชท" ระบบจะบันทึกทั้งแชทเป็นไฟล์ข้อความในโฟลเดอร์ดาวน์โหลด/HushGram บรรทัดละหนึ่งข้อความ
+Open a chat, tap the clock button next to the call buttons at the top, or long press the chat's name, and pick Export chat. The whole chat is saved as a text file in Downloads, HushGram folder, one line per message. Select messages in the same menu lets you tick messages to copy, share or save.	เปิดแชท แตะปุ่มนาฬิกาข้างปุ่มโทรที่ด้านบน หรือกดค้างที่ชื่อแชท แล้วเลือก "ส่งออกแชท" ระบบจะบันทึกทั้งแชทเป็นไฟล์ข้อความในโฟลเดอร์ดาวน์โหลด/HushGram บรรทัดละหนึ่งข้อความ เลือกข้อความในเมนูเดียวกันให้คุณติ๊กข้อความเพื่อคัดลอก แชร์ หรือบันทึก
 Instagram stopped loading older messages.	Instagram หยุดโหลดข้อความที่เก่ากว่าแล้ว
 Black settings page	หน้าการตั้งค่าสีดำ
 Black rows and dialogs, with HushGram's name at the top.	แถวและกล่องโต้ตอบสีดำ พร้อมชื่อ HushGram ที่ด้านบน
+Light settings page	หน้าการตั้งค่าสีสว่าง
+White rows and dialogs, with HushGram's name at the top. Takes the place of Black settings page while it's on.	แถวและกล่องโต้ตอบสีขาว พร้อมชื่อ HushGram ที่ด้านบน ใช้แทนหน้าการตั้งค่าสีดำขณะที่เปิดอยู่
 Mark as read	ทำเครื่องหมายว่าอ่านแล้ว
 Nothing to mark as read	ไม่มีรายการที่จะทำเครื่องหมายว่าอ่านแล้ว
 Mark as read button in chats	ปุ่มทำเครื่องหมายว่าอ่านแล้วในแชท
@@ -1793,6 +1962,9 @@ While you swipe through a chat's reels, a banner says when the other person sent
 New message after this reel	ข้อความใหม่หลังรีลส์นี้
 Hide the audio icon on posts	ซ่อนไอคอนเสียงบนโพสต์
 Takes the speaker icon off videos in your feed. Tapping the video still turns the sound on or off. Posts already on screen change when they load again.	นำไอคอนลำโพงออกจากวิดีโอในฟีดของคุณ โดยการแตะวิดีโอจะยังคงเปิดหรือปิดเสียงได้เหมือนเดิม โพสต์ที่อยู่บนหน้าจออยู่แล้วจะเปลี่ยนเมื่อโหลดใหม่อีกครั้ง
+# context: second switch on the Feed page under Hide the audio icon on posts; the tag icon is the small person badge in the corner of a post with people tagged (#762)
+Hide the tag icon on posts	ซ่อนไอคอนแท็กบนโพสต์
+Takes the little person icon off posts with people tagged in them. Tapping the photo still shows who's tagged.	นำไอคอนรูปคนเล็กๆ ออกจากโพสต์ที่มีการแท็กคน การแตะรูปภาพยังคงแสดงว่าใครถูกแท็ก
 Light when paused	สว่างขึ้นเมื่อหยุดชั่วคราว
 Pause a reel and Burn-in guard brings the buttons back to full brightness until you play it again or swipe on. The wait then starts over.	เมื่อหยุดรีลส์ชั่วคราว การป้องกันหน้าจอเบิร์นอินจะปรับปุ่มกลับมาที่ความสว่างเต็มที่จนกว่าคุณจะเล่นต่อหรือปัดออก จากนั้นการนับเวลารอจะเริ่มใหม่อีกครั้ง
 Grow the heart	ขยายขนาดหัวใจ
@@ -1972,6 +2144,16 @@ Puts the seek bar right on the bottom edge of the video, so it's harder to touch
 # context: "Made with Edits" is the label Instagram shows under a post's author for a video made in Meta's Edits app; it stays in English here
 Hide Made with Edits	ซ่อน "Made with Edits"
 Takes the "Made with Edits" label out of the line under a post's author. The song, the place and the other labels keep taking turns there.	นำป้ายกำกับ "Made with Edits" ออกจากบรรทัดใต้ชื่อผู้โพสต์ โดยชื่อเพลง สถานที่ และป้ายกำกับอื่นๆ จะยังคงสลับกันแสดงในตำแหน่งดังกล่าว
+# context: "Sponsored" and "Paid partnership" are Instagram's own labels on feed posts; use the text Instagram shows in this language (#771)
+Hide the line under names	ซ่อนบรรทัดใต้ชื่อ
+Takes the song, the place and the other labels off the line under the name on posts in your feed. Sponsored and Paid partnership stay. Posts already on screen change when they load again.	นำเพลง สถานที่ และป้ายอื่นๆ ออกจากบรรทัดใต้ชื่อในโพสต์บนฟีดของคุณ "ได้รับการสนับสนุน" และ "พาร์ทเนอร์ชิพแบบชำระเงิน" ยังคงอยู่ โพสต์ที่แสดงอยู่แล้วจะเปลี่ยนเมื่อโหลดใหม่
+# context: "Sponsored" and "Paid partnership" are Instagram's own labels on reels; use the text Instagram shows in this language (#771)
+Hide the line under names on reels	ซ่อนบรรทัดใต้ชื่อบนรีลส์
+Takes the song, the place and the other labels off the line under the name on reels. Sponsored and Paid partnership stay. Reels already on screen change when they load again.	นำเพลง สถานที่ และป้ายอื่นๆ ออกจากบรรทัดใต้ชื่อบนรีลส์ "ได้รับการสนับสนุน" และ "พาร์ทเนอร์ชิพแบบชำระเงิน" ยังคงอยู่ รีลส์ที่แสดงอยู่แล้วจะเปลี่ยนเมื่อโหลดใหม่
+# context: a switch in HushGram settings > Reels; Not interested and Interested are the two buttons Instagram shows under a reel, named as in the Feed row's 'Are you interested?' summary (#769)
+Hide Not interested and Interested	ซ่อนไม่สนใจและสนใจ
+# context: summary under Hide Not interested and Interested on the Reels page (#769)
+Hides the Not interested and Interested buttons at the bottom of a reel. Nothing is answered for you.	ซ่อนปุ่มไม่สนใจและสนใจที่ด้านล่างของรีลส์ โดยจะไม่มีการตอบแทนคุณแต่อย่างใด
 # context: a switch on the Feed page; Save and Remove from saved are the rows it adds to a feed post's three-dot menu
 Save in the post menu	บันทึกในเมนูโพสต์
 Adds Save to the menu behind a post's three dots, or Remove from saved when you saved it already.	เพิ่ม "บันทึก" ลงในเมนูใต้จุดสามจุดของโพสต์ หรือ "ลบออกจากรายการที่บันทึกไว้" เมื่อคุณได้บันทึกไว้แล้ว
@@ -1979,6 +2161,11 @@ Hide the Save button	ซ่อนปุ่มบันทึก
 Takes the Save button off the bottom of posts in your feed, so a stray tap can't save one.	นำปุ่มบันทึกออกจากด้านล่างของโพสต์ในฟีดของคุณ เพื่อป้องกันการแตะโดนโดยไม่ตั้งใจจนบันทึกโพสต์
 Hide the Like button	ซ่อนปุ่มถูกใจ
 Takes the heart and the like count off the bottom of posts in your feed. Double tap still likes a post.	นำรูปหัวใจและจำนวนถูกใจออกจากด้านล่างของโพสต์ในฟีดของคุณ คุณยังแตะสองครั้งเพื่อกดถูกใจโพสต์ได้อยู่
+# context: two switches on the Feed page under Hide the Like button; Liked by is the line under a feed post naming who liked it (#762)
+Hide counts on posts	ซ่อนตัวเลขบนโพสต์
+Takes the like, comment, share and repost numbers off posts in your feed. The buttons stay. Posts already on screen change when they load again.	นำตัวเลขถูกใจ ความคิดเห็น การแชร์ และการรีโพสต์ออกจากโพสต์ในฟีดของคุณ ปุ่มต่างๆ ยังอยู่ โพสต์ที่แสดงบนหน้าจออยู่แล้วจะเปลี่ยนเมื่อโหลดใหม่
+Hide Liked by	ซ่อน "ถูกใจโดย"
+Takes the "Liked by" line off posts in your feed.	นำบรรทัด "ถูกใจโดย" ออกจากโพสต์ในฟีดของคุณ
 # context: the row in a feed post's three-dot menu for a post you already saved, and the row that takes an account off Saved profiles, on its profile's menu and on the Saved profiles page (#629)
 Remove from saved	ลบออกจากรายการที่บันทึกไว้
 # context: a switch on the Reels page
@@ -2023,6 +2210,9 @@ No call rings your phone. Callers just get no answer.	ไม่มีสาย�
 Only people on your list ring your phone. Anyone else gets no answer.	เฉพาะคนในรายชื่อของคุณเท่านั้นที่โทรเข้าได้ คนอื่นจะไม่ได้รับการตอบรับ
 People on your list don't ring your phone. Everyone else still does.	คนในรายชื่อของคุณจะโทรเข้าไม่ได้ คนอื่นยังโทรเข้าได้ตามปกติ
 Everyone can ring your phone, as usual.	ทุกคนโทรหาคุณได้ตามปกติ
+# context: Messages switch under Call blocker's rows; Decline is the button on Instagram's own incoming call notification, Who can call you is the row above (#578)
+Decline calls that don't ring	ปฏิเสธสายที่ไม่ดังขึ้น
+Calls kept quiet by Who can call you are also declined, the same as tapping Decline, instead of being left unanswered.	สายที่ "ใครโทรหาคุณได้บ้าง" ทำให้ไม่ดังขึ้นจะถูกปฏิเสธด้วย เหมือนกับการแตะปฏิเสธ แทนที่จะปล่อยไว้โดยไม่มีการรับสาย
 Seek bar shape	รูปทรงแถบเลื่อนเวลา
 Thin line	เส้นบาง
 Rounded	ทรงมน
@@ -2097,10 +2287,32 @@ Was @%1$s, %2$s	เคยเป็น @%1$s %2$s
 # context: a row on the Profile changes page; %s is Android's relative time of the change, like 2 days ago (#611)
 Old profile picture, %s	รูปโปรไฟล์เดิม %s
 Old bio, %s	ประวัติเดิม %s
+# context: long-press menu items on an old picture's row on the Profile changes page; View opens it full screen, Save puts it in the gallery (#611)
+View picture	ดูรูปภาพ
+Save picture	บันทึกรูปภาพ
+# context: a line on a Profile changes row; %1$s and %2$s are dates like Nov 3, 2026, the first and last day the old value was seen (#611)
+Seen from %1$s to %2$s	เห็นตั้งแต่ %1$s ถึง %2$s
+# context: the same line when both days are one date; %s is a date like Nov 3, 2026 (#611)
+Seen on %s	เห็นเมื่อ %s
 Clear profile history	ล้างประวัติโปรไฟล์
 Forgets every username, bio and picture on the list, for all your accounts. The switch stays as it is.	ลบชื่อผู้ใช้ ประวัติ และรูปทั้งหมดในรายการสำหรับทุกบัญชีของคุณ โดยสวิตช์จะยังคงอยู่ในสถานะเดิม
 Profile history cleared.	ล้างประวัติโปรไฟล์แล้ว
 Couldn't clear the profile history. Try again.	ล้างประวัติโปรไฟล์ไม่ได้ โปรดลองอีกครั้ง
+# context: switch in HushGram settings > Profiles; notes, on this phone, when people in your messages come online and go offline, from the active status Instagram already shows (#590)
+Keep online history	เก็บประวัติการออนไลน์
+Notes when people in your messages come online and go offline, from the active status Instagram already shows, on this phone only. Turn it off and it stops at once.	จดว่าคนในข้อความของคุณออนไลน์และออฟไลน์เมื่อใด จากสถานะกิจกรรมที่ Instagram แสดงอยู่แล้ว ไว้ในโทรศัพท์เครื่องนี้เท่านั้น ปิดเมื่อใดก็หยุดทันที
+# context: row and page title in HushGram settings > Profiles listing when people came online and went offline (#590)
+Online history	ประวัติการออนไลน์
+Nothing here yet. With Keep online history on, the times people in your messages come online and go offline show up here.	ยังไม่มีอะไร เมื่อเปิด "เก็บประวัติการออนไลน์" ไว้ เวลาที่คนในข้อความของคุณออนไลน์และออฟไลน์จะแสดงที่นี่
+# context: a row on the Online history page; %s is Android's relative time of the change, like 5 minutes ago (#590)
+Came online, %s	ออนไลน์แล้ว %s
+Went offline, %s	ออฟไลน์แล้ว %s
+# context: stands in for the username on an Online history row when Instagram never gave one (#590)
+Unknown account	บัญชีที่ไม่รู้จัก
+Clear online history	ล้างประวัติการออนไลน์
+Forgets everyone on the list, for all your accounts. The switch stays as it is.	ลบทุกคนในรายการสำหรับทุกบัญชีของคุณ โดยสวิตช์จะยังคงอยู่ในสถานะเดิม
+Online history cleared.	ล้างประวัติการออนไลน์แล้ว
+Couldn't clear the online history. Try again.	ล้างประวัติการออนไลน์ไม่ได้ โปรดลองอีกครั้ง
 # context: toast when a profile opened has a different username than last time; %s is the old username (#611)
 Used to be @%s	เคยใช้ชื่อ @%s
 # context: toast when a profile opened has a new profile picture and bio since last time (#611)
@@ -2135,19 +2347,19 @@ Takes the invite to someone's broadcast channel from under their bio. Yours keep
 Hide the other profile banners	ซ่อนแบนเนอร์อื่นๆ ในโปรไฟล์
 # context: Profiles > summary of Hide the other profile banners (#627)
 Takes the rest of the banners under the bio off other people's profiles, like events, fundraisers, schools and business hours. Yours keeps them.	นำแบนเนอร์อื่นๆ ใต้ประวัติย่อออกจากโปรไฟล์ของคนอื่น เช่น กิจกรรม การระดมทุน โรงเรียน และเวลาทำการ โปรไฟล์ของคุณยังคงมีอยู่
+# context: Profiles > title of the switch that hides the row of links (a website, a business's links) under the bio on other people's profiles (#627)
+Hide links	ซ่อนลิงก์
+# context: Profiles > summary of Hide links (#627)
+Takes the row of links, like a website or a business's links, from under the bio on other people's profiles. Yours keeps it.	นำแถวลิงก์ เช่น เว็บไซต์หรือลิงก์ของธุรกิจ ออกจากใต้ประวัติย่อในโปรไฟล์ของคนอื่น โปรไฟล์ของคุณยังคงมีอยู่
 # context: the row HushGram adds to the menu on someone's profile; it puts the account on the Saved profiles list (#629)
 Save profile	บันทึกโปรไฟล์
 # context: toast after Save profile; %s is the account's username (#629)
 Saved @%s	บันทึก @%s แล้ว
 # context: toast after Remove from saved takes an account off the Saved profiles list; %s is its username (#629)
 Removed @%s from saved	ลบ @%s ออกจากรายการที่บันทึกไว้แล้ว
-# context: row in the long press menu on an account on the Saved profiles page, and title of the folder list it opens (#629)
-Move to folder	ย้ายไปยังโฟลเดอร์
-# context: title of the folder list Save profile opens on a profile's menu once the user has made a folder (#629)
+# context: title of the folder checklist Save profile opens on a profile's menu once the user has made a folder; the account can go in several (#629, #687)
 Save to folder	บันทึกลงโฟลเดอร์
-# context: first choice in that folder list; the saved account sits in no folder (#629)
-No folder	ไม่มีโฟลเดอร์
-# context: last choice in that folder list, and title of the dialog asking the new folder's name (#629)
+# context: button under a folder checklist, and title of the dialog asking the new folder's name (#629, #687)
 New folder	โฟลเดอร์ใหม่
 # context: row in the long press menu on a folder's chip on the Saved profiles page, and title of the dialog for its new name (#629)
 Rename folder	เปลี่ยนชื่อโฟลเดอร์
@@ -2155,14 +2367,20 @@ Rename folder	เปลี่ยนชื่อโฟลเดอร์
 Remove folder	ลบโฟลเดอร์
 # context: toast after Save profile puts an account in a folder; %1$s is its username, %2$s the folder's name (#629)
 Saved @%1$s to %2$s	บันทึก @%1$s ลงใน %2$s แล้ว
-# context: toast after Move to folder; %1$s is the account's username, %2$s the folder's name (#629)
-Moved @%1$s to %2$s	ย้าย @%1$s ไปยัง %2$s แล้ว
-# context: toast after Move to folder > No folder; %s is the account's username, which stays saved (#629)
-Moved @%s out of its folder	นำ @%s ออกจากโฟลเดอร์แล้ว
 # context: toast after Remove folder; %s is the folder's name, and its accounts stay saved (#629)
 Removed the folder %s	ลบโฟลเดอร์ %s แล้ว
 # context: toast after Rename folder; %s is the folder's new name (#629)
 Renamed the folder to %s	เปลี่ยนชื่อโฟลเดอร์เป็น %s แล้ว
+# context: row in the long press menu on an account on the Saved profiles page, and title of the folder checklist it opens; an account can be in several folders (#687)
+Choose folders	เลือกโฟลเดอร์
+# context: toast after Choose folders with every folder unticked; %s is the account's username, which stays saved (#687)
+@%s is in no folder now	ตอนนี้ @%s ไม่อยู่ในโฟลเดอร์ใดเลย
+# context: toast after Choose folders leaves the account in one folder; %1$s is its username, %2$s the folder's name (#687)
+@%1$s is in %2$s now	ตอนนี้ @%1$s อยู่ใน %2$s
+# context: toast after Choose folders leaves the account in two or more folders; %1$s is its username, %2$d how many (#687)
+@%1$s is in %2$d folders now	ตอนนี้ @%1$s อยู่ใน %2$d โฟลเดอร์
+# context: toast after Save profile puts an account in two or more folders; %1$s is its username, %2$d how many (#687)
+Saved @%1$s to %2$d folders	บันทึก @%1$s ลงใน %2$d โฟลเดอร์แล้ว
 # context: toast when the Saved profiles list already holds 2,000 accounts (#629)
 Saved profiles is full.	รายการโปรไฟล์ที่บันทึกไว้เต็มแล้ว
 # context: Profiles > title of the switch that adds Save profile to the menu on profiles, and title of the page listing the saved accounts (#629)
@@ -2189,9 +2407,34 @@ Follow @%1$s?	ติดตาม @%1$s หรือไม่
 Follow this account?	ติดตามบัญชีนี้หรือไม่
 # context: The question's confirm button; Instagram's own Follow button label (#631)
 Follow	ติดตาม
+# context: Profiles > title of the switch that lists the follow requests you sent that are still waiting, and of its page (#690)
+Sent follow requests	คำขอติดตามที่ส่งไป
+# context: Profiles > summary of Sent follow requests; a follow button is Instagram's Follow, Requested or Following button (#690)
+Keeps a list of the accounts you've asked to follow that haven't let you in yet, from what their follow buttons show while this is on. Nothing extra is asked of Instagram, and the list stays on your phone.	เก็บรายชื่อบัญชีที่คุณขอติดตามแต่ยังไม่ได้รับการตอบรับ จากสิ่งที่ปุ่มติดตามของบัญชีเหล่านั้นแสดงขณะเปิดตัวเลือกนี้ โดยไม่มีการส่งคำขอเพิ่มเติมไปยัง Instagram และรายชื่อจะถูกเก็บไว้บนโทรศัพท์ของคุณเท่านั้น
+# context: Profiles > title of the row that opens the list of sent follow requests still waiting (#690)
+Your sent requests	คำขอที่คุณส่งไป
+# context: Profiles > summary of Your sent requests while the list is empty; Sent follow requests is the switch's title (#690)
+No requests waiting. With Sent follow requests on, a request you send, or one whose follow button you see, shows up here.	ไม่มีคำขอที่รออยู่ เมื่อเปิด "คำขอติดตามที่ส่งไป" คำขอที่คุณส่งหรือคำขอที่คุณเห็นบนปุ่มติดตามจะแสดงที่นี่
+# context: Profiles > title of the row that forgets the sent follow requests list (#690)
+Clear sent requests	ล้างคำขอที่ส่งไป
+# context: Profiles > summary of Clear sent requests; the requests themselves aren't cancelled (#690)
+Forgets every request on the list, for all your accounts. The requests stay sent on Instagram.	ลบคำขอทั้งหมดในรายการสำหรับทุกบัญชีของคุณ คำขอบน Instagram ยังคงถูกส่งอยู่
+# context: Toast after Clear sent requests; two lines of 28 characters at most (#690)
+Sent requests cleared.	ล้างคำขอที่ส่งไปแล้ว
+# context: Toast when Clear sent requests fails; two lines of 28 characters at most (#690)
+Couldn't clear the sent requests. Try again.	ไม่สามารถล้างคำขอที่ส่งไปได้ โปรดลองอีกครั้ง
+# context: Hint at the top of the Sent follow requests page; Instagram's Requested button cancels a request and asks first (#690)
+Tap an account to open its profile, where its follow button cancels the request. Instagram asks before it does.	แตะบัญชีเพื่อเปิดโปรไฟล์ ซึ่งปุ่มติดตามของบัญชีนั้นจะยกเลิกคำขอได้ Instagram จะถามก่อนยกเลิก
+# context: Long-press menu item on the Sent follow requests page; takes the account off HushGram's list only (#690)
+Remove from the list	ลบออกจากรายการ
+# context: Toast after Remove from the list; %s is the account's username; two lines of 28 characters at most (#690)
+Removed @%s from the list	ลบ @%s ออกจากรายการแล้ว
 # context: switch in HushGram settings > Reels; a reel link opened from outside Instagram plays the linked reel first instead of a reel Instagram kept on the phone (#606)
 Open reel links on that reel	เปิดลิงก์รีลส์ที่รีลส์นั้น
 A reel link opens on the reel it points to. Instagram doesn't play another reel it kept on your phone while that one loads.	ลิงก์รีลส์จะเปิดรีลส์ที่ลิงก์ชี้ไป Instagram จะไม่เล่นรีลส์อื่นที่เก็บไว้ในโทรศัพท์ของคุณระหว่างที่รีลส์นั้นกำลังโหลด
+# context: switch in HushGram settings > Reels; Instagram keeps the screen on the whole time its Reels viewer is open, and this lets a paused reel follow the phone's own screen timeout (#777)
+Let the screen sleep when a reel stops	ให้หน้าจอดับเมื่อรีลส์หยุด
+Instagram keeps the screen on while Reels is open. With this on, a paused reel lets your phone's screen timeout run, and a playing one keeps it on.	Instagram เปิดหน้าจอค้างไว้ตลอดที่ Reels เปิดอยู่ เมื่อเปิดตัวเลือกนี้ รีลส์ที่หยุดชั่วคราวจะปล่อยให้การปิดหน้าจออัตโนมัติของโทรศัพท์ทำงาน และรีลส์ที่กำลังเล่นจะเปิดหน้าจอค้างไว้
 # context: Stories settings: moves the story speed button into a video story's three-dot menu as a Playback speed row (#621)
 Speed in the story menu	ความเร็วในเมนูสตอรี่
 # context: Summary of Speed in the story menu; Playback speed is the row's own label (#621)
@@ -2216,3 +2459,290 @@ Haptic strength	ความแรงของการสั่นตอบส�
 Tap sound on the tab bar	เสียงแตะบนแถบแท็บ
 A click each time the highlight moves to another tab, even with the phone's touch sounds off. Silent and vibrate mode keep it quiet.	เสียงคลิกทุกครั้งที่ไฮไลต์ย้ายไปยังแท็บอื่น แม้ปิดเสียงสัมผัสของโทรศัพท์ไว้ก็ตาม โหมดปิดเสียงและโหมดสั่นจะไม่มีเสียงนี้
 Tap sound volume	ระดับเสียงแตะ
+Auto scroll in Home	เลื่อนอัตโนมัติในหน้าหลัก
+Moves Home on to the next post by itself. A video moves on when it ends, a photo or carousel after Time on each post. Touch the screen to hold it.	หน้าหลักจะเลื่อนไปยังโพสต์ถัดไปเอง วิดีโอจะเลื่อนเมื่อเล่นจบ ส่วนรูปภาพหรือโพสต์ภาพหมุนจะเลื่อนหลังจากเวลาในแต่ละโพสต์ แตะหน้าจอค้างไว้เพื่อหยุด
+Time on each post	เวลาในแต่ละโพสต์
+# context: Reels settings: switch that lets a tap on the reel shown above an open comments sheet pause or play it, and a hold play it at 2x, without closing the comments (#665)
+Control the reel above comments	ควบคุมรีลส์เหนือความคิดเห็น
+# context: Summary of Control the reel above comments (#665)
+With a reel's comments open, tap the reel above them to pause or play it, or hold it to play at 2x. The comments stay open.	ขณะเปิดความคิดเห็นของรีลส์ แตะรีลส์ด้านบนเพื่อหยุดชั่วคราวหรือเล่น หรือกดค้างไว้เพื่อเล่นที่ 2x ความคิดเห็นจะยังเปิดอยู่
+# context: Reels settings: switch that keeps Instagram's "Locked at 2x speed" toast, and the one it shows when the lock ends, off a reel; the lock itself still works (#702, #552)
+Hide the speed lock message	ซ่อนข้อความล็อกความเร็ว
+# context: Summary of Hide the speed lock message (#702)
+Keeps the message Instagram shows when you lock a reel's speed, and when the lock ends, off the screen. The lock still works.	ไม่แสดงข้อความที่ Instagram แสดงเมื่อคุณล็อกความเร็วของรีลส์และเมื่อการล็อกสิ้นสุดลง การล็อกยังคงทำงานได้ตามปกติ
+Remove hidden data from saved photos	ลบข้อมูลที่ซ่อนอยู่ออกจากรูปภาพที่บันทึก
+Takes Meta's FBMD tracking tag out of each photo you save, along with any camera, place and time details. The picture and its colors stay the same. With Add the source on, the source still goes in afterward. JPEG photos only.	นำแท็กติดตาม FBMD ของ Meta ออกจากรูปภาพทุกรูปที่คุณบันทึก รวมถึงข้อมูลกล้อง สถานที่ และเวลา ภาพและสีของภาพจะเหมือนเดิม เมื่อเปิด "เพิ่มแหล่งที่มาลงในรูปภาพและวิดีโอที่บันทึก" แหล่งที่มาจะยังถูกเขียนลงไปหลังจากนั้น เฉพาะรูปภาพ JPEG เท่านั้น
+Ask for VP9 instead of AV1	ขอ VP9 แทน AV1
+# context: summary under Ask for VP9 instead of AV1 in HushGram settings > Downloads; Convert to keep the full size is the switch of that name a few rows up (#546)
+Tells Instagram your phone has no AV1 decoder, which takes a restart. A post or reel that still comes as AV1 is saved as VP9 from Instagram's website when it offers one. Stories can still be AV1, and Convert to keep the full size turns those into H.264.	บอก Instagram ว่าโทรศัพท์ของคุณไม่มีตัวถอดรหัส AV1 ซึ่งต้องรีสตาร์ท โพสต์หรือรีลส์ที่ยังมาเป็น AV1 จะบันทึกเป็น VP9 จากเว็บไซต์ Instagram เมื่อมีให้ สตอรี่อาจยังเป็น AV1 และแปลงไฟล์เพื่อคงขนาดเต็มไว้จะเปลี่ยนเป็น H.264
+# context: Summary of Show the skip arrows under Double tap to skip on feed videos in Feed settings (#562)
+Two arrows flash on the side you double tapped, with the seconds skipped under them.	ลูกศรสองอันจะกะพริบที่ด้านที่คุณแตะสองครั้ง พร้อมจำนวนวินาทีที่ข้ามอยู่ด้านล่าง
+# context: Feed settings: choice under Seek bar shape that gives the seek bar on feed videos a shape of its own (#567)
+Feed seek bar shape	รูปทรงแถบเลื่อนเวลาในฟีด
+# context: Choice in Feed seek bar shape: feed videos follow the shape picked in Seek bar shape (#567)
+Same as Seek bar shape	เหมือนกับรูปทรงแถบเลื่อนเวลา
+# context: Summary of Same as Seek bar shape in Feed seek bar shape (#567)
+Feed videos use the shape picked in Seek bar shape.	วิดีโอในฟีดใช้รูปทรงที่เลือกไว้ในรูปทรงแถบเลื่อนเวลา
+# context: Summary of Standard in Feed seek bar shape (#567)
+The bar and round handle you know, on feed videos only.	แถบและปุ่มเลื่อนทรงกลมแบบที่คุณคุ้นเคย เฉพาะวิดีโอในฟีด
+# context: Summary of Thin line in Feed seek bar shape (#567)
+A thin line with no handle on the bottom edge of feed videos, which grows while you drag it.	เส้นบางที่ไม่มีปุ่มเลื่อนที่ขอบด้านล่างของวิดีโอในฟีด และจะขยายขึ้นขณะที่คุณลาก
+# context: Summary of Rounded in Feed seek bar shape (#567)
+A thicker rounded bar with no handle, on feed videos only.	แถบทรงมนที่หนาขึ้นและไม่มีปุ่มเลื่อน เฉพาะวิดีโอในฟีด
+# context: Summary of Expressive in Feed seek bar shape (#567)
+A rounded bar split by a tall handle, on feed videos only.	แถบทรงมนที่ถูกแบ่งด้วยปุ่มเลื่อนทรงสูง เฉพาะวิดีโอในฟีด
+# context: Summary of Wave in Feed seek bar shape (#567)
+A wavy line for the part played, with a tall handle, on feed videos only.	เส้นคลื่นแสดงส่วนที่เล่นไปแล้ว พร้อมปุ่มเลื่อนทรงสูง เฉพาะวิดีโอในฟีด
+# context: Feed settings: a switch under Seek bar on feed videos that shows the time over the bar (#711)
+Time on the seek bar	เวลาบนแถบเลื่อนเวลา
+# context: Summary of Time on the seek bar; 0:12 / 0:45 is an example time, keep the digits as they are (#711)
+Shows the time played and the video's length over the seek bar on feed videos, like 0:12 / 0:45. Tap the time to see the time left instead.	แสดงเวลาที่เล่นไปแล้วและความยาวของวิดีโอเหนือแถบเลื่อนเวลาในวิดีโอฟีด เช่น 0:12 / 0:45 แตะที่เวลาเพื่อดูเวลาที่เหลือแทน
+# context: Feed settings: a switch under Time on the seek bar that counts the time down instead (#711)
+Show the time left	แสดงเวลาที่เหลือ
+# context: Summary of Show the time left; -0:33 / 0:45 is an example time, keep the digits and the minus sign as they are (#711)
+The time on the seek bar counts down what's left of the video, like -0:33 / 0:45. A tap on the time switches back.	เวลาบนแถบเลื่อนเวลานับถอยหลังส่วนที่เหลือของวิดีโอ เช่น -0:33 / 0:45 แตะที่เวลาเพื่อสลับกลับ
+# context: Feed settings: a switch under Tap a feed video to pause it that keeps any tap on a feed video from opening Reels (#706)
+Taps on feed videos stay in the feed	แตะวิดีโอในฟีดแล้วยังอยู่ในฟีด
+# context: Summary of Taps on feed videos stay in the feed; Tap a feed video to pause it is the switch above it, use its translation (#706)
+A tap on a feed video, or on the screen it shows when it ends, no longer opens it full screen in Reels. Tap a feed video to pause it still pauses it, and the buttons on that screen still work.	การแตะวิดีโอในฟีดหรือหน้าจอที่แสดงเมื่อวิดีโอจบจะไม่เปิดวิดีโอแบบเต็มหน้าจอในรีลส์อีกต่อไป แตะวิดีโอบนฟีดเพื่อหยุดชั่วคราวยังหยุดวิดีโอได้เหมือนเดิม และปุ่มบนหน้าจอนั้นยังใช้ได้
+# context: Item in Items in the three-dot menus under Feed: Instagram's Report row in the menus behind the three dots (#697)
+Report	รายงาน
+# context: Item in Items in the three-dot menus under Feed: Instagram's Unfollow row (#697)
+Unfollow	เลิกติดตาม
+# context: Item in Items in the three-dot menus under Feed: Instagram's Interested row (#697)
+Interested	สนใจ
+# context: Item in Items in the three-dot menus under Feed: Instagram's Why you're seeing this post row (#697)
+Why you're seeing this post	เหตุผลที่คุณเห็นโพสต์นี้
+# context: Item in Items in the three-dot menus under Feed: Instagram's Remix and sequence row in a reel's Made with Edits part (#707)
+Remix and sequence	รีมิกซ์และลำดับ
+# context: Item in Items in the three-dot menus under Feed: Instagram's Use as reference row in a reel's Made with Edits part (#707)
+Use as reference	ใช้เป็นข้อมูลอ้างอิง
+# context: Item in Items in the three-dot menus under Feed: Instagram's Use template row in a reel's Made with Edits part (#707)
+Use template	ใช้เทมเพลต
+# context: Item in Items in the three-dot menus under Feed: Instagram's Get Edits row in a reel's Made with Edits part (#707)
+Get Edits	รับ Edits
+# context: Title of the row under Feed that lists the items to keep in the menus behind the three dots on posts, reels and stories (#697, #707)
+Items in the three-dot menus	รายการในเมนูสามจุด
+# context: Summary of Items in the three-dot menus under Feed while every item is ticked (#697, #707)
+Every item shows. Untick the ones you don't want in the menus behind the three dots on posts, reels and stories.	แสดงทุกรายการ ยกเลิกการเลือกรายการที่คุณไม่ต้องการในเมนูสามจุดของโพสต์ รีล และสตอรี่
+# context: Summary of Items in the three-dot menus under Feed naming the unticked items, which are joined with a comma (#697, #707)
+Left off the three-dot menus: %1$s.	นำออกจากเมนูสามจุดแล้ว: %1$s
+# context: Feed settings: a switch under Hold for 2x on feed videos that keeps a held feed video at 2x after the finger lifts (#552)
+Keep 2x after you let go	คง 2 เท่าไว้หลังปล่อยนิ้ว
+# context: Summary of Keep 2x after you let go, a switch under Hold for 2x on feed videos (#552)
+A feed video you hold for 2x keeps playing at 2x after you let go. Hold it again to go back to normal speed.	วิดีโอในฟีดที่คุณกดค้างเพื่อเล่น 2 เท่าจะเล่นด้วยความเร็ว 2 เท่าต่อไปหลังปล่อยนิ้ว กดค้างอีกครั้งเพื่อกลับสู่ความเร็วปกติ
+# context: Stories settings: title and dialog title of the list under Story ring size that picks how thick story rings are drawn (#528)
+Ring thickness	ความหนาของวงแหวน
+# context: Stories settings: the Ring thickness choice that keeps the thickness Instagram gives story rings (#528)
+Instagram's thickness	ความหนาตาม Instagram
+# context: Stories settings: title and dialog title of the row under Ring color where a hex color is typed for the Custom ring color (#696)
+Custom ring color	สีวงแหวนที่กำหนดเอง
+# context: Stories settings: dialog text of Custom ring color; Custom and Ring color are the names of the choice and the list above it (#696)
+A color as six hex digits, like #4A6B82. Saving it picks Custom under Ring color. Restart Instagram to see it.	รหัสสีแบบฐานสิบหก 6 หลัก เช่น #4A6B82 เมื่อบันทึกจะเลือก กำหนดเอง ใน สีวงแหวน ให้ รีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
+# context: Stories settings: summary of Custom ring color while no color is typed; Custom is the Ring color choice (#696)
+None yet. Custom keeps Instagram's colors until you type one.	ยังไม่มี กำหนดเอง จะใช้สีตาม Instagram จนกว่าคุณจะป้อนรหัสสี
+# context: Stories settings: title and dialog title of the row under Custom ring color for the second color the custom ring fades into (#696)
+Custom ring end color	สีปลายวงแหวนที่กำหนดเอง
+# context: Stories settings: dialog text of Custom ring end color (#696)
+A second color as six hex digits, like #FF8A00, that the ring fades into. Leave it empty for one solid color. Restart Instagram to see it.	สีที่สองแบบฐานสิบหก 6 หลัก เช่น #FF8A00 ที่วงแหวนจะไล่สีไปหา เว้นว่างไว้เพื่อใช้สีเดียว รีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
+# context: Stories settings: summary of Custom ring end color while it is empty (#696)
+None. The ring is one solid color.	ไม่มี วงแหวนใช้สีเดียว
+# context: Profiles: title of the list a tap on the Show it as a chip chip opens (#698)
+Friendship status	สถานะความสัมพันธ์
+# context: Profiles: the answer after a line in that list, "Follows you: Yes" (#698)
+Yes	ใช่
+No	ไม่ใช่
+# context: Profiles: one line per friendship flag in that list, followed by ": Yes" or ": No". Close Friends, Favorites and Instants are Instagram's own names (#698)
+You follow them	คุณติดตามพวกเขา
+Asked to follow you	ขอติดตามคุณ
+You asked to follow them	คุณขอติดตามพวกเขาแล้ว
+On your Close Friends list	อยู่ในรายชื่อเพื่อนสนิทของคุณ
+In your Favorites	อยู่ในรายการโปรดของคุณ
+You restricted them	คุณจำกัดพวกเขาไว้
+You blocked them	คุณบล็อกพวกเขาไว้
+You hide your story from them	คุณซ่อนสตอรี่ของคุณจากพวกเขา
+You muted their posts	คุณปิดเสียงโพสต์ของพวกเขา
+You muted their story	คุณปิดเสียงสตอรี่ของพวกเขา
+You muted their notes	คุณปิดเสียงโน้ตของพวกเขา
+You muted their notes on posts and reels	คุณปิดเสียงโน้ตบนโพสต์และรีลส์ของพวกเขา
+You muted their reposts	คุณปิดเสียงรีโพสต์ของพวกเขา
+You muted their Instants	คุณปิดเสียง Instants ของพวกเขา
+Their account is private	บัญชีของพวกเขาเป็นส่วนตัว
+You're subscribed to them	คุณสมัครสมาชิกพวกเขาอยู่
+# context: Profiles: that list before Instagram has answered (#698)
+Instagram hasn't said anything about this account yet.	Instagram ยังไม่ได้บอกอะไรเกี่ยวกับบัญชีนี้
+This profile hasn't loaded its own answer yet, so this is only what Instagram keeps on the account.	โปรไฟล์นี้ยังโหลดคำตอบของตัวเองไม่เสร็จ จึงแสดงเฉพาะข้อมูลที่ Instagram เก็บไว้เกี่ยวกับบัญชีนี้
+# context: Profiles: heading over the flags in that list whose meaning isn't plain, shown under their raw names (#698)
+Other flags	แฟล็กอื่นๆ
+Not sent for this profile	ไม่ได้ส่งมาสำหรับโปรไฟล์นี้
+# context: Profiles: switch under Keep profile history (#715)
+Save changed pictures to the gallery	บันทึกรูปที่เปลี่ยนลงในแกลเลอรี
+When a profile you open has a new picture, puts the old picture and the new one in your gallery, each once. Needs Keep profile history.	เมื่อโปรไฟล์ที่คุณเปิดมีรูปใหม่ จะบันทึกรูปเก่าและรูปใหม่ลงในแกลเลอรีของคุณ รูปละครั้ง ต้องเปิดเก็บประวัติโปรไฟล์
+# context: Storage: slider under Clear the media cache that picks how big the saved photos and videos can get (#713)
+Cache size limit	ขีดจำกัดขนาดแคช
+# context: Storage: the Cache size limit slider's value; %1$d is a number of megabytes
+%1$d MB	%1$d MB
+# context: Storage: second line under Clear saved copies now; %1$s is a size such as 312 MB
+Saved photos and videos take up %1$s now.	รูปภาพและวิดีโอที่บันทึกไว้ใช้พื้นที่ %1$s ในตอนนี้
+# context: Tab bar: switch under Keep the pill full size, for the liquid look's bubble under a held finger (#705)
+Glass lens under your finger	เลนส์แก้วใต้นิ้วของคุณ
+Hold a finger on the liquid pill's bubble, or slide it across the tabs, and the bubble swells and bends what's behind it harder, like glass under a fingertip. It eases back when you let go. The bend needs Blur behind the tab bar and Android 13 or newer. Restart Instagram after changing it.	แตะนิ้วค้างไว้บนฟองของแถบแคปซูลแบบแก้วเหลว หรือเลื่อนไปตามแท็บ แล้วฟองจะขยายและหักเหสิ่งที่อยู่ด้านหลังแรงขึ้น เหมือนแก้วใต้ปลายนิ้ว และจะกลับเป็นปกติเมื่อคุณปล่อยนิ้ว การหักเหต้องเปิดเบลอด้านหลังแถบแท็บและใช้ Android 13 ขึ้นไป รีสตาร์ท Instagram หลังจากเปลี่ยนแปลงการตั้งค่า
+# context: Keep story viewers, its Stories settings rows and the Story viewers page.
+Keep story viewers	เก็บรายชื่อผู้ดูสตอรี่
+Each time you open who viewed one of your stories, the list is kept on this phone and set beside your followers. Nothing extra is asked of Instagram. Turn it off and it stops at once.	ทุกครั้งที่คุณเปิดดูว่าใครดูสตอรี่ของคุณ รายชื่อจะถูกเก็บไว้ในโทรศัพท์เครื่องนี้และวางคู่กับผู้ติดตามของคุณ ไม่มีการขออะไรเพิ่มจาก Instagram ปิดแล้วจะหยุดทันที
+Story viewers	ผู้ดูสตอรี่
+Nothing here yet. With Keep story viewers on, open who viewed one of your stories in Instagram and the list is kept here.	ยังไม่มีอะไร เมื่อเปิด เก็บรายชื่อผู้ดูสตอรี่ ไว้ ให้เปิดดูว่าใครดูสตอรี่ของคุณใน Instagram แล้วรายชื่อจะถูกเก็บไว้ที่นี่
+%1$d story kept since %2$s. Tap to see who viewed it and who has no view recorded.	เก็บ %1$d สตอรี่ตั้งแต่ %2$s แตะเพื่อดูว่าใครดูบ้างและใครยังไม่มีการดูที่บันทึกไว้
+%1$d stories kept since %2$s. Tap to see who viewed each one and who has no view recorded.	เก็บ %1$d สตอรี่ตั้งแต่ %2$s แตะเพื่อดูว่าใครดูแต่ละสตอรี่และใครยังไม่มีการดูที่บันทึกไว้
+Clear story viewers	ล้างรายชื่อผู้ดูสตอรี่
+Forgets every story's viewers kept here. The switch stays as it is.	ลืมรายชื่อผู้ดูของทุกสตอรี่ที่เก็บไว้ที่นี่ สวิตช์ยังคงเหมือนเดิม
+Story viewers cleared.	ล้างรายชื่อผู้ดูแล้ว
+Couldn't clear the story viewers. Try again.	ล้างรายชื่อผู้ดูไม่ได้ โปรดลองอีกครั้ง
+Last 7 days	7 วันที่ผ่านมา
+Last 30 days	30 วันที่ผ่านมา
+Last 90 days	90 วันที่ผ่านมา
+All kept	ทั้งหมดที่เก็บไว้
+Viewers	ผู้ดู
+No view recorded	ไม่มีการดูที่บันทึกไว้
+Frequent	ดูบ่อย
+Stories kept: %1$d. Viewers: %2$d.	สตอรี่ที่เก็บไว้: %1$d ผู้ดู: %2$d
+%1$d%% of your followers viewed at least one.	ผู้ติดตาม %1$d%% ดูอย่างน้อยหนึ่งสตอรี่
+To see followers with no view recorded, turn on Recent unfollowers and open your Followers list once.	หากต้องการดูผู้ติดตามที่ไม่มีการดูที่บันทึกไว้ ให้เปิด ผู้ที่เลิกติดตามล่าสุด แล้วเปิดรายชื่อผู้ติดตามของคุณหนึ่งครั้ง
+Viewed this story	ดูสตอรี่นี้แล้ว
+Not on this story's list	ไม่อยู่ในรายชื่อของสตอรี่นี้
+Stories viewed: %1$d of %2$d, the newest posted %3$s	ดูสตอรี่แล้ว: %1$d จาก %2$d ล่าสุดโพสต์ %3$s
+None in this period. The last story they viewed is from %s	ไม่มีในช่วงนี้ สตอรี่ล่าสุดที่ดูคือของวันที่ %s
+No view recorded since %s	ไม่มีการดูที่บันทึกไว้ตั้งแต่ %s
+Story from %s	สตอรี่จาก %s
+Viewers kept: %1$d of %2$d	ผู้ดูที่เก็บไว้: %1$d จาก %2$d
+Viewers: %1$d	ผู้ดู: %1$d
+Viewers: %1$d. Followers not on the list: %2$d	ผู้ดู: %1$d ผู้ติดตามที่ไม่อยู่ในรายชื่อ: %2$d
+No stories kept in this period.	ไม่มีสตอรี่ที่เก็บไว้ในช่วงนี้
+Every follower viewed at least one story in this period.	ผู้ติดตามทุกคนดูอย่างน้อยหนึ่งสตอรี่ในช่วงนี้
+No one has viewed half of this period's stories yet.	ยังไม่มีใครดูครึ่งหนึ่งของสตอรี่ในช่วงนี้
+# context: Feed: switch under Hide the home feed that keeps Instagram from learning which posts in Home you looked at and for how long (#664)
+Don't send feed view history	ไม่ส่งประวัติการดูฟีด
+Stops telling Instagram which posts in Home you looked at and for how long. Instagram uses that to pick what Home shows. Posts you've seen may come back.	หยุดส่งข้อมูลให้ Instagram ว่าคุณดูโพสต์ใดในหน้าหลักและดูนานเท่าใด Instagram ใช้ข้อมูลนี้เพื่อเลือกสิ่งที่จะแสดงในหน้าหลัก โพสต์ที่คุณเห็นแล้วอาจวนกลับมาแสดงอีก
+# context: Tab bar: switch under Hide the Messages tab that takes the unread count off the Messages button on the bottom tab bar (#734)
+Hide the Messages badge	ซ่อนป้ายตัวเลขบนปุ่มข้อความ
+Takes the unread count off the Messages button on the tab bar. Chats still show as unread in your inbox, and notifications still come. Restart Instagram to see the change.	นำตัวเลขข้อความที่ยังไม่ได้อ่านออกจากปุ่มข้อความบนแถบแท็บ แชทในกล่องข้อความยังแสดงว่ายังไม่ได้อ่าน และการแจ้งเตือนยังเข้ามาตามปกติ โปรดรีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
+# context: Ads and privacy settings: switch that adds a search box above Instagram's Blocked accounts list (Settings > Blocked), filtering it by username or full name; the same title is the box's hint text (#731)
+Search blocked accounts	ค้นหาบัญชีที่ถูกบล็อก
+Adds a search box above your blocked accounts in Instagram's settings. It finds them by username or name, and loads the rest of your list as you type.	เพิ่มช่องค้นหาไว้เหนือบัญชีที่คุณบล็อกในการตั้งค่าของ Instagram ค้นหาได้จากชื่อผู้ใช้หรือชื่อ และโหลดรายชื่อที่เหลือขณะที่คุณพิมพ์
+# context: the line under that search box. %1$d is how many blocked accounts match, %2$d how many have loaded. First while more pages are loading, then when Instagram stopped sending pages, then when the whole list is in (#731)
+Matches: %1$d of %2$d account loaded so far. Loading the rest of your list.	ตรงกัน %1$d จาก %2$d บัญชีที่โหลดแล้ว กำลังโหลดรายชื่อที่เหลือ
+Matches: %1$d of %2$d accounts loaded so far. Loading the rest of your list.	ตรงกัน %1$d จาก %2$d บัญชีที่โหลดแล้ว กำลังโหลดรายชื่อที่เหลือ
+Matches: %1$d of the %2$d account that loaded. Instagram didn't send the rest.	ตรงกัน %1$d จาก %2$d บัญชีที่โหลดมา Instagram ไม่ได้ส่งส่วนที่เหลือมา
+Matches: %1$d of the %2$d accounts that loaded. Instagram didn't send the rest.	ตรงกัน %1$d จาก %2$d บัญชีที่โหลดมา Instagram ไม่ได้ส่งส่วนที่เหลือมา
+Matches: %1$d of %2$d blocked account	ตรงกัน %1$d จาก %2$d บัญชีที่ถูกบล็อก
+Matches: %1$d of %2$d blocked accounts	ตรงกัน %1$d จาก %2$d บัญชีที่ถูกบล็อก
+# context: Profiles settings: switch that makes a long press on the picture at the top of a profile open HushGram's full size viewer with a Save button, in place of Instagram's own enlarged picture (#737)
+Long press a profile picture to view it	กดค้างที่รูปโปรไฟล์เพื่อดู
+# context: that switch summary (#737)
+Long press the picture at the top of a profile to open the whole square picture at full size, with Save under it, instead of Instagram's own preview. A tap works as before.	กดค้างที่รูปด้านบนของโปรไฟล์เพื่อเปิดรูปสี่เหลี่ยมจัตุรัสทั้งรูปในขนาดเต็ม พร้อมปุ่มบันทึกด้านล่าง แทนตัวอย่างของ Instagram เอง การแตะยังทำงานเหมือนเดิม
+# context: Notifications settings: row that opens a list of the kinds of notification rows this phone has seen, to tick the ones to hide (#756)
+Hide notifications by type	ซ่อนการแจ้งเตือนตามประเภท
+# context: that row's summary while nothing is ticked (#756)
+Takes the kinds of notifications you tick off the Notifications page. The list fills in as Instagram sends them.	นำการแจ้งเตือนประเภทที่คุณเลือกออกจากหน้าการแจ้งเตือน รายการจะเพิ่มขึ้นเมื่อ Instagram ส่งการแจ้งเตือนมา
+# context: that row's summary, one kind ticked (#756)
+%1$d kind of notification is hidden.	ซ่อนการแจ้งเตือน %1$d ประเภทแล้ว
+# context: that row's summary, several kinds ticked (#756)
+%1$d kinds of notification are hidden.	ซ่อนการแจ้งเตือน %1$d ประเภทแล้ว
+# context: message in that list's dialog before the Notifications page has loaded once (#756)
+No notifications seen yet. Open your notifications in Instagram once, then come back here.	ยังไม่เห็นการแจ้งเตือนใดเลย โปรดเปิดการแจ้งเตือนใน Instagram สักหนึ่งครั้ง แล้วกลับมาที่นี่
+# context: switch under HushGram settings > Reels with Keep Reels auto scroll on; adds a row to a reel's three-dot menu that turns Instagram's own auto scroll on or off, worded as in Keep auto scroll on (#768)
+Auto scroll in the reel menu	การเลื่อนอัตโนมัติในเมนูรีลส์
+# context: summary under that switch; Turn on auto scroll and Turn off auto scroll are the menu row's two labels below (#768)
+Adds Turn on auto scroll or Turn off auto scroll to the menu a reel's three dots open, so one tap changes it from the next reel on. It works on accounts where Instagram doesn't offer auto scroll too. Restart Instagram to see the change.	เพิ่ม "เปิดการเลื่อนอัตโนมัติ" หรือ "ปิดการเลื่อนอัตโนมัติ" ลงในเมนูที่เปิดจากจุดสามจุดของรีลส์ แตะครั้งเดียวก็เปลี่ยนได้ตั้งแต่รีลส์ถัดไป ใช้ได้แม้ในบัญชีที่ Instagram ไม่มีการเลื่อนอัตโนมัติให้ รีสตาร์ท Instagram เพื่อดูการเปลี่ยนแปลง
+# context: that three-dot menu row on a reel; the label says what a tap does (#768)
+Turn off auto scroll	ปิดการเลื่อนอัตโนมัติ
+Turn on auto scroll	เปิดการเลื่อนอัตโนมัติ
+# context: toasts after tapping that row (#768)
+Auto scroll on	เปิดการเลื่อนอัตโนมัติแล้ว
+Auto scroll off	ปิดการเลื่อนอัตโนมัติแล้ว
+Auto scroll didn't change	การเลื่อนอัตโนมัติไม่เปลี่ยนแปลง
+The cards that Instagram puts between reels to get you onto Threads.	การ์ดที่ Instagram แทรกไว้ระหว่างรีลส์เพื่อชวนคุณไปใช้ Threads
+Expand captions on reels	ขยายคำบรรยายในรีลส์
+Reels show their whole caption, with no "more" to tap. A long caption covers more of the video.	รีลส์จะแสดงคำบรรยายทั้งหมดโดยไม่ต้องแตะ "เพิ่มเติม" คำบรรยายที่ยาวจะบังวิดีโอมากขึ้น
+# context: summary of the Minimum views row under HushGram settings > Reels > Hide reels with few views when it's set to 0 (#780)
+Views aren't looked at	ไม่พิจารณายอดดู
+# context: next row under Hide reels with few views: its title, its number dialog's message, and its summary for 0 and for a number (#780)
+Maximum views	ยอดดูสูงสุด
+Reels with more views than this are left out. Type a whole number, or 0 for no maximum.	รีลส์ที่มียอดดูมากกว่านี้จะถูกละเว้น พิมพ์จำนวนเต็ม หรือพิมพ์ 0 หากไม่ต้องการกำหนดค่าสูงสุด
+No maximum	ไม่มีค่าสูงสุด
+More than %1$s views	ยอดดูมากกว่า %1$s ครั้ง
+# context: next row: how many likes a reel needs for each 1,000 views; Not looked at is its summary for 0 (#780)
+Likes per 1,000 views	ยอดถูกใจต่อยอดดู 1,000 ครั้ง
+Reels with fewer likes than this for every 1,000 views are left out. Only reels that show their views are checked. Type a whole number, or 0 to not look at it.	รีลส์ที่มียอดถูกใจน้อยกว่านี้ต่อยอดดูทุก 1,000 ครั้งจะถูกละเว้น โดยจะตรวจเฉพาะรีลส์ที่แสดงยอดดู พิมพ์จำนวนเต็ม หรือพิมพ์ 0 หากไม่ต้องการพิจารณา
+Not looked at	ไม่พิจารณา
+Fewer than %1$s likes per 1,000 views	ยอดถูกใจน้อยกว่า %1$s ครั้งต่อยอดดู 1,000 ครั้ง
+# context: next row, the same for comments (#780)
+Comments per 1,000 views	ความคิดเห็นต่อยอดดู 1,000 ครั้ง
+Reels with fewer comments than this for every 1,000 views are left out. Only reels that show their views are checked. Type a whole number, or 0 to not look at it.	รีลส์ที่มีความคิดเห็นน้อยกว่านี้ต่อยอดดูทุก 1,000 ครั้งจะถูกละเว้น โดยจะตรวจเฉพาะรีลส์ที่แสดงยอดดู พิมพ์จำนวนเต็ม หรือพิมพ์ 0 หากไม่ต้องการพิจารณา
+Fewer than %1$s comments per 1,000 views	ความคิดเห็นน้อยกว่า %1$s รายการต่อยอดดู 1,000 ครั้ง
+# context: next row: the shortest video length in seconds; its summary for 0, then for one second and for more (#780)
+Shortest video	วิดีโอที่สั้นที่สุด
+Reels shorter than this many seconds are left out. Type a whole number, or 0 for no shortest.	รีลส์ที่สั้นกว่าจำนวนวินาทีนี้จะถูกละเว้น พิมพ์จำนวนเต็ม หรือพิมพ์ 0 หากไม่ต้องการกำหนดความยาวขั้นต่ำ
+No shortest	ไม่มีความยาวขั้นต่ำ
+Shorter than %1$s second	สั้นกว่า %1$s วินาที
+Shorter than %1$s seconds	สั้นกว่า %1$s วินาที
+# context: next row: the longest video length in seconds; its summary for 0, then for one second and for more (#780)
+Longest video	วิดีโอที่ยาวที่สุด
+Reels longer than this many seconds are left out. Type a whole number, or 0 for no longest.	รีลส์ที่ยาวกว่าจำนวนวินาทีนี้จะถูกละเว้น พิมพ์จำนวนเต็ม หรือพิมพ์ 0 หากไม่ต้องการกำหนดความยาวสูงสุด
+No longest	ไม่มีความยาวสูงสุด
+Longer than %1$s second	ยาวกว่า %1$s วินาที
+Longer than %1$s seconds	ยาวกว่า %1$s วินาที
+# context: next row: how many days old a reel can be; its summary for 0, then for one day and for more (#780)
+Oldest post	โพสต์ที่เก่าที่สุด
+Reels posted more than this many days ago are left out. Type a whole number, or 0 for any age.	รีลส์ที่โพสต์ไว้นานกว่าจำนวนวันนี้จะถูกละเว้น พิมพ์จำนวนเต็ม หรือพิมพ์ 0 หากไม่จำกัดอายุโพสต์
+Any age	ไม่จำกัดอายุ
+Posted more than %1$s day ago	โพสต์ไว้นานกว่า %1$s วัน
+Posted more than %1$s days ago	โพสต์ไว้นานกว่า %1$s วัน
+# context: switch under those rows that puts each page of reels in the order they were posted (#780)
+Newest first	ใหม่สุดก่อน
+Puts each page of reels in the order they were posted, newest on top.	เรียงรีลส์แต่ละหน้าตามเวลาที่โพสต์ โดยให้รีลส์ใหม่สุดอยู่ด้านบน
+# context: summary of the Also on Home switch under those rows; the posts it leaves out are Home's suggested posts (#780)
+Leaves out suggested posts on Home outside the same numbers too. Pull down on Home to refresh after changing it.	ละเว้นโพสต์แนะนำบนหน้าหลักที่อยู่นอกจำนวนเดียวกันด้วย เลื่อนหน้าหลักลงเพื่อรีเฟรชหลังจากเปลี่ยนแปลงการตั้งค่า
+# context: the chat menu's entry that opens a list of the chat's messages to tick, and that list's title
+Select messages	เลือกข้อความ
+# context: Select messages' title switch; it ticks every message
+Select all	เลือกทั้งหมด
+# context: the same switch once every message is ticked; it unticks them all
+Clear	ล้างการเลือก
+# context: a button of Select messages; it copies the ticked messages to the clipboard
+Copy	คัดลอก
+# context: a button of Select messages; it opens Android's share sheet with the ticked messages
+Share	แชร์
+# context: a toast when Copy, Share or Save is tapped with no message ticked
+Pick a message first.	เลือกข้อความก่อน
+# context: a toast after Copy in Select messages when the count is exactly one; %1$d is the number
+Copied %1$d message.	คัดลอก %1$d ข้อความแล้ว
+# context: the same toast for any other count; %1$d is how many
+Copied %1$d messages.	คัดลอก %1$d ข้อความแล้ว
+# context: the one item in the menu a long press on a collection's tile in Saved opens; Remove lock is that item for a collection that's locked already (#678)
+Lock collection	ล็อกคอลเลกชัน
+Remove lock	เอาการล็อกออก
+# context: toast when locking a collection or taking its lock off couldn't be saved (#678)
+Couldn't change the lock. Try again.	เปลี่ยนการล็อกไม่ได้ โปรดลองอีกครั้ง
+# context: the switch under HushGram settings > Notifications that gives a chat's message notification Android's bubble (#747); Android's own name for the feature
+Chat bubbles	บับเบิลแชท
+# context: that switch's summary (#747)
+A chat's message notification gets Android's bubble button, so the chat can float over other apps. Hidden and locked chats never get one. Needs Android 11 or newer.	การแจ้งเตือนข้อความแชทจะมีปุ่มบับเบิลของ Android เพื่อให้แชทลอยอยู่เหนือแอปอื่นได้ แชทที่ซ่อนอยู่และแชทที่ล็อคไว้จะไม่ได้รับปุ่มนี้ ต้องใช้ Android 11 ขึ้นไป
+# context: the Notifications category's summary when Chat bubbles is the only patch in it (#747)
+Let a chat's notifications open as a bubble over other apps.	ให้การแจ้งเตือนของแชทเปิดเป็นบับเบิลเหนือแอปอื่น
+# context: the switch under HushGram settings > Messages that puts a Record button on Instagram's call screen (#732)
+Record calls	บันทึกเสียงการโทร
+# context: that switch's summary; Record is the button's own label, the next row (#732)
+Adds a Record button to the call screen. It saves the call's sound, both sides, as an audio file on your phone. Some places require everyone on the call to agree to being recorded.	เพิ่มปุ่มบันทึกในหน้าจอการโทร ปุ่มนี้จะบันทึกเสียงของการโทรทั้งสองฝ่ายเป็นไฟล์เสียงในโทรศัพท์ของคุณ บางพื้นที่กำหนดให้ทุกคนในสายต้องยินยอมให้บันทึก
+# context: the button over Instagram's call screen that starts recording the call, a verb, kept short (#732)
+Record	บันทึก
+# context: what a screen reader says for that button before a recording starts (#732)
+Record this call	บันทึกการโทรนี้
+# context: what a screen reader says for that button while it records; its text is then a dot and the time (#732)
+Stop recording	หยุดบันทึก
+# context: a toast when the Record button can't start a recording (#732)
+Couldn't start recording this call	ไม่สามารถเริ่มบันทึกการโทรนี้ได้
+# context: a toast when a finished call recording can't be saved to the phone (#732)
+Couldn't save the call recording	ไม่สามารถบันทึกไฟล์เสียงการโทรได้
+# context: a toast when a recording ends with no sound in it (#732)
+Nothing was recorded	ไม่มีเสียงที่บันทึกไว้

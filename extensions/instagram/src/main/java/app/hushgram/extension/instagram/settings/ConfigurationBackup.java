@@ -33,6 +33,8 @@ import app.hushgram.extension.instagram.download.FileNameTemplate;
 import app.hushgram.extension.instagram.download.SaveFolder;
 import app.hushgram.extension.instagram.download.SavedProfiles;
 import app.hushgram.extension.instagram.direct.MessageBox;
+import app.hushgram.extension.instagram.feed.MenuItems;
+import app.hushgram.extension.instagram.profile.NotificationKinds;
 import app.hushgram.extension.instagram.profile.ProfileTabs;
 import app.hushgram.extension.instagram.misc.GlassBlur;
 import app.hushgram.extension.instagram.misc.GlassOpacity;
@@ -60,6 +62,10 @@ import app.hushgram.extension.shared.settings.preference.AbstractPreferenceFragm
 public final class ConfigurationBackup {
     /** Room for a full Saved profiles list beside the settings. */
     public static final int MAX_BYTES = 1024 * 1024;
+    /**
+     * Bounds a file's entries, well past the settings a build with every patch has, which passed 512 as
+     * the settings grew and made every export from such a build fail.
+     */
     public static final int MAX_ENTRIES = 1024;
     static final String PROFILES = "profiles";
     public static final long UNDO_WINDOW_MS = 10_000;
@@ -140,6 +146,9 @@ public final class ConfigurationBackup {
         if (PatchFamily.STORY_RING.inBuild()) {
             settings.put(Settings.STORY_RING_SCALE.key, Settings.STORY_RING_SCALE);
             settings.put(Settings.STORY_RING_COLOR.key, Settings.STORY_RING_COLOR);
+            settings.put(Settings.STORY_RING_CUSTOM.key, Settings.STORY_RING_CUSTOM);
+            settings.put(Settings.STORY_RING_CUSTOM_END.key, Settings.STORY_RING_CUSTOM_END);
+            settings.put(Settings.STORY_RING_THICKNESS.key, Settings.STORY_RING_THICKNESS);
         }
         if (PatchFamily.STORY_UPLOAD_QUALITY.inBuild()) {
             settings.put(Settings.UPLOAD_QUALITY_APPLIES_TO.key, Settings.UPLOAD_QUALITY_APPLIES_TO);
@@ -159,6 +168,7 @@ public final class ConfigurationBackup {
         if (PatchFamily.STORIES_TRAY.inBuild()) settings.put(Settings.TRAY_BADGE.key, Settings.TRAY_BADGE);
         if (PatchFamily.SPOOF_LOCATION.inBuild()) settings.put(Settings.SPOOF_LOCATION_PLACE.key, Settings.SPOOF_LOCATION_PLACE);
         if (PatchFamily.APP_PROXY.inBuild()) settings.put(Settings.APP_PROXY_SERVER.key, Settings.APP_PROXY_SERVER);
+        if (PatchFamily.MEDIA_CACHE.inBuild()) settings.put(Settings.MEDIA_CACHE_LIMIT_MB.key, Settings.MEDIA_CACHE_LIMIT_MB);
         if (PatchFamily.CAPTION_WORD_REELS.inBuild()) {
             settings.put(Settings.REELS_BLOCKED_WORDS.key, Settings.REELS_BLOCKED_WORDS);
             settings.put(Settings.REELS_KEPT_LANGUAGES.key, Settings.REELS_KEPT_LANGUAGES);
@@ -171,22 +181,38 @@ public final class ConfigurationBackup {
         if (PatchFamily.LOW_VIEW_REELS.inBuild()) {
             settings.put(Settings.MIN_REEL_VIEWS.key, Settings.MIN_REEL_VIEWS);
             settings.put(Settings.MIN_REEL_LIKES.key, Settings.MIN_REEL_LIKES);
+            settings.put(Settings.MAX_REEL_VIEWS.key, Settings.MAX_REEL_VIEWS);
+            settings.put(Settings.MIN_REEL_LIKES_PER_1000.key, Settings.MIN_REEL_LIKES_PER_1000);
+            settings.put(Settings.MIN_REEL_COMMENTS_PER_1000.key, Settings.MIN_REEL_COMMENTS_PER_1000);
+            settings.put(Settings.MIN_REEL_SECONDS.key, Settings.MIN_REEL_SECONDS);
+            settings.put(Settings.MAX_REEL_SECONDS.key, Settings.MAX_REEL_SECONDS);
+            settings.put(Settings.MAX_REEL_AGE_DAYS.key, Settings.MAX_REEL_AGE_DAYS);
+            settings.put(Settings.REELS_NEWEST_FIRST.key, Settings.REELS_NEWEST_FIRST);
+            // Also on Home: its row shows only with Home's reads in the build.
+            if (PatchFamily.feedTypesInBuild()) settings.put(Settings.HIDE_LOW_VIEW_HOME.key, Settings.HIDE_LOW_VIEW_HOME);
         }
         if (PatchFamily.STORY_PRIORITY.inBuild()) settings.put(Settings.STORY_PRIORITY_ACCOUNTS.key, Settings.STORY_PRIORITY_ACCOUNTS);
         if (PatchFamily.CALL_BLOCKER.inBuild()) {
             settings.put(Settings.CALL_BLOCK_MODE.key, Settings.CALL_BLOCK_MODE);
             settings.put(Settings.CALL_BLOCK_ACCOUNTS.key, Settings.CALL_BLOCK_ACCOUNTS);
+            settings.put(Settings.CALL_BLOCK_DECLINE.key, Settings.CALL_BLOCK_DECLINE);
         }
         if (PatchFamily.SANITIZE_SHARING_LINKS.inBuild()) settings.put(Settings.SHARING_DOMAIN.key, Settings.SHARING_DOMAIN);
         if (PatchFamily.LIKE_ANIMATION.inBuild()) settings.put(Settings.LIKE_ANIMATION.key, Settings.LIKE_ANIMATION);
         if (PatchFamily.LIKE_ANIMATION.inBuild()) settings.put(Settings.GROW_LIKE_HEART.key, Settings.GROW_LIKE_HEART);
-        if (PatchFamily.HEADER_TEXT.inBuild()) settings.put(Settings.HEADER_TEXT.key, Settings.HEADER_TEXT);
+        if (PatchFamily.HEADER_TEXT.inBuild()) {
+            settings.put(Settings.HEADER_TEXT.key, Settings.HEADER_TEXT);
+            settings.put(Settings.HEADER_TEXT_FONT.key, Settings.HEADER_TEXT_FONT);
+            settings.put(Settings.HEADER_TEXT_CENTER.key, Settings.HEADER_TEXT_CENTER);
+        }
+        if (PatchFamily.PROFILE_SUGGESTIONS.inBuild()) settings.put(Settings.HIDDEN_NOTIFICATION_KINDS.key, Settings.HIDDEN_NOTIFICATION_KINDS);
         if (PatchFamily.NOTIFICATION_GROUPS.inBuild()) {
             settings.put(Settings.GROUP_NOTIFICATIONS_BY_TYPE.key, Settings.GROUP_NOTIFICATIONS_BY_TYPE);
             settings.put(Settings.MUTED_NOTIFICATION_CHANNELS.key, Settings.MUTED_NOTIFICATION_CHANNELS);
         }
         if (PatchFamily.PLAYBACK_QUALITY.inBuild()) {
             settings.put(Settings.PLAYBACK_QUALITY.key, Settings.PLAYBACK_QUALITY);
+            settings.put(Settings.PLAYBACK_QUALITY_STEPS_DOWN.key, Settings.PLAYBACK_QUALITY_STEPS_DOWN);
             settings.put(Settings.QUALITY_TAB_TARGET.key, Settings.QUALITY_TAB_TARGET);
         }
         if (PatchFamily.DATA_SAVER.inBuild()) {
@@ -225,6 +251,7 @@ public final class ConfigurationBackup {
             settings.put(Settings.HIDE_MESSAGE_ACTIONS.key, Settings.HIDE_MESSAGE_ACTIONS);
             settings.put(Settings.MORE_MESSAGE_ACTIONS.key, Settings.MORE_MESSAGE_ACTIONS);
         }
+        if (PatchFamily.MENU_ITEMS.inBuild()) settings.put(Settings.HIDDEN_MENU_ITEMS.key, Settings.HIDDEN_MENU_ITEMS);
         if (PatchFamily.PROFILE_TABS.inBuild()) {
             settings.put(Settings.HIDDEN_OWN_PROFILE_TABS.key, Settings.HIDDEN_OWN_PROFILE_TABS);
             settings.put(Settings.HIDDEN_PROFILE_TABS.key, Settings.HIDDEN_PROFILE_TABS);
@@ -232,13 +259,18 @@ public final class ConfigurationBackup {
         if (PatchFamily.STORY_TIME.inBuild()) settings.put(Settings.STORY_TIME_MODE.key, Settings.STORY_TIME_MODE);
         if (PatchFamily.STORY_MENTIONS.inBuild()) settings.put(Settings.STORY_MENTIONS_LOOK.key, Settings.STORY_MENTIONS_LOOK);
         if (PatchFamily.CAROUSEL_ARROWS.inBuild()) settings.put(Settings.CAROUSEL_PILL_LOOK.key, Settings.CAROUSEL_PILL_LOOK);
+        if (PatchFamily.EXPAND_CAPTIONS.inBuild()) settings.put(Settings.CAPTION_LINES.key, Settings.CAPTION_LINES);
         if (PatchFamily.FEED_SEEK_BAR.inBuild()) {
             settings.put(Settings.FEED_SEEK_BAR_LOOK.key, Settings.FEED_SEEK_BAR_LOOK);
             settings.put(Settings.SEEK_BAR_SHAPE.key, Settings.SEEK_BAR_SHAPE);
+            settings.put(Settings.FEED_SEEK_SHAPE.key, Settings.FEED_SEEK_SHAPE);
             settings.put(Settings.FEED_DOUBLE_TAP_SKIP_SECONDS.key, Settings.FEED_DOUBLE_TAP_SKIP_SECONDS);
         }
         if (PatchFamily.REEL_DOUBLE_TAP_SKIP.inBuild()) {
             settings.put(Settings.DOUBLE_TAP_SKIP_REELS_SECONDS.key, Settings.DOUBLE_TAP_SKIP_REELS_SECONDS);
+        }
+        if (PatchFamily.FEED_AUTO_SCROLL.inBuild()) {
+            settings.put(Settings.FEED_AUTO_SCROLL_SECONDS.key, Settings.FEED_AUTO_SCROLL_SECONDS);
         }
         if (PatchFamily.STORY_SEEK_BAR.inBuild()) {
             settings.put(Settings.STORY_SEEK_BAR_LOOK.key, Settings.STORY_SEEK_BAR_LOOK);
@@ -265,6 +297,10 @@ public final class ConfigurationBackup {
             settings.put(Settings.GLASS_TAB_BAR_LIFT.key, Settings.GLASS_TAB_BAR_LIFT);
             settings.put(Settings.GLASS_TAB_BAR_REELS_HIDE.key, Settings.GLASS_TAB_BAR_REELS_HIDE);
         }
+        if (PatchFamily.GLASS_CHAT.inBuild()) {
+            settings.put(Settings.GLASS_CHAT_TOP_BAR_OPACITY.key, Settings.GLASS_CHAT_TOP_BAR_OPACITY);
+            settings.put(Settings.GLASS_CHAT_BOX_OPACITY.key, Settings.GLASS_CHAT_BOX_OPACITY);
+        }
         if (PatchFamily.SHARE_SHEET.inBuild()) {
             settings.put(Settings.HIDDEN_SHARE_SHEET_BUTTONS.key, Settings.HIDDEN_SHARE_SHEET_BUTTONS);
         }
@@ -272,13 +308,17 @@ public final class ConfigurationBackup {
             settings.put(Settings.ACCENT_HUE.key, Settings.ACCENT_HUE);
             settings.put(Settings.ACCENT_CUSTOM.key, Settings.ACCENT_CUSTOM);
         }
-        if (PatchFamily.FONT.inBuild()) settings.put(Settings.FONT.key, Settings.FONT);
+        if (PatchFamily.FONT.inBuild()) {
+            settings.put(Settings.FONT.key, Settings.FONT);
+            settings.put(Settings.TEXT_SIZE.key, Settings.TEXT_SIZE);
+        }
         if (PatchFamily.EMOJI_STYLE.inBuild()) settings.put(Settings.EMOJI_FONT.key, Settings.EMOJI_FONT);
         if (PatchFamily.APP_ICON.inBuild()) settings.put(Settings.APP_ICON.key, Settings.APP_ICON);
         if (PatchFamily.SETTINGS_ROWS.inBuild()) settings.put(Settings.HIDDEN_SETTINGS_ROWS.key, Settings.HIDDEN_SETTINGS_ROWS);
         if (PatchFamily.REEL_DOWNLOAD.inBuild()) {
             settings.put(Settings.DOWNLOAD_REEL_COVER.key, Settings.DOWNLOAD_REEL_COVER);
             settings.put(Settings.DOWNLOAD_REEL_AUDIO.key, Settings.DOWNLOAD_REEL_AUDIO);
+            settings.put(Settings.DOWNLOAD_REEL_SONG.key, Settings.DOWNLOAD_REEL_SONG);
             settings.put(Settings.REEL_DOWNLOAD_BUTTON.key, Settings.REEL_DOWNLOAD_BUTTON);
             settings.put(Settings.REEL_DOWNLOAD_BUTTON_ASKS.key, Settings.REEL_DOWNLOAD_BUTTON_ASKS);
             settings.put(Settings.REEL_NOT_INTERESTED_BUTTON.key, Settings.REEL_NOT_INTERESTED_BUTTON);
@@ -288,6 +328,9 @@ public final class ConfigurationBackup {
             if (PatchFamily.KEEP_REEL_SPEED.inBuild()) {
                 settings.put(Settings.SPEED_BUTTON_ON_REELS.key, Settings.SPEED_BUTTON_ON_REELS);
                 settings.put(Settings.SPEED_IN_REEL_MENU.key, Settings.SPEED_IN_REEL_MENU);
+            }
+            if (PatchFamily.REEL_AUTO_SCROLL.inBuild()) {
+                settings.put(Settings.AUTO_SCROLL_IN_REEL_MENU.key, Settings.AUTO_SCROLL_IN_REEL_MENU);
             }
             if (PatchFamily.REEL_DECLUTTER.inBuild()) {
                 settings.put(Settings.FULL_SCREEN_BUTTON_ON_REELS.key, Settings.FULL_SCREEN_BUTTON_ON_REELS);
@@ -317,6 +360,9 @@ public final class ConfigurationBackup {
                 || PatchFamily.VIDEO_DOWNLOAD.inBuild()) {
             settings.put(Settings.DOWNLOAD_COMPATIBLE.key, Settings.DOWNLOAD_COMPATIBLE);
             settings.put(Settings.DOWNLOAD_CONVERT.key, Settings.DOWNLOAD_CONVERT);
+            settings.put(Settings.DOWNLOAD_NO_AV1.key, Settings.DOWNLOAD_NO_AV1);
+            settings.put(Settings.DOWNLOAD_NO_HDR.key, Settings.DOWNLOAD_NO_HDR);
+            settings.put(Settings.SAVE_VIDEOS_AS_MKV.key, Settings.SAVE_VIDEOS_AS_MKV);
             // The switch only. What it remembered stays in DownloadHistory's own file, never exported.
             settings.put(Settings.DOWNLOAD_SKIP_SAVED.key, Settings.DOWNLOAD_SKIP_SAVED);
             // The switch only, like the one above. The list itself stays on the phone and is never exported.
@@ -326,6 +372,8 @@ public final class ConfigurationBackup {
             settings.put(Settings.SAVE_FOLDER.key, Settings.SAVE_FOLDER);
             settings.put(Settings.SAVE_FOLDER_PER_ACCOUNT.key, Settings.SAVE_FOLDER_PER_ACCOUNT);
             settings.put(Settings.SAVE_NAME_BY_POST.key, Settings.SAVE_NAME_BY_POST);
+            settings.put(Settings.SAVE_PHOTO_METADATA.key, Settings.SAVE_PHOTO_METADATA);
+            settings.put(Settings.SAVE_PHOTO_SCRUB.key, Settings.SAVE_PHOTO_SCRUB);
             settings.put(Settings.FILENAME_TEMPLATE.key, Settings.FILENAME_TEMPLATE);
         }
         settings.put(BaseSettings.DEBUG.key, BaseSettings.DEBUG);
@@ -344,6 +392,7 @@ public final class ConfigurationBackup {
         settings.put(Settings.THEME_NATIVE_POPUPS.key, Settings.THEME_NATIVE_POPUPS);
         settings.put(Settings.HIDE_DM_COMPOSE_BUTTON.key, Settings.HIDE_DM_COMPOSE_BUTTON);
         settings.put(Settings.SETTINGS_BUTTON_IN_DM_HEADER.key, Settings.SETTINGS_BUTTON_IN_DM_HEADER);
+        settings.put(Settings.SETTINGS_LIGHT_LOOK.key, Settings.SETTINGS_LIGHT_LOOK);
         settings.put(Settings.DATE_SETTINGS_EXPORT.key, Settings.DATE_SETTINGS_EXPORT);
         return settings;
     }
@@ -451,6 +500,11 @@ public final class ConfigurationBackup {
                 }
                 updates.put(setting, value);
             }
+            // A file from before the Reels switch had one switch for both questions, and every later
+            // export writes the Reels one, so a file without it gives Reels the Home answer (#769).
+            Object home = updates.get(Settings.HIDE_FEED_INTEREST);
+            if (home != null && allowed.get(Settings.HIDE_REEL_INTEREST.key) == Settings.HIDE_REEL_INTEREST
+                    && !values.has(Settings.HIDE_REEL_INTEREST.key)) updates.put(Settings.HIDE_REEL_INTEREST, home);
             if (listed) {
                 // An entry that isn't an account is a file of the wrong shape. One the list couldn't
                 // have saved is left out, and so is the whole list without Saved profiles in the build.
@@ -524,7 +578,7 @@ public final class ConfigurationBackup {
         int longest = setting == Settings.REELS_BLOCKED_WORDS || setting == Settings.REELS_KEPT_LANGUAGES
                 || setting == Settings.STORY_PRIORITY_ACCOUNTS || setting == Settings.FRIENDS_TAB_PICKS
                 || setting == Settings.CALL_BLOCK_ACCOUNTS || setting == Settings.HIDDEN_SETTINGS_ROWS
-                || setting == Settings.MUTED_NOTIFICATION_CHANNELS
+                || setting == Settings.MUTED_NOTIFICATION_CHANNELS || setting == Settings.HIDDEN_NOTIFICATION_KINDS
                 || setting == Settings.HIDE_MESSAGE_ACTIONS || setting == Settings.MORE_MESSAGE_ACTIONS ? MAX_WORDS_TEXT : MAX_TEXT;
         if (!(value instanceof String) || ((String) value).length() > longest) return null;
         if (fallback instanceof Enum) {
@@ -584,6 +638,10 @@ public final class ConfigurationBackup {
         if (setting == Settings.APP_PROXY_SERVER) return text.equals(AppProxy.normalize(text));
         // The row saves the custom color as #RRGGBB, so a file holds it that way or blank.
         if (setting == Settings.ACCENT_CUSTOM) return text.isEmpty() || text.equals(CustomAccent.normalize(text));
+        // The Custom ring color rows save the same way (#696).
+        if (setting == Settings.STORY_RING_CUSTOM || setting == Settings.STORY_RING_CUSTOM_END) {
+            return text.isEmpty() || text.equals(CustomAccent.normalize(text));
+        }
         if (setting == Settings.TAB_ORDER) return text.equals(TabOrder.join(TabOrder.parse(text)));
         // The share sheet buttons to leave out, as Instagram's names for them with commas between.
         if (setting == Settings.HIDDEN_SHARE_SHEET_BUTTONS) {
@@ -596,12 +654,16 @@ public final class ConfigurationBackup {
             if (setting == Settings.MORE_MESSAGE_ACTIONS && actions.contains("MORE")) return false;
             return text.equals(app.hushgram.extension.instagram.direct.MessageActions.join(actions));
         }
+        // The three-dot menu items left out, as the names the list keeps them by with commas between, in the order it lists them.
+        if (setting == Settings.HIDDEN_MENU_ITEMS) return text.equals(MenuItems.join(MenuItems.parse(text)));
         // The rows of Instagram's settings left off, as the names of Instagram's row ids with commas between, in name order.
         if (setting == Settings.HIDDEN_SETTINGS_ROWS) return text.equals(SettingsRows.join(SettingsRows.parse(text)));
         // The notification channels muted, as Instagram's channel ids with commas between, in id order.
         if (setting == Settings.MUTED_NOTIFICATION_CHANNELS) {
             return text.equals(NotificationGroups.joinChannels(NotificationGroups.mutedChannels(text)));
         }
+        // The notification kinds hidden, as the server's names for them with commas between, in name order.
+        if (setting == Settings.HIDDEN_NOTIFICATION_KINDS) return text.equals(NotificationKinds.join(NotificationKinds.parse(text)));
         // The profile tabs left off, as Instagram's keys with commas between, in the order the dialog lists them.
         if (setting == Settings.HIDDEN_PROFILE_TABS) return text.equals(ProfileTabs.join(ProfileTabs.parse(text)));
         // The same for your own profile, or the mark that it still follows other profiles.

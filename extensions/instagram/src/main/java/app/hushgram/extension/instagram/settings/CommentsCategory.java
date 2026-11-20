@@ -16,6 +16,7 @@ import android.preference.PreferenceScreen;
 
 import java.util.Set;
 
+import app.hushgram.extension.instagram.feed.CommentBox;
 import app.hushgram.extension.instagram.feed.CommentEmojiRow;
 import app.hushgram.extension.instagram.feed.CommentGifs;
 import app.hushgram.extension.shared.L10n;
@@ -54,6 +55,10 @@ final class CommentsCategory {
                     comments.addPreference(toggle(context, Settings.SHOW_COMMENT_GIF_NAMES, L10n.t("Show a comment GIF's name"),
                             L10n.t("When a comment has a GIF or sticker, its menu shows its name. Tap the name to copy it.")));
                 }
+                if (PatchFamily.commentGifPickInBuild()) {
+                    comments.addPreference(toggle(context, Settings.SEND_SAVED_GIFS, L10n.t("Send saved GIFs as GIFs"),
+                            L10n.t("A comment GIF you saved with Save comment photo, picked from your gallery in the comment box, goes up right away as the same GIF, animated. Other pictures go up as before.")));
+                }
             }
             if (build.contains(PatchFamily.HIDE_COMMENTS)) {
                 comments.addPreference(toggle(context, Settings.HIDE_COMMENTS, L10n.t("Hide comments"),
@@ -62,6 +67,13 @@ final class CommentsCategory {
                     comments.addPreference(toggle(context, Settings.HIDE_COMMENT_REPLY, L10n.t("Hide Reply on comments"),
                             L10n.t("Takes Reply off each comment in a post's or reel's comments. View more replies stays, so you can still open them.")));
                 }
+                if (PatchFamily.commentLikesInBuild()) {
+                    comments.addPreference(toggle(context, Settings.HIDE_COMMENT_LIKES, L10n.t("Hide likes on comments"),
+                            L10n.t("Takes the heart and the like count off each comment in a post's or reel's comments.")));
+                }
+                comments.addPreference(onFlip(toggle(context, Settings.HIDE_COMMENT_BOX, L10n.t("Hide the comment box"),
+                        L10n.t("Takes the comment box, with your picture and Post, off the bottom of a post's or reel's comments. Turn it off when you want to comment.")),
+                        CommentBox::switchChanged));
             }
             if (build.contains(PatchFamily.COMMENT_EMOJI_ROW)) {
                 comments.addPreference(onFlip(toggle(context, Settings.HIDE_COMMENT_EMOJI_ROW, L10n.t("Hide the emoji row"),

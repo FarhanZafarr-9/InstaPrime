@@ -12,7 +12,10 @@ import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragme
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.category;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.cornerSizeRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.favoritesTabRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.feedAutoScrollTimeRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.feedSeekBarLookRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.captionLinesRow;
+import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.feedSeekShapeRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.feedSkipLengthRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.homeSwipeRow;
 import static app.hushgram.extension.instagram.settings.HushgramPreferenceFragment.onFlip;
@@ -65,16 +68,22 @@ final class FeedCategory {
         boolean fullScreen = build.contains(PatchFamily.FULL_SCREEN_BARS);
         boolean feedFollow = build.contains(PatchFamily.FEED_FOLLOW);
         boolean editsLabel = build.contains(PatchFamily.EDITS_LABEL);
+        boolean headerLine = build.contains(PatchFamily.FEED_HEADER_LINE);
         boolean feedSave = build.contains(PatchFamily.FEED_SAVE);
+        boolean menuItems = build.contains(PatchFamily.MENU_ITEMS);
         boolean watchAgain = build.contains(PatchFamily.WATCH_AGAIN);
         boolean hideCaptions = build.contains(PatchFamily.HIDE_CAPTIONS);
+        boolean expandCaptions = build.contains(PatchFamily.EXPAND_CAPTIONS);
         boolean feedAudioIcon = build.contains(PatchFamily.FEED_AUDIO_ICON);
+        boolean feedAutoScroll = build.contains(PatchFamily.FEED_AUTO_SCROLL);
         boolean homeTopBar = build.contains(PatchFamily.HOME_TOP_BAR);
         boolean activityBubbles = build.contains(PatchFamily.ACTIVITY_BUBBLES);
-        PreferenceCategory feed = suggestions || following || swipe || fullResolution || homeFeed || tabSwipe
+        boolean feedViewHistory = build.contains(PatchFamily.FEED_VIEW_HISTORY);
+        PreferenceCategory feed = suggestions || following || swipe || fullResolution || homeFeed || feedViewHistory || tabSwipe
                 || askLike || askRefresh || saveTray || postTime || hiddenLikes || backHome || homePlace || feedSound || feedTapPause || feedHoldFast || feedSeekBar || longPressZoom
                 || roundedCorners || carouselArrows || ambientLight
-                || fullScreen || feedFollow || editsLabel || feedSave || watchAgain || hideCaptions || feedAudioIcon || homeTopBar || activityBubbles
+                || fullScreen || feedFollow || editsLabel || headerLine || feedSave || watchAgain || hideCaptions || expandCaptions || feedAudioIcon || feedAutoScroll || homeTopBar
+                || activityBubbles || menuItems
                 ? category(screen, L10n.t("Feed"), SettingsIcons.FEED,
                         L10n.t("Choose what Home shows and how it behaves.")) : null;
         if (following) {
@@ -167,11 +176,23 @@ final class FeedCategory {
                     L10n.t("Empties Home on purpose, so you see the stories row and nothing under it. Profiles, "
                             + "Explore and Reels still show posts. Pull down on Home to refresh after changing it.")));
         }
+        if (feedViewHistory) {
+            feed.addPreference(toggle(context, Settings.DONT_SEND_FEED_VIEW_HISTORY, L10n.t("Don't send feed view history"),
+                    L10n.t("Stops telling Instagram which posts in Home you looked at and for how long. Instagram uses "
+                            + "that to pick what Home shows. Posts you've seen may come back.")));
+        }
         if (swipe) {
             feed.addPreference(toggle(context, Settings.STOP_SWIPE_TO_CREATE, L10n.t("Stop swipe to create"),
                     L10n.t("A sideways swipe on Home no longer opens the camera. The + button and every other way "
                             + "into the camera still work.")));
+            feed.addPreference(toggle(context, Settings.STOP_SWIPE_TO_MESSAGES, L10n.t("Stop swipe to Messages"),
+                    L10n.t("A swipe left on Home no longer opens Messages. The Messages button still does.")));
             feed.addPreference(homeSwipeRow(context));
+            if (PatchFamily.homeLeftSwipeInBuild()) {
+                feed.addPreference(toggle(context, Settings.SWIPE_LEFT_MESSAGES, L10n.t("Swipe left for Messages"),
+                        L10n.t("Swiping left on Home opens Messages, like Instagram used to. Carousels and the stories "
+                                + "row still slide as before.")));
+            }
         }
         if (tabSwipe) {
             feed.addPreference(toggle(context, Settings.STOP_TAB_SWIPING, L10n.t("Stop swiping between tabs"),
@@ -230,11 +251,17 @@ final class FeedCategory {
                     L10n.t("Videos on Home play with their sound on, the same as tapping a video's speaker. Mute one and the "
                             + "ones after it stay muted. Your phone's ringer and volume still count, so on silent or with "
                             + "the volume down, they stay quiet.")));
+            feed.addPreference(toggle(context, Settings.START_FEED_VIDEOS_MUTED, L10n.t("Start feed videos muted"),
+                    L10n.t("Videos on Home start silent, even after you turn the sound on in Reels, so reels keep their "
+                            + "sound. Tap a video's speaker to hear that one. Wins over Start feed videos with sound.")));
         }
         if (feedTapPause) {
             feed.addPreference(toggle(context, Settings.TAP_FEED_VIDEO_TO_PAUSE, L10n.t("Tap a feed video to pause it"),
                     L10n.t("Tap the video playing in a feed to pause it in place instead of opening it in Reels, and tap it "
                             + "again to play it. Ads keep Instagram's own tap.")));
+            feed.addPreference(toggle(context, Settings.FEED_TAPS_STAY_IN_FEED, L10n.t("Taps on feed videos stay in the feed"),
+                    L10n.t("A tap on a feed video, or on the screen it shows when it ends, no longer opens it full screen "
+                            + "in Reels. Tap a feed video to pause it still pauses it, and the buttons on that screen still work.")));
         }
         if (watchAgain) {
             feed.addPreference(toggle(context, Settings.WATCH_AGAIN_IN_FEED, L10n.t("Watch again in the feed"),
@@ -246,6 +273,9 @@ final class FeedCategory {
         if (feedHoldFast) {
             feed.addPreference(toggle(context, Settings.HOLD_FEED_VIDEO_FAST, L10n.t("Hold for 2x on feed videos"),
                     L10n.t("Press and hold a video in a feed to play it at 2x, and let go to go back to normal speed.")));
+            feed.addPreference(toggle(context, Settings.HOLD_FEED_VIDEO_KEEP, L10n.t("Keep 2x after you let go"),
+                    L10n.t("A feed video you hold for 2x keeps playing at 2x after you let go. Hold it again to go back "
+                            + "to normal speed.")));
         }
         if (feedSeekBar) {
             feed.addPreference(toggle(context, Settings.FEED_SEEK_BAR, L10n.t("Seek bar on feed videos"),
@@ -256,16 +286,25 @@ final class FeedCategory {
                             + "It works with Seek bar on feed videos on or off.")));
             feed.addPreference(feedSeekBarLookRow(context));
             feed.addPreference(seekShapeRow(context));
+            feed.addPreference(feedSeekShapeRow(context));
             feed.addPreference(toggle(context, Settings.SEEK_PREVIEW, L10n.t("Preview while you drag a seek bar"),
                     L10n.t("Shows the time above your finger while you drag a seek bar on a feed video, story or reel, "
                             + "and a small picture of that moment when Instagram has one for the video.")));
             feed.addPreference(toggle(context, Settings.FEED_SEEK_BAR_ON_EDGE, L10n.t("Seek bar on the bottom edge"),
                     L10n.t("Puts the seek bar right on the bottom edge of the video, so it's harder to touch by "
                             + "accident while you scroll.")));
+            feed.addPreference(toggle(context, Settings.FEED_SEEK_TIME, L10n.t("Time on the seek bar"),
+                    L10n.t("Shows the time played and the video's length over the seek bar on feed videos, like "
+                            + "0:12 / 0:45. Tap the time to see the time left instead.")));
+            feed.addPreference(toggle(context, Settings.FEED_SEEK_TIME_LEFT, L10n.t("Show the time left"),
+                    L10n.t("The time on the seek bar counts down what's left of the video, like -0:33 / 0:45. "
+                            + "A tap on the time switches back.")));
             feed.addPreference(toggle(context, Settings.FEED_DOUBLE_TAP_SKIP, L10n.t("Double tap to skip on feed videos"),
                     L10n.t("Double tap the left side of the video playing in a feed to go back, or the right side to go "
                             + "ahead, as far as Skip length says. A double tap in the middle works as before.")));
             feed.addPreference(feedSkipLengthRow(context));
+            feed.addPreference(toggle(context, Settings.FEED_SKIP_ARROWS, L10n.t("Show the skip arrows"),
+                    L10n.t("Two arrows flash on the side you double tapped, with the seconds skipped under them.")));
         }
         if (longPressZoom) {
             feed.addPreference(toggle(context, Settings.LONG_PRESS_TO_ZOOM, L10n.t("Long press a photo to zoom"),
@@ -338,6 +377,12 @@ final class FeedCategory {
                     L10n.t("Takes the \"Made with Edits\" label out of the line under a post's author. The song, the "
                             + "place and the other labels keep taking turns there.")));
         }
+        if (headerLine) {
+            feed.addPreference(toggle(context, Settings.HIDE_FEED_HEADER_LINE, L10n.t("Hide the line under names"),
+                    L10n.t("Takes the song, the place and the other labels off the line under the "
+                            + "name on posts in your feed. Sponsored and Paid partnership stay. Posts already on screen "
+                            + "change when they load again.")));
+        }
         if (feedSave) {
             feed.addPreference(toggle(context, Settings.SAVE_IN_POST_MENU, L10n.t("Save in the post menu"),
                     L10n.t("Adds Save to the menu behind a post's three dots, or Remove from saved when you saved it already.")));
@@ -347,7 +392,13 @@ final class FeedCategory {
             feed.addPreference(onFlip(toggle(context, Settings.HIDE_FEED_LIKE_BUTTON, L10n.t("Hide the Like button"),
                     L10n.t("Takes the heart and the like count off the bottom of posts in your feed. Double tap still likes a post.")),
                     FeedSaveRow::switchChanged));
+            feed.addPreference(toggle(context, Settings.HIDE_FEED_COUNTS, L10n.t("Hide counts on posts"),
+                    L10n.t("Takes the like, comment, share and repost numbers off posts in your feed. The buttons stay. "
+                            + "Posts already on screen change when they load again.")));
+            feed.addPreference(toggle(context, Settings.HIDE_LIKED_BY, L10n.t("Hide Liked by"),
+                    L10n.t("Takes the \"Liked by\" line off posts in your feed.")));
         }
+        if (menuItems) feed.addPreference(page.menuItemsRow(context));
         if (activityBubbles) {
             feed.addPreference(toggle(context, Settings.HIDE_ACTIVITY_BUBBLES, L10n.t("Hide activity bubbles"),
                     L10n.t("Takes the little round pictures off posts and reels that show a friend liked, commented on "
@@ -358,6 +409,12 @@ final class FeedCategory {
                     L10n.t("Takes the caption off posts in your feed and off reels. The post stays, and the comments sheet "
                             + "still shows it.")),
                     HideCaptions::switchChanged));
+        }
+        if (expandCaptions) {
+            feed.addPreference(toggle(context, Settings.EXPAND_CAPTIONS, L10n.t("Expand captions"),
+                    L10n.t("Shows more of a post's caption in your feed before \"more\", the whole caption to start. "
+                            + "Reels and stories stay as they are.")));
+            feed.addPreference(captionLinesRow(context));
         }
         if (homeTopBar) {
             feed.addPreference(toggle(context, Settings.KEEP_HOME_TOP_BAR, L10n.t("Keep Home's top bar"),
@@ -370,6 +427,15 @@ final class FeedCategory {
             feed.addPreference(toggle(context, Settings.HIDE_FEED_AUDIO_ICON, L10n.t("Hide the audio icon on posts"),
                     L10n.t("Takes the speaker icon off videos in your feed. Tapping the video still turns the sound on "
                             + "or off. Posts already on screen change when they load again.")));
+            feed.addPreference(toggle(context, Settings.HIDE_FEED_TAG_ICON, L10n.t("Hide the tag icon on posts"),
+                    L10n.t("Takes the little person icon off posts with people tagged in them. Tapping the photo "
+                            + "still shows who's tagged.")));
+        }
+        if (feedAutoScroll) {
+            feed.addPreference(toggle(context, Settings.FEED_AUTO_SCROLL, L10n.t("Auto scroll in Home"),
+                    L10n.t("Moves Home on to the next post by itself. A video moves on when it ends, a photo or "
+                            + "carousel after Time on each post. Touch the screen to hold it.")));
+            feed.addPreference(feedAutoScrollTimeRow(context));
         }
     }
 }

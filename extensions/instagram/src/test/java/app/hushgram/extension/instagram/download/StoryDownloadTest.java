@@ -7,6 +7,7 @@ package app.hushgram.extension.instagram.download;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -16,6 +17,10 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.os.Looper;
 import android.text.SpannableString;
+import android.view.Menu;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.PopupMenu;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,10 +39,12 @@ import org.robolectric.annotation.Config;
 import org.robolectric.annotation.Implementation;
 import org.robolectric.annotation.Implements;
 import org.robolectric.shadows.ShadowAlertDialog;
+import org.robolectric.shadows.ShadowPopupMenu;
 import org.robolectric.shadows.ShadowToast;
 
 import app.hushgram.extension.instagram.settings.Settings;
 import app.hushgram.extension.instagram.settings.SettingsStatus;
+import app.hushgram.extension.instagram.stories.StoryListHold;
 import app.hushgram.extension.instagram.stories.StoryLoop;
 import app.hushgram.extension.shared.SettingsContextRule;
 import app.hushgram.extension.shared.Utils;
@@ -60,6 +67,7 @@ public class StoryDownloadTest {
         Story.posted = null;
         Story.id = null;
         Story.account = null;
+        ListHold.over.clear();
         Built.storyLoop = false;
         Built.storySpeed = false;
         Built.storyDownload = false;
@@ -262,6 +270,127 @@ public class StoryDownloadTest {
         List<Object> menu = new ArrayList<>(Arrays.asList("Edit highlight"));
         StoryDownload.labelList(menu);
         assertEquals(Arrays.asList("Edit highlight", "Download as video", "Download as photo"), menu);
+    }
+
+    /**
+     * #726: on a photo story with music, the header's Download button asks under itself whether to
+     * save the video or the photo, as the menu's two rows do, and the row picked starts that save.
+     * A plain photo saves straight away, with no list. The story holds still under the list (#745).
+     */
+    @Test
+    @Config(shadows = {Story.class, ListHold.class})
+    public void theHeaderButtonAsksVideoOrPhotoOnAPhotoWithMusic() {
+        ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup().visible();
+        try {
+            Activity activity = controller.get();
+            FrameLayout root = new FrameLayout(activity);
+            ImageView button = new ImageView(activity);
+            root.addView(button);
+            activity.setContentView(root);
+            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            Object media = new Object();
+            Story.video = true;
+            Story.posted = StoryDownload.POSTED_PHOTO;
+
+            StoryDownload.saveStory(button, media);
+            PopupMenu asked = ShadowPopupMenu.getLatestPopupMenu();
+            assertNotNull("the button saved without asking", asked);
+            assertEquals("the story runs on under the list", Collections.singletonList(asked), ListHold.over);
+            Menu rows = asked.getMenu();
+            assertEquals(2, rows.size());
+            assertEquals("Download as video", String.valueOf(rows.getItem(0).getTitle()));
+            assertEquals("Download as photo", String.valueOf(rows.getItem(1).getTitle()));
+            String report = String.valueOf(HookStatus.report());
+            assertTrue(report, report.contains(StoryDownload.BUTTON_ASKED));
+
+            ShadowToast.reset();
+            assertTrue(Shadows.shadowOf(asked).getOnMenuItemClickListener().onMenuItemClick(rows.getItem(1)));
+            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            assertEquals("the photo save didn't run", "Download failed", String.valueOf(ShadowToast.getTextOfLatestToast()));
+            asked.dismiss();
+
+            Story.video = false;
+            Story.posted = null;
+            ShadowToast.reset();
+            StoryDownload.saveStory(button, media);
+            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            assertTrue("a plain photo asked", asked == ShadowPopupMenu.getLatestPopupMenu());
+            assertEquals("Download failed", String.valueOf(ShadowToast.getTextOfLatestToast()));
+        } finally {
+            controller.pause().stop().destroy();
+        }
+    }
+
+    /** A press and hold on the button offers the story in front or the whole reel, each row does its own save, and the story holds still under the list (#745). */
+    @Test
+    @Config(shadows = {Story.class, ListHold.class})
+    public void holdingTheButtonOffersThisStoryOrAllOfThem() {
+        ActivityController<Activity> controller = Robolectric.buildActivity(Activity.class).setup().visible();
+        try {
+            Activity activity = controller.get();
+            FrameLayout root = new FrameLayout(activity);
+            ImageView button = new ImageView(activity);
+            root.addView(button);
+            activity.setContentView(root);
+            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            Object front = new Object();
+            List<Object> stories = Arrays.asList(new Object(), front, new Object());
+            List<List<?>> all = new ArrayList<>();
+
+            StoryDownload.ask(button, front, stories, all::add);
+            PopupMenu asked = ShadowPopupMenu.getLatestPopupMenu();
+            assertNotNull("the hold asked nothing", asked);
+            assertEquals("the story runs on under the list", Collections.singletonList(asked), ListHold.over);
+            Menu rows = asked.getMenu();
+            assertEquals(2, rows.size());
+            assertEquals("Download", String.valueOf(rows.getItem(0).getTitle()));
+            assertEquals("Save all", String.valueOf(rows.getItem(1).getTitle()));
+
+            assertTrue(Shadows.shadowOf(asked).getOnMenuItemClickListener().onMenuItemClick(rows.getItem(1)));
+            assertEquals(1, all.size());
+            assertSame(stories, all.get(0));
+
+            ShadowToast.reset();
+            assertTrue(Shadows.shadowOf(asked).getOnMenuItemClickListener().onMenuItemClick(rows.getItem(0)));
+            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            assertEquals("Download saved the whole reel", 1, all.size());
+            assertEquals("the one story's save didn't run", "Download failed", String.valueOf(ShadowToast.getTextOfLatestToast()));
+            asked.dismiss();
+        } finally {
+            controller.pause().stop().destroy();
+        }
+    }
+
+    /** Save all reads each story as a video or a picture, keeps their order, and fits a long reel into batches (#745). */
+    @Test
+    @Config(shadows = Story.class)
+    public void saveAllCutsALongReelIntoBatches() {
+        Story.video = true;
+        List<Object> stories = new ArrayList<>();
+        for (int at = 0; at < 2 * MediaSave.MAX_BATCH_PAGES + 6; at++) stories.add(new Object());
+
+        List<List<MediaSave.Item>> batches = StoryDownload.batches(stories);
+
+        assertEquals(3, batches.size());
+        assertEquals(MediaSave.MAX_BATCH_PAGES, batches.get(0).size());
+        assertEquals(MediaSave.MAX_BATCH_PAGES, batches.get(1).size());
+        assertEquals(6, batches.get(2).size());
+        MediaSave.Item video = batches.get(0).get(0);
+        assertTrue(video.video);
+        assertEquals(1, video.renditions.size());
+
+        Story.video = false;
+        MediaSave.Item photo = StoryDownload.batches(Collections.singletonList(new Object())).get(0).get(0);
+        assertFalse(photo.video);
+        assertTrue("nothing to save, nothing to run", StoryDownload.batches(Collections.emptyList()).isEmpty());
+    }
+
+    /** The lists handed over to hold the story still under them. */
+    @Implements(value = StoryListHold.class, isInAndroidSdk = false)
+    public static class ListHold {
+        static final List<PopupMenu> over = new ArrayList<>();
+
+        @Implementation protected static void over(PopupMenu list) { over.add(list); }
     }
 
     /** A story's Media as the bridges read it: a video or not, its upload's flag and the type it was posted as. */

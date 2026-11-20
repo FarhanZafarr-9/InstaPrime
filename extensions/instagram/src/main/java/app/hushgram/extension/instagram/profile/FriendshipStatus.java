@@ -8,6 +8,7 @@ import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.view.ViewTreeObserver;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
@@ -76,7 +77,7 @@ public final class FriendshipStatus {
             View view = slotView(slot);
             if (!(view instanceof TextView)) return;
             TextView text = (TextView) view;
-            if (chipped(text, relation)) return;
+            if (chipped(text, relation, header)) return;
             String label = textFor(relation);
             if (label == null) return;
             text.setText(joined(text.getText(), label));
@@ -98,14 +99,14 @@ public final class FriendshipStatus {
             if (relation == null && !FriendshipChip.anyShown()) return;
             View view = slotView(slot);
             if (!(view instanceof TextView)) return;
-            String label = chipped(view, relation) ? null : textFor(relation);
+            String label = chipped(view, relation, header) ? null : textFor(relation);
             if (label == null) {
                 // Asking for the slot's view can put it in place, so it's hidden again as Instagram left it.
                 setSlotVisibility(slot, View.GONE);
                 return;
             }
             ((TextView) view).setText(label);
-            keepNameLine(view);
+            keepNameLine((TextView) view, label);
             setSlotVisibility(slot, View.VISIBLE);
             log(label);
         } catch (Throwable failure) {
@@ -116,15 +117,53 @@ public final class FriendshipStatus {
     /**
      * A profile with no name has Instagram hide the name, and the slot beside it loses the line it
      * sits on, so a label put there lands on the counts (#157). The name is shown again with
-     * nothing in it, which gives the label its line back where the name would be. Instagram hides
-     * it again each time it binds the name, before the hook runs.
+     * nothing in it, which gives the label its line back where the name would be. Instagram can
+     * hide it after the hook has run, later in the same bind, so it's looked at once more just
+     * before the header is drawn.
      */
-    static void keepNameLine(View slot) {
+    private static void keepNameLine(TextView slot, String label) {
         View name = nameBeside(slot);
-        if (!(name instanceof TextView) || name.getVisibility() == View.VISIBLE) return;
-        ((TextView) name).setText("");
+        if (!(name instanceof TextView)) return;
+        showEmpty((TextView) name);
+        slot.getViewTreeObserver().addOnPreDrawListener(new NameLineCheck(slot, (TextView) name, label));
+    }
+
+    /** Shows a hidden [name] with nothing in it, and says whether it was hidden. */
+    private static boolean showEmpty(TextView name) {
+        if (name.getVisibility() == View.VISIBLE) return false;
+        name.setText("");
         name.setVisibility(View.VISIBLE);
         HookStatus.counted(FamilyNames.FRIENDSHIP_STATUS, NAME_LINE);
+        return true;
+    }
+
+    /**
+     * One look at the name before the next draw, for as long as the slot still shows the label. A
+     * name it brings back skips that draw, so the label is never seen on the counts.
+     */
+    private static final class NameLineCheck implements ViewTreeObserver.OnPreDrawListener {
+        private final TextView slot;
+        private final TextView name;
+        private final String label;
+
+        NameLineCheck(TextView slot, TextView name, String label) {
+            this.slot = slot;
+            this.name = name;
+            this.label = label;
+        }
+
+        @Override
+        public boolean onPreDraw() {
+            try {
+                ViewTreeObserver observer = slot.getViewTreeObserver();
+                if (observer.isAlive()) observer.removeOnPreDrawListener(this);
+                if (slot.getVisibility() != View.VISIBLE || !label.contentEquals(slot.getText())) return true;
+                return !showEmpty(name);
+            } catch (Throwable failure) {
+                HookStatus.threw(FamilyNames.FRIENDSHIP_STATUS, "profile header", failure);
+                return true;
+            }
+        }
     }
 
     /** Going up from the pronouns [slot], the first name found, or null when there's none. */
@@ -224,17 +263,18 @@ public final class FriendshipStatus {
 
     /**
      * With Show it as a chip on and [relation] known, puts the chip under the counts of the header
-     * [inside] is in; otherwise takes a chip it put there before away. True when the chip is
-     * showing, so the text label stays out.
+     * [inside] is in; otherwise takes a chip it put there before away. A tap on the chip lists the
+     * flags of the profile [header] belongs to (#698). True when the chip is showing, so the text
+     * label stays out.
      */
-    private static boolean chipped(View inside, @Nullable Relation relation) {
+    private static boolean chipped(View inside, @Nullable Relation relation, Object header) {
         if (relation == null || !Settings.FRIENDSHIP_STATUS_CHIP.get()) {
             FriendshipChip.clear(inside);
             return false;
         }
         FollowLabelPlace place = Settings.FOLLOW_LABEL_PLACE.get();
         boolean shown = FriendshipChip.show(inside, relation, inside instanceof TextView ? (TextView) inside : null,
-                place == null ? FollowLabelPlace.UNDER_COUNTS : place);
+                place == null ? FollowLabelPlace.UNDER_COUNTS : place, header);
         if (!shown) Logger.printDebug(() -> "Friendship status: no counts to put the chip under, so the label goes by the name");
         return shown;
     }
@@ -291,6 +331,16 @@ public final class FriendshipStatus {
      */
     @Nullable
     public static Boolean friendshipFollowing(Object user) {
+        return null;
+    }
+
+    /**
+     * Filled in by the patch: the flag the friendship status Instagram keeps on [user] gives under the
+     * key whose Java hash is [key], or null when it has none or the build's getter for it couldn't be
+     * told. It's the status the screen's answer replaces, so it carries every flag (#698).
+     */
+    @Nullable
+    public static Boolean userFlag(Object user, int key) {
         return null;
     }
 

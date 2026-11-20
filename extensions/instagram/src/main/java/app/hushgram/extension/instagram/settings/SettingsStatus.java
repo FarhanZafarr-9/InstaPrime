@@ -61,6 +61,10 @@ public final class SettingsStatus {
         return false;
     }
 
+    public static boolean feedViewHistory() {
+        return false;
+    }
+
     public static boolean storyAutoAdvance() {
         return false;
     }
@@ -148,6 +152,11 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Search blocked accounts patch. */
+    public static boolean blockedSearch() {
+        return false;
+    }
+
     public static boolean threadSeen() {
         return false;
     }
@@ -223,12 +232,22 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Hide New message button and suggestions patch. */
+    public static boolean newMessage() {
+        return false;
+    }
+
     public static boolean instants() {
         return false;
     }
 
     /** Rewritten by the Show when someone was last active patch. */
     public static boolean lastActive() {
+        return false;
+    }
+
+    /** Rewritten by the Shorter Active now patch. */
+    public static boolean shortActiveNow() {
         return false;
     }
 
@@ -344,6 +363,10 @@ public final class SettingsStatus {
         return false;
     }
 
+    public static boolean profileFollowCounts() {
+        return false;
+    }
+
     public static boolean messageBox() {
         return false;
     }
@@ -364,11 +387,21 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Hide links, the profile banners patch's switch for the row of links, which a build can lack. */
+    public static boolean profileLinks() {
+        return false;
+    }
+
     public static boolean profilePostsList() {
         return false;
     }
 
     public static boolean profileGridJump() {
+        return false;
+    }
+
+    /** Rewritten by the Sort reels on profiles patch. */
+    public static boolean profileReelSort() {
         return false;
     }
 
@@ -386,6 +419,11 @@ public final class SettingsStatus {
     }
 
     public static boolean swipeToCreate() {
+        return false;
+    }
+
+    /** Swipe left for Messages, Stop swipe to create's second switch, which a build can lack. */
+    public static boolean homeLeftSwipe() {
         return false;
     }
 
@@ -440,6 +478,11 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Send saved GIFs as GIFs, Save comment photo's fourth switch, which needs the GIF reply's send. */
+    public static boolean commentGifPick() {
+        return false;
+    }
+
     /** Rewritten by the Save profile picture patch. */
     public static boolean profilePicture() {
         return false;
@@ -456,6 +499,11 @@ public final class SettingsStatus {
 
     /** Rewritten by Hide comments when the Reply on a comment's line was found too. */
     public static boolean commentReply() {
+        return false;
+    }
+
+    /** Rewritten by Hide comments when the heart and like count on a comment row were found too. */
+    public static boolean commentLikes() {
         return false;
     }
 
@@ -484,7 +532,15 @@ public final class SettingsStatus {
         return false;
     }
 
+    public static boolean feedHeaderLine() {
+        return false;
+    }
+
     public static boolean feedSave() {
+        return false;
+    }
+
+    public static boolean menuItems() {
         return false;
     }
 
@@ -501,7 +557,15 @@ public final class SettingsStatus {
         return false;
     }
 
+    public static boolean expandCaptions() {
+        return false;
+    }
+
     public static boolean feedAudioIcon() {
+        return false;
+    }
+
+    public static boolean feedAutoScroll() {
         return false;
     }
 
@@ -537,6 +601,21 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Ask for VP9 instead of AV1 patch. */
+    public static boolean vp9Video() {
+        return false;
+    }
+
+    /** Rewritten by the Keep online history patch. */
+    public static boolean onlineHistory() {
+        return false;
+    }
+
+    /** Rewritten by the Keep story viewers patch. */
+    public static boolean storyViewers() {
+        return false;
+    }
+
     public static boolean doubleTapLike() {
         return false;
     }
@@ -561,6 +640,14 @@ public final class SettingsStatus {
         return false;
     }
 
+    public static boolean savedOnAll() {
+        return false;
+    }
+
+    public static boolean savedNewCollection() {
+        return false;
+    }
+
     public static boolean stopHeartbeat() {
         return false;
     }
@@ -574,8 +661,18 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Control the reel above comments patch. */
+    public static boolean reelAboveComments() {
+        return false;
+    }
+
     /** Rewritten by the Open reel links on that reel patch. */
     public static boolean reelLinks() {
+        return false;
+    }
+
+    /** Rewritten by the Let the screen sleep when a reel stops patch. */
+    public static boolean reelScreenSleep() {
         return false;
     }
 
@@ -722,6 +819,11 @@ public final class SettingsStatus {
         return false;
     }
 
+    /** Rewritten by the Center names in chats patch. */
+    public static boolean centerChatName() {
+        return false;
+    }
+
     public static boolean askBeforeLike() {
         return false;
     }
@@ -731,6 +833,21 @@ public final class SettingsStatus {
     }
 
     public static boolean askBeforeFollow() {
+        return false;
+    }
+
+    /** Rewritten by the Sent follow requests patch. */
+    public static boolean sentRequests() {
+        return false;
+    }
+
+    /** Rewritten by the Chat bubbles patch. */
+    public static boolean chatBubbles() {
+        return false;
+    }
+
+    /** Rewritten by the Record calls patch. */
+    public static boolean callRecorder() {
         return false;
     }
 

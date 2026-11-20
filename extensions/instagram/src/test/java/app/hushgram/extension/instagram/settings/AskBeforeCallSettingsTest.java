@@ -73,7 +73,7 @@ public class AskBeforeCallSettingsTest {
         assertFalse(row.isChecked());
         assertFalse(Settings.ASK_BEFORE_CALL.get());
         assertEquals(java.util.Arrays.asList(Settings.ASK_BEFORE_CALL, Settings.HIDE_CALL_BUTTONS,
-                Settings.HIDE_VIDEO_CALL_BUTTON, Settings.HIDE_AUDIO_CALL_BUTTON, Settings.HIDE_BLEND_BUTTON),
+                Settings.HIDE_VIDEO_CALL_BUTTON, Settings.HIDE_AUDIO_CALL_BUTTON, Settings.HIDE_BLEND_BUTTON, Settings.HIDE_CHAT_BACK_BUTTON),
                 PatchFamily.ASK_BEFORE_CALL.switches);
         assertNotNull(page.getPreferenceScreen().findPreference(Settings.HIDE_BLEND_BUTTON.key));
         assertFalse(Settings.HIDE_BLEND_BUTTON.defaultValue);
@@ -91,6 +91,23 @@ public class AskBeforeCallSettingsTest {
             }
         }
         return null;
+    }
+    @Test public void theBlendAndBackSwitchesSitUnderMessagesAndStartOff() throws Exception {
+        open(true);
+        Preference messages = titled(page.getPreferenceScreen(), "Messages");
+        assertNotNull(messages);
+        messages.getOnPreferenceClickListener().onPreferenceClick(messages);
+        String[][] rows = {
+                {Settings.HIDE_CHAT_BLEND.key, "Hide Blend in chats"},
+                {Settings.HIDE_CHAT_BACK_BUTTON.key, "Hide the back button in chats"}};
+        for (String[] expected : rows) {
+            SwitchPreference row = (SwitchPreference) page.getPreferenceScreen().findPreference(expected[0]);
+            assertNotNull(expected[0], row);
+            assertEquals(expected[1], row.getTitle().toString());
+            assertEquals("Messages", categoryHolding(page.getPreferenceScreen(), row).getTitle().toString());
+            assertFalse(row.isChecked());
+            assertTrue(ConfigurationBackup.eligible().containsKey(expected[0]));
+        }
     }
     private static PreferenceCategory categoryHolding(PreferenceGroup group, Preference row) {
         for (int i = 0; i < group.getPreferenceCount(); i++) {

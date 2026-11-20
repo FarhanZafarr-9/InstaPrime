@@ -170,8 +170,52 @@ public class GlassReachTest {
 
         header.setTranslationY(-HEADER - 30f);
         frame();
-        assertArrayEquals("slid past its own height, it reaches down to the status bar's bottom",
-                new int[] {0, 30}, GlassTopBar.reach(header));
+        assertArrayEquals("slid past its own height, it reaches down to where the strip's fade ends",
+                new int[] {0, 30 + fade()}, GlassTopBar.reach(header));
+    }
+
+    /**
+     * Instagram 456 slides the header itself up behind the clock with its logo still in it: what stays is the
+     * strip, fading out under the clock instead of ending on a hard line (#450).
+     */
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(sdk = 33)
+    public void aHeaderSlidUnderTheClockFadesItsStripOut() {
+        logoInHeader();
+        glaze();
+        assertFalse(GlassTopBar.hollow(header));
+
+        header.setTranslationY(-HEADER);
+        frame();
+        assertTrue("only the strip is left", GlassTopBar.hollow(header));
+        Bitmap drawn = drawn(-HEADER);
+        int middle = Color.alpha(drawn.getPixel(WIDE / 2, STATUS / 2));
+        assertNotEquals(0, middle);
+        assertEquals("whole down to the clock's bottom", middle, Color.alpha(drawn.getPixel(WIDE / 2, STATUS - 1)));
+        int halfway = Color.alpha(drawn.getPixel(WIDE / 2, STATUS + fade() / 2));
+        assertTrue("fading under it: " + halfway + " of " + middle, halfway > middle / 4 && halfway < middle * 3 / 4);
+        assertEquals("gone where the fade ends", 0, Color.alpha(drawn.getPixel(WIDE / 2, STATUS + fade())));
+
+        // Instagram 456 stops its slide with the header's one pixel divider still below the clock.
+        header.setTranslationY(-HEADER + 1f);
+        frame();
+        assertTrue("its divider alone below the clock leaves only the strip", GlassTopBar.hollow(header));
+        Bitmap stopped = drawn(-HEADER + 1);
+        assertEquals("no line where the clock ends", middle, Color.alpha(stopped.getPixel(WIDE / 2, STATUS - 1)));
+        assertEquals("the strip fades out the same", 0, Color.alpha(stopped.getPixel(WIDE / 2, STATUS + fade())));
+
+        header.setTranslationY(-HEADER + slack() + 1f);
+        frame();
+        assertFalse("more than a hairline below the clock keeps the whole band", GlassTopBar.hollow(header));
+    }
+
+    private int fade() {
+        return Math.round(GlassTopBar.STRIP_FADE * header.getResources().getDisplayMetrics().density);
+    }
+
+    private int slack() {
+        return Math.max(1, Math.round(GlassTopBar.SLID_SLACK * header.getResources().getDisplayMetrics().density));
     }
 
     @Test
@@ -251,16 +295,87 @@ public class GlassReachTest {
         assertEquals("the band goes", 0, slid[1]);
     }
 
+    /** The strip behind the clock fades out under it, with no hard edge and no hairline (#450). */
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(sdk = 33)
+    public void aHollowHeadersStripFadesOutUnderTheClock() {
+        View logo = logoInHeader();
+        glaze();
+        logo.setAlpha(0f);
+        frame();
+        assertTrue(GlassTopBar.hollow(header));
+        int fade = Math.round(GlassTopBar.STRIP_FADE * header.getResources().getDisplayMetrics().density);
+
+        Bitmap drawn = drawn(0);
+        int middle = drawn.getPixel(WIDE / 2, STATUS / 2);
+        int edge = drawn.getPixel(WIDE / 2, STATUS - 1);
+        int over = drawn.getPixel(WIDE / 2, STATUS - 3);
+        assertNotEquals(0, Color.alpha(middle));
+        assertEquals("whole down to the clock's bottom", Color.alpha(middle), Color.alpha(edge));
+        assertEquals("no hairline along it", Color.red(over), Color.red(edge), 3);
+        int halfway = Color.alpha(drawn.getPixel(WIDE / 2, STATUS + fade / 2));
+        assertTrue("fading under it: " + halfway + " of " + Color.alpha(middle),
+                halfway > Color.alpha(middle) / 4 && halfway < Color.alpha(middle) * 3 / 4);
+        assertEquals("gone where the fade ends", 0, Color.alpha(drawn.getPixel(WIDE / 2, STATUS + fade)));
+
+        // Slid up past its own height, the backdrop is still recorded down to where the fade ends.
+        header.setTranslationY(-HEADER - 30f);
+        frame();
+        assertArrayEquals(new int[] {0, 30 + fade}, GlassTopBar.reach(header));
+    }
+
     /** The glass's alpha halfway down the strip and halfway down the header at rest, with the header slid by [moved]. */
     private int[] drawnAcross(int moved) {
-        Bitmap bitmap = Bitmap.createBitmap(WIDE, STATUS + HEADER, Bitmap.Config.ARGB_8888);
+        Bitmap bitmap = drawn(moved);
+        return new int[] {Color.alpha(bitmap.getPixel(WIDE / 2, STATUS / 2)),
+                Color.alpha(bitmap.getPixel(WIDE / 2, STATUS + HEADER / 2 + moved))};
+    }
+
+    /**
+     * A header still showing ends in the same fade as the strip, at rest and part way through a slide, so scrolling
+     * back up never stops on a hard line (#462).
+     */
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(sdk = 33)
+    public void theGlassFadesOutBelowAHeaderStillShowing() {
+        logoInHeader();
+        glaze();
+        int fade = fade();
+        for (int moved : new int[] {0, -40}) {
+            header.setTranslationY(moved);
+            frame();
+            assertFalse(GlassTopBar.hollow(header));
+
+            Bitmap drawn = drawn(moved, fade + 1);
+            int bottom = STATUS + moved + HEADER;
+            int middle = drawn.getPixel(WIDE / 2, bottom - HEADER / 2);
+            int edge = drawn.getPixel(WIDE / 2, bottom - 1);
+            assertNotEquals(0, Color.alpha(middle));
+            assertEquals("whole down to the header's bottom", Color.alpha(middle), Color.alpha(edge));
+            assertEquals("no hairline along it", Color.red(middle), Color.red(edge), 3);
+            int halfway = Color.alpha(drawn.getPixel(WIDE / 2, bottom + fade / 2));
+            assertTrue("fading below it: " + halfway + " of " + Color.alpha(middle),
+                    halfway > Color.alpha(middle) / 4 && halfway < Color.alpha(middle) * 3 / 4);
+            assertEquals("gone where the fade ends", 0, Color.alpha(drawn.getPixel(WIDE / 2, bottom + fade)));
+        }
+    }
+
+    /** The glass from the window's top down past the header at rest, with the header slid by [moved]. */
+    private Bitmap drawn(int moved) {
+        return drawn(moved, 0);
+    }
+
+    /** The same, [past] pixels further down. */
+    private Bitmap drawn(int moved, int past) {
+        Bitmap bitmap = Bitmap.createBitmap(WIDE, STATUS + HEADER + past, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         canvas.translate(0, STATUS + moved);
         Drawable frost = header.getBackground();
         frost.setBounds(0, 0, WIDE, HEADER);
         frost.draw(canvas);
-        return new int[] {Color.alpha(bitmap.getPixel(WIDE / 2, STATUS / 2)),
-                Color.alpha(bitmap.getPixel(WIDE / 2, STATUS + HEADER / 2 + moved))};
+        return bitmap;
     }
 
     /** A logo two views deep in the header, the way Instagram's sits. */
@@ -551,7 +666,8 @@ public class GlassReachTest {
 
         header.setTranslationY(-HEADER - 30f);
         frame();
-        assertArrayEquals(new int[] {0, 30}, GlassTopBar.reach(header));
+        assertArrayEquals("slid behind the clock, it reaches down to where the strip's fade ends",
+                new int[] {0, 30 + fade()}, GlassTopBar.reach(header));
 
         Settings.SEE_THROUGH_HOME_TOP_BAR.save(false);
         frame();

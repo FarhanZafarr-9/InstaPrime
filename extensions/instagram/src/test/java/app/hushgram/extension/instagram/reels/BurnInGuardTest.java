@@ -11,6 +11,10 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.view.MotionEvent;
@@ -30,6 +34,7 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.Shadows;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
+import org.robolectric.annotation.GraphicsMode;
 import org.robolectric.util.ReflectionHelpers;
 
 import java.time.Duration;
@@ -271,6 +276,51 @@ public class BurnInGuardTest {
         assertEquals("the Interested row back", 1f, interest.getAlpha(), 0f);
     }
 
+    /**
+     * The wavy bar cut flat on Reels while dimmed (#450, #586). The bar's holder lets it draw past its
+     * edges, but a dimmed view with overlapping rendering is drawn into a layer its own size, which cut
+     * the wave along the bar's top. Dimmed, such a bar takes the dim on each thing it draws; one its
+     * parent clips anyway is left alone, and a touch gives each its own way back.
+     */
+    @Test public void aSeekBarDrawingPastItsEdgesIsDimmedWithoutALayerTheSizeOfIt() {
+        BurnInGuard.idForTests("scrubber", 7304);
+        FrameLayout holder = new FrameLayout(activity);
+        holder.setClipChildren(false);
+        android.widget.SeekBar wavy = new android.widget.SeekBar(activity);
+        wavy.setId(7304);
+        holder.addView(wavy, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 28));
+        viewer.addView(holder, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 45));
+        FrameLayout clipping = new FrameLayout(activity);
+        android.widget.SeekBar flat = new android.widget.SeekBar(activity);
+        flat.setId(7304);
+        clipping.addView(flat, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 28));
+        viewer.addView(clipping, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 45));
+        layout();
+        assertTrue("a seek bar starts with overlapping rendering", wavy.getHasOverlappingRendering());
+        Settings.BURN_IN_GUARD.save(BurnInMode.DIM);
+        BurnInGuard.resumed(activity);
+        after(IDLE + 100);
+        assertEquals("the bar dims", BurnInGuard.IDLE_LEVEL, wavy.getAlpha(), 0f);
+        assertFalse("and draws past its edges with no layer to cut it", wavy.getHasOverlappingRendering());
+        assertEquals("a clipped bar dims too", BurnInGuard.IDLE_LEVEL, flat.getAlpha(), 0f);
+        assertTrue("and keeps its layer, which cuts nothing its parent doesn't", flat.getHasOverlappingRendering());
+
+        tap();
+        assertEquals("the bar back", 1f, wavy.getAlpha(), 0f);
+        assertTrue("with its own rendering", wavy.getHasOverlappingRendering());
+
+        // The room made after the bar dimmed, as a reel bound while the controls are dimmed has it.
+        clipping.setClipChildren(true);
+        holder.setClipChildren(true);
+        after(IDLE + 100);
+        assertTrue("clipped, dimming changes nothing else", wavy.getHasOverlappingRendering());
+        holder.setClipChildren(false);
+        activity.getWindow().getDecorView().getViewTreeObserver().dispatchOnPreDraw();
+        assertFalse("the next frame draws it whole", wavy.getHasOverlappingRendering());
+        tap();
+        assertTrue("and a touch gives it back", wavy.getHasOverlappingRendering());
+    }
+
     @Test public void aTouchBringsThemBackAndAHeldFingerKeepsThemUpUntilItLifts() {
         Settings.BURN_IN_GUARD.save(BurnInMode.DIM);
         BurnInGuard.resumed(activity);
@@ -346,6 +396,53 @@ public class BurnInGuardTest {
         assertUp("leaving the front");
         assertFalse(BurnInGuard.watchingLayoutsForTests());
         assertEquals(-1L, BurnInGuard.nextPassAtForTests());
+    }
+
+    /**
+     * #669: a step right and up left a white line down the left and along the bottom in light mode,
+     * where the window under the content showed. The strips the step leaves bare are black, the content
+     * keeps its own color, and putting it back takes the black off.
+     */
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void theStripsAStepLeavesBareAreBlackNotTheWindowsWhite() {
+        activity.getWindow().setBackgroundDrawable(new ColorDrawable(Color.WHITE));
+        root.setBackgroundColor(GRAY);
+        Settings.BURN_IN_GUARD.save(BurnInMode.DIM_AND_SHIFT);
+        // To the place the reporter's screenshots show: one step right and one up.
+        while (!java.util.Arrays.equals(new int[]{1, -1}, BurnInGuard.placeAt(SystemClock.uptimeMillis()))) {
+            after(BurnInGuard.SHIFT_EVERY_MS);
+        }
+        View content = activity.findViewById(android.R.id.content);
+        BurnInGuard.resumed(activity);
+        float step = BurnInGuard.STEP_DP * activity.getResources().getDisplayMetrics().density;
+        assertEquals(step, content.getTranslationX(), 0.01f);
+        assertEquals(-step, content.getTranslationY(), 0.01f);
+        layout();
+        int[] at = new int[2];
+        content.getLocationInWindow(at);
+        int left = Math.round(at[0] - step), bottom = Math.round(at[1] + step) + content.getHeight();
+        int midY = at[1] + content.getHeight() / 2, midX = at[0] + content.getWidth() / 2;
+
+        Bitmap shifted = drawn();
+        assertEquals("the strip on the left", Color.BLACK, shifted.getPixel(left, midY));
+        assertEquals("the strip along the bottom", Color.BLACK, shifted.getPixel(midX, bottom - 1));
+        assertEquals("the content keeps its own color", GRAY, shifted.getPixel(left + Math.round(step) + 1, midY));
+        assertEquals("the content keeps its own color", GRAY, shifted.getPixel(midX, midY));
+
+        BurnInGuard.paused(activity);
+        layout();
+        Bitmap back = drawn();
+        assertEquals("put back, the content fills the strip again", GRAY, back.getPixel(left, midY));
+        assertEquals(GRAY, back.getPixel(midX, bottom - 1));
+    }
+
+    private static final int GRAY = 0xFF404040;
+
+    private Bitmap drawn() {
+        View decor = activity.getWindow().getDecorView();
+        Bitmap bitmap = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
+        decor.draw(new Canvas(bitmap));
+        return bitmap;
     }
 
     @Test public void theShiftKeepsATranslationSomethingElseWrote() {

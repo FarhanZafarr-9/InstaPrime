@@ -29,6 +29,8 @@ import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.instagram.profile.fragment.UserDetailFragment;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -111,6 +113,8 @@ public class ReelOriginTest {
         public RecyclerView grid;
         public String gridKey = "profile_clips";
         public boolean resumed = true;
+        /** The fragment the tab sits in, a profile's screen or none. */
+        Object parent;
         private final Activity activity;
         private final Bundle arguments = new Bundle();
 
@@ -132,6 +136,10 @@ public class ReelOriginTest {
         public boolean isResumed() {
             return resumed;
         }
+
+        public Object getParentFragment() {
+            return parent;
+        }
     }
 
     /**
@@ -141,6 +149,7 @@ public class ReelOriginTest {
     public static final class PostsGrid {
         public RecyclerView recyclerView;
         public boolean resumed = true;
+        Object parent;
         private final Activity activity;
         private final Bundle arguments = new Bundle();
 
@@ -162,6 +171,17 @@ public class ReelOriginTest {
         public boolean isResumed() {
             return resumed;
         }
+
+        public Object getParentFragment() {
+            return parent;
+        }
+    }
+
+    /** [grid] as it sits in [screen], a profile's screen. */
+    private static <T> T in(Object screen, T grid) {
+        if (grid instanceof Tab) ((Tab) grid).parent = screen;
+        else ((PostsGrid) grid).parent = screen;
+        return grid;
     }
 
     /** A tab with two grids, which the extension can't tell apart. */
@@ -200,7 +220,7 @@ public class ReelOriginTest {
         }
 
         @Override public boolean requestRectangleOnScreen(Rect rectangle, boolean immediate) {
-            shown.add(getTransitionName());
+            shown.add(ReelOrigin.nameOf(this));
             return super.requestRectangleOnScreen(rectangle, immediate);
         }
     }
@@ -244,9 +264,11 @@ public class ReelOriginTest {
         assertTrue("nothing was dragged", grid.drags.isEmpty());
         assertTrue("nothing was scrolled", grid.scrolls.isEmpty());
         Tile tile = tile(REEL);
-        assertEquals("outlined", 1, outlines(tile));
+        assertEquals("marked", 1, outlines(tile));
         idleSeconds(2);
-        assertEquals("the outline goes after a moment", 0, outlines(tile));
+        assertEquals("still marked two seconds on, long enough to spot", 1, outlines(tile));
+        idleSeconds(ReelOrigin.OUTLINE_MS / 1000 + 1);
+        assertEquals("the mark fades after a few seconds", 0, outlines(tile));
         assertNull("the reel is dropped once found", ReelOrigin.heldForTests());
 
         // Back to the tab later: found once, it isn't looked for again.
@@ -257,6 +279,95 @@ public class ReelOriginTest {
         assertTrue(report, report.contains(ReelOrigin.REMEMBERED + " 1"));
         assertTrue(report, report.contains(ReelOrigin.FOUND + " 1"));
         assertTrue(HookStatus.missing(FamilyNames.REEL_ORIGIN).toString(), HookStatus.missing(FamilyNames.REEL_ORIGIN).isEmpty());
+    }
+
+    /**
+     * The found tile reads You just watched over a dimmed thumbnail inside an accent edge, so it shows
+     * on a white thumbnail, where the old white outline vanished (#781).
+     */
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    public void theFoundTileSaysYouJustWatchedOverAWhiteThumbnail() {
+        ReelOrigin.opening(new Reel(REEL), ON);
+        openProfile(List.of("3000_7", REEL, "2900_7"), null);
+        ReelOrigin.reelsTabResumed(new Tab(profile, grid, AUTHOR), ON);
+        ShadowLooper.idleMainLooper();
+        Tile tile = tile(REEL);
+        ReelOrigin.Mark mark = mark(tile);
+        assertEquals("You just watched", mark.label);
+        assertEquals(ScreenColors.current().accent, mark.accent);
+        assertNotNull("the label is laid out for the tile", mark.lines());
+        for (int line = 0; line < mark.lines().getLineCount(); line++) {
+            assertTrue("each line fits the tile", mark.lines().getLineWidth(line) <= tile.getWidth());
+        }
+
+        Bitmap pixels = drawOnWhite(tile, mark);
+        try {
+            int corner = pixels.getPixel(1, 1);
+            assertTrue("the edge is the accent, not white: " + Integer.toHexString(corner),
+                    Color.blue(corner) > Color.red(corner) + 60);
+            int dimmed = pixels.getPixel(tile.getWidth() / 2, tile.getHeight() - 20);
+            assertTrue("a white thumbnail is dimmed: " + Integer.toHexString(dimmed),
+                    Color.red(dimmed) < 170 && Color.red(dimmed) > 100);
+            int brightest = 0;
+            int middle = tile.getHeight() / 2;
+            for (int y = middle - 20; y < middle + 20; y++) {
+                for (int x = 0; x < tile.getWidth(); x++) brightest = Math.max(brightest, Color.red(pixels.getPixel(x, y)));
+            }
+            assertTrue("the label shows white over the dim layer: " + brightest, brightest > 230);
+        } finally {
+            pixels.recycle();
+        }
+    }
+
+    /**
+     * The mark never labels another reel: a tile Instagram binds to a different reel draws nothing,
+     * and a tile that leaves the window drops the mark at once.
+     */
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    public void theMarkLeavesWithItsReel() {
+        ReelOrigin.opening(new Reel(REEL), ON);
+        openProfile(List.of("3000_7", REEL, "2900_7"), null);
+        ReelOrigin.reelsTabResumed(new Tab(profile, grid, AUTHOR), ON);
+        ShadowLooper.idleMainLooper();
+        Tile tile = tile(REEL);
+        ReelOrigin.Mark mark = mark(tile);
+
+        tile.setTransitionName("2700_" + AUTHOR);
+        Bitmap pixels = drawOnWhite(tile, mark);
+        try {
+            assertEquals("rebound to another reel, the tile shows as it is", Color.WHITE,
+                    pixels.getPixel(tile.getWidth() / 2, tile.getHeight() / 2));
+            assertEquals(Color.WHITE, pixels.getPixel(1, 1));
+        } finally {
+            pixels.recycle();
+        }
+
+        tile.setTransitionName(REEL);
+        assertTrue(tile.isAttachedToWindow());
+        ((android.view.ViewGroup) tile.getParent()).removeView(tile);
+        assertEquals("gone with the tile", 0, outlines(tile));
+        idleSeconds(ReelOrigin.OUTLINE_MS / 1000 + 1);
+        assertEquals(0, outlines(tile));
+    }
+
+    /** The mark on [tile]'s overlay. */
+    private static ReelOrigin.Mark mark(View tile) {
+        Object group = ReflectionHelpers.getField(tile.getOverlay(), "mOverlayViewGroup");
+        List<?> drawables = ReflectionHelpers.getField(group, "mDrawables");
+        assertNotNull("nothing on the tile", drawables);
+        assertEquals(1, drawables.size());
+        return (ReelOrigin.Mark) drawables.get(0);
+    }
+
+    /** [mark] drawn over a white thumbnail the size of [tile]. */
+    private static Bitmap drawOnWhite(View tile, ReelOrigin.Mark mark) {
+        Bitmap pixels = Bitmap.createBitmap(tile.getWidth(), tile.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(pixels);
+        canvas.drawColor(Color.WHITE);
+        mark.draw(canvas);
+        return pixels;
     }
 
     /**
@@ -1004,6 +1115,92 @@ public class ReelOriginTest {
     }
 
     /**
+     * With Keep the tab bar on a reel's profile on, the profile goes onto the tab the reel plays on,
+     * in the activity already there, and no activity is created, so the reel was never looked for
+     * (#693). Told so, that activity is the profile's, and only the profile's own screen is looked in.
+     */
+    @Test
+    public void aProfileOnTheTabIsLookedInWithinItsOwnScreen() {
+        openProfile(List.of("3000_7", REEL, "2900_7"), null);
+        ReelOrigin.opening(new Reel(REEL), ON);
+        UserDetailFragment screen = new UserDetailFragment();
+        Tab tab = in(screen, new Tab(profile, grid, AUTHOR));
+        ReelOrigin.reelsTabResumed(tab, ON);
+        idleSeconds(1);
+        assertTrue("no activity came, and nobody said the profile went on the tab", shown.isEmpty());
+
+        ReelOrigin.profileOnTab(profile);
+        tab.resumed = false;
+        ReelOrigin.reelsTabResumed(tab, ON);
+        idleSeconds(1);
+        ReelOrigin.reelsTabResumed(in(new UserDetailFragment(), new Tab(profile, grid, AUTHOR)), ON);
+        idleSeconds(2);
+        assertTrue("the profile's tab was left, and the second is another screen's", shown.isEmpty());
+        assertEquals(REEL, ReelOrigin.heldForTests());
+        String report = HookStatus.report().toString();
+        assertTrue(report, report.contains(ReelOrigin.OTHER_PROFILE + " 1"));
+
+        tab.resumed = true;
+        ReelOrigin.reelsTabResumed(tab, ON);
+        idleSeconds(2);
+        assertEquals("back in the profile's screen, it's found", List.of(REEL), shown);
+        assertNull(ReelOrigin.heldForTests());
+        assertTrue(HookStatus.missing(FamilyNames.REEL_ORIGIN).toString(), HookStatus.missing(FamilyNames.REEL_ORIGIN).isEmpty());
+    }
+
+    /**
+     * A photo reel on a profile pushed onto the tab is looked for in that profile's posts grid, and
+     * Profile posts as a list leaves only that grid up for it (#693).
+     */
+    @Test
+    public void aPhotoReelOnAProfileOnTheTabIsLookedForInItsOwnPostsGrid() {
+        openProfile(List.of("3000_7", REEL, "2900_7"), null);
+        ReelOrigin.opening(new Reel(REEL), ON, PHOTO);
+        ReelOrigin.profileOnTab(profile);
+        PostsGrid author = in(new UserDetailFragment(), new PostsGrid(profile, grid, ReelOrigin.POSTS));
+        PostsGrid another = in(new UserDetailFragment(), new PostsGrid(profile, grid, ReelOrigin.POSTS));
+        assertTrue(ReelOrigin.searchesPosts(author, ON));
+
+        author.resumed = false;
+        ReelOrigin.postsGridResumed(author, ON, OFF);
+        idleSeconds(1);
+        assertFalse("another screen's grid isn't searched", ReelOrigin.searchesPosts(another, ON));
+        assertTrue(ReelOrigin.searchesPosts(author, ON));
+        ReelOrigin.postsGridResumed(another, ON, OFF);
+        idleSeconds(2);
+        assertTrue(shown.isEmpty());
+
+        author.resumed = true;
+        ReelOrigin.postsGridResumed(author, ON, OFF);
+        idleSeconds(2);
+        assertEquals(List.of(REEL), shown);
+        String report = HookStatus.report().toString();
+        assertTrue(report, report.contains(ReelOrigin.OTHER_PROFILE + " 1"));
+    }
+
+    /**
+     * Told the profile went onto the tab, nothing changes unless a reel was tapped moments before:
+     * nothing held, or held too long ago, and the activity isn't taken.
+     */
+    @Test
+    public void aProfileOnTheTabWithNoReelJustTappedTakesNothing() {
+        openProfile(List.of(REEL), null);
+        ReelOrigin.profileOnTab(profile);
+        ReelOrigin.profileOnTab(null);
+        ReelOrigin.profileOnTab(new Object());
+        assertNull(ReelOrigin.heldForTests());
+
+        ReelOrigin.opening(new Reel(REEL), ON);
+        idleSeconds(6);
+        ReelOrigin.profileOnTab(profile);
+        assertNull("tapped too long ago, so it's dropped", ReelOrigin.heldForTests());
+        ReelOrigin.reelsTabResumed(in(new UserDetailFragment(), new Tab(profile, grid, AUTHOR)), ON);
+        idleSeconds(2);
+        assertTrue(shown.isEmpty());
+        assertTrue(HookStatus.missing(FamilyNames.REEL_ORIGIN).toString(), HookStatus.missing(FamilyNames.REEL_ORIGIN).isEmpty());
+    }
+
+    /**
      * A photo reel or a carousel lives in the profile's posts grid, never its Reels tab (#225), so
      * the posts grid is searched for it and the Reels tab is left alone.
      */
@@ -1031,6 +1228,69 @@ public class ReelOriginTest {
         String report = HookStatus.report().toString();
         assertTrue(report, report.contains(ReelOrigin.FOUND + " 2"));
         assertTrue(HookStatus.missing(FamilyNames.REEL_ORIGIN).toString(), HookStatus.missing(FamilyNames.REEL_ORIGIN).isEmpty());
+    }
+
+    /**
+     * 454 names a posts tile by its place alone, so the patch hands the extension each tile and its
+     * media as the grid binds it, and a photo reel is found by that (#689).
+     */
+    @Test
+    public void aPhotoReelIsFoundAmongPostsTilesNamedAsTheyBind() {
+        List<String> posts = reels(30, 9000);
+        posts.set(20, REEL);
+        ReelOrigin.opening(new Reel(REEL), ON, PHOTO);
+        openProfile(posts, null);
+        grid.binds = (tile, id) -> ReelOrigin.postsTileBound(tile, new Reel(id), ON);
+        grid.bind();
+        layout();
+        assertNull("no transition name", made.get(made.size() - 1).getTransitionName());
+
+        ReelOrigin.postsGridResumed(new PostsGrid(profile, grid, ReelOrigin.POSTS), ON, OFF);
+        idleSeconds(5);
+        assertEquals(HookStatus.report() + " drags " + grid.drags, List.of(REEL), shown);
+        assertFalse("dragged down to it", grid.drags.isEmpty());
+        assertNull("dropped once found", ReelOrigin.heldForTests());
+        assertNull("and the names with it", ReelOrigin.nameOf(made.get(made.size() - 1)));
+        String report = HookStatus.report().toString();
+        assertTrue(report, report.contains(ReelOrigin.TILE_NAMED));
+    }
+
+    /**
+     * A posts tile is named only while a photo reel is held and the switch is on, loses its name when
+     * bound to no media or to one without an id, and every name goes with the reel. Failures are
+     * reported and never thrown.
+     */
+    @Test
+    public void postsTilesAreNamedOnlyWhileAPhotoReelIsHeld() {
+        View tile = new View(RuntimeEnvironment.getApplication());
+        ReelOrigin.postsTileBound(tile, new Reel(REEL), ON);
+        assertNull("nothing held", ReelOrigin.nameOf(tile));
+        ReelOrigin.opening(new Reel(REEL), ON, VIDEO);
+        ReelOrigin.postsTileBound(tile, new Reel(REEL), ON);
+        assertNull("a video reel isn't looked for in the posts grid", ReelOrigin.nameOf(tile));
+
+        ReelOrigin.opening(new Reel(REEL), ON, PHOTO);
+        ReelOrigin.postsTileBound(tile, new Reel(REEL), OFF);
+        assertNull("switched off", ReelOrigin.nameOf(tile));
+        ReelOrigin.postsTileBound(tile, new Reel(REEL), ON);
+        assertEquals(REEL, ReelOrigin.nameOf(tile));
+        ReelOrigin.postsTileBound(tile, null, ON);
+        assertNull("bound to no media, the name goes", ReelOrigin.nameOf(tile));
+        ReelOrigin.postsTileBound(tile, new Reel(REEL), ON);
+        ReelOrigin.postsTileBound(tile, new Object(), ON);
+        assertNull("bound to a media without an id, the name goes", ReelOrigin.nameOf(tile));
+
+        ReelOrigin.postsTileBound(tile, new Reel(REEL), THROWS);
+        ReelOrigin.postsTileBound(new Object(), new Reel(REEL), ON);
+        ReelOrigin.postsTileBound(null, new Reel(REEL), ON);
+        String missing = HookStatus.missing(FamilyNames.REEL_ORIGIN).toString();
+        assertTrue(missing, missing.contains("'" + ReelOrigin.TILE_BOUND + "'"));
+        assertTrue(missing, missing.contains(Object.class.getName() + "#getId"));
+
+        ReelOrigin.postsTileBound(tile, new Reel(REEL), ON);
+        assertEquals(REEL, ReelOrigin.nameOf(tile));
+        ReelOrigin.forget();
+        assertNull("forgetting the reel drops the names", ReelOrigin.nameOf(tile));
     }
 
     /**

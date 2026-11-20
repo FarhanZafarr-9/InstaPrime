@@ -12,12 +12,14 @@ import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Insets;
 import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
@@ -291,9 +293,29 @@ public class TimerLifecycleTest {
         return ((ViewGroup.MarginLayoutParams) view.getLayoutParams()).bottomMargin;
     }
 
+    /** A Reels viewer whose window has a navigation bar [nav] pixels tall at its foot, as a phone reports it. */
+    private static final class Viewer extends FrameLayout {
+        int nav;
+
+        Viewer(Context context) {
+            super(context);
+        }
+
+        @Override
+        public WindowInsets getRootWindowInsets() {
+            WindowInsets real = super.getRootWindowInsets();
+            if (nav <= 0) return real;
+            Insets bar = Insets.of(0, 0, 0, nav);
+            return new WindowInsets.Builder(real)
+                    .setInsets(WindowInsets.Type.navigationBars(), bar)
+                    .setInsetsIgnoringVisibility(WindowInsets.Type.navigationBars(), bar)
+                    .build();
+        }
+    }
+
     /** A reel in a Reels viewer, shaped as Instagram 451 builds one. */
     private static final class Reel {
-        FrameLayout viewer;
+        Viewer viewer;
         LinearLayout column;
         FrameLayout gesture;
         View media;
@@ -319,7 +341,7 @@ public class TimerLifecycleTest {
         }
         int match = ViewGroup.LayoutParams.MATCH_PARENT;
         Reel reel = new Reel();
-        reel.viewer = new FrameLayout(activity);
+        reel.viewer = new Viewer(activity);
         reel.viewer.setId(REELS_ID);
         reel.column = new LinearLayout(activity);
         reel.column.setOrientation(LinearLayout.VERTICAL);
@@ -362,6 +384,11 @@ public class TimerLifecycleTest {
         assertEquals(0, reel.media.getScrollY());
         assertEquals("and so does the layer of controls", 0f, reel.layer.getTranslationY(), 0f);
         assertEquals(0, reel.layer.getScrollY());
+    }
+
+    /** The room the seek bar keeps above the pill's slot, in pixels (#187). */
+    private int gap() {
+        return Math.round(GlassTabBar.REELS_GAP_DP * activity.getResources().getDisplayMetrics().density);
     }
 
     /** How far up [band] shows what it holds: its content's scroll, less its own translation. */
@@ -416,7 +443,8 @@ public class TimerLifecycleTest {
 
     /**
      * Under a floating pill without a Reels auto-hide the Reels viewer stops at the top of the pill's
-     * slot, with nothing of the reel raised (#221, #280).
+     * slot (#221, #280), and the caption, buttons and seek bar go up only by a small gap, so the seek bar
+     * doesn't sit right on the pill (#187).
      */
     @Test public void aReelStopsAtThePillsSlot() {
         LinearLayout tabs = namedTabBar();
@@ -430,7 +458,8 @@ public class TimerLifecycleTest {
         assertEquals("the reel stops at the pill's slot", pill, bottomMargin(reel.viewer));
         layout();
         assertEquals(1920 - pill, reel.media.getHeight());
-        assertRaised(reel, 0);
+        assertTrue(gap() > 0);
+        assertRaised(reel, gap());
         GlassTabBar.restoreAll();
     }
 
@@ -438,7 +467,8 @@ public class TimerLifecycleTest {
      * #466, #467: with the wait on Reels the reel runs behind the pill and keeps that one size as the
      * pill slides away and back. Given the pill's slot only while the pill was all the way off (#335), the
      * video grew and jumped back with every slide. The caption, buttons and seek bar stay raised clear
-     * of the pill's spot, and once the pill is away there's no black band where it was (#335).
+     * of the pill while it shows and follow it down once it's away (#736), here all the way, with no
+     * navigation bar under the window. Once the pill is away there's no black band where it was (#335).
      */
     @Test public void aReelsAutoHideKeepsTheReelOneSizeBehindThePill() {
         LinearLayout tabs = namedTabBar();
@@ -454,7 +484,7 @@ public class TimerLifecycleTest {
         assertEquals("the reel runs behind the pill", 0, bottomMargin(reel.viewer));
         layout();
         assertEquals(1920, reel.media.getHeight());
-        assertRaised(reel, pill);
+        assertRaised(reel, pill + gap());
         float[] spot = middleOf(tabs);
 
         idle(2500);
@@ -464,7 +494,7 @@ public class TimerLifecycleTest {
         layout();
         assertEquals("the reel doesn't move", 0, bottomMargin(reel.viewer));
         assertEquals(1920, reel.media.getHeight());
-        assertRaised(reel, pill);
+        assertRaised(reel, 0);
 
         tapAt(spot);
         idle(500);
@@ -473,7 +503,7 @@ public class TimerLifecycleTest {
         assertEquals("the pill is back", 0f, tabs.getTranslationY(), 0f);
         assertEquals(0, bottomMargin(reel.viewer));
         assertEquals(1920, reel.media.getHeight());
-        assertRaised(reel, pill);
+        assertRaised(reel, pill + gap());
         GlassTabBar.restoreAll();
     }
 
@@ -499,14 +529,18 @@ public class TimerLifecycleTest {
         int pill = tabs.getLayoutParams().height;
         assertEquals("the pill made room for the handle", 150 + 63, pill);
         assertEquals("the reel stops above the pill and the handle", pill, bottomMargin(reel.viewer));
-        assertRaised(reel, 0);
+        assertRaised(reel, gap());
         GlassTabBar.restoreAll();
     }
 
-    /** {@link #aReelStopsAboveTheGestureHandleWhetherThePillShowsOrNot}, with the wait on Reels (#467). */
+    /**
+     * {@link #aReelStopsAboveTheGestureHandleWhetherThePillShowsOrNot}, with the wait on Reels (#467). Once the
+     * pill slides away the caption and seek bar drop with it to just over the handle, not into it (#736).
+     */
     @Test public void aReelsAutoHideKeepsTheSeekBarAboveTheGestureHandle() {
         LinearLayout tabs = namedTabBar();
         Reel reel = showReel();
+        reel.viewer.nav = 63;
         Settings.GLASS_TAB_BAR.save(true);
         Settings.GLASS_TAB_BAR_REELS_HIDE.save(GlassReelsHide.TWO_SECONDS);
         GlassTabBar.apply(activity);
@@ -520,7 +554,7 @@ public class TimerLifecycleTest {
         int pill = tabs.getLayoutParams().height;
         assertEquals("the pill made room for the handle", 150 + 63, pill);
         assertEquals("the reel runs behind the pill", 0, bottomMargin(reel.viewer));
-        assertRaised(reel, pill);
+        assertRaised(reel, pill + gap());
         float[] spot = middleOf(tabs);
 
         idle(2500);
@@ -528,14 +562,14 @@ public class TimerLifecycleTest {
         idle(500);
         tabs.getViewTreeObserver().dispatchOnPreDraw();
         assertEquals("the reel doesn't move", 0, bottomMargin(reel.viewer));
-        assertRaised(reel, pill);
+        assertRaised(reel, 63);
 
         tapAt(spot);
         idle(500);
         tabs.getViewTreeObserver().dispatchOnPreDraw();
         assertEquals("the pill is back", 0f, tabs.getTranslationY(), 0f);
         assertEquals(0, bottomMargin(reel.viewer));
-        assertRaised(reel, pill);
+        assertRaised(reel, pill + gap());
         GlassTabBar.restoreAll();
     }
 
@@ -675,7 +709,7 @@ public class TimerLifecycleTest {
         int pill = tabs.getLayoutParams().height;
         layout();
         int height = reel.media.getHeight();
-        assertRaised(reel, 0);
+        assertRaised(reel, gap());
 
         tabs.setVisibility(View.GONE);
         View controls = new View(activity);
@@ -688,7 +722,7 @@ public class TimerLifecycleTest {
         assertEquals("which keeps its size", height, reel.media.getHeight());
         assertEquals("the footer sits on the reel's bottom", reel.column.getHeight() - 120, reel.footers.getTop());
         assertEquals("the viewer's margin stays", pill, bottomMargin(reel.viewer));
-        assertRaised(reel, 120);
+        assertRaised(reel, 120 + gap());
         assertEquals("the footer itself stays down", 0f, reel.footers.getTranslationY(), 0f);
         assertFalse("a frame that changes nothing goes ahead", tabs.getViewTreeObserver().dispatchOnPreDraw());
 
@@ -700,7 +734,7 @@ public class TimerLifecycleTest {
         layout();
         assertEquals(0, ((ViewGroup.MarginLayoutParams) reel.footers.getLayoutParams()).topMargin);
         assertEquals(height, reel.media.getHeight());
-        assertRaised(reel, 0);
+        assertRaised(reel, gap());
         GlassTabBar.restoreAll();
     }
 
@@ -727,9 +761,10 @@ public class TimerLifecycleTest {
         Settings.GLASS_TAB_BAR.save(true);
         GlassTabBar.apply(activity);
         idle(500);
-        assertRaised(reel, 0);
-        int by = 120;
-        pauseWithControls(tabs, reel, by);
+        assertRaised(reel, gap());
+        int tall = 120;
+        int by = tall + gap();
+        pauseWithControls(tabs, reel, tall);
         assertRaised(reel, by);
 
         reel.layer.removeView(reel.infoBand);
@@ -774,8 +809,9 @@ public class TimerLifecycleTest {
         Settings.GLASS_TAB_BAR.save(true);
         GlassTabBar.apply(activity);
         idle(500);
-        int by = 120;
-        pauseWithControls(tabs, reel, by);
+        int tall = 120;
+        int by = tall + gap();
+        pauseWithControls(tabs, reel, tall);
         assertRaised(reel, by);
         View info = reel.infoBand.findViewById(INFO_ID);
         View page = (View) reel.layer.getParent();

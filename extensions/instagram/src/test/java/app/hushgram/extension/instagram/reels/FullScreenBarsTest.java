@@ -34,6 +34,7 @@ import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
+import org.robolectric.util.ReflectionHelpers;
 
 import app.hushgram.extension.instagram.misc.GlassTabBar;
 import app.hushgram.extension.instagram.settings.Settings;
@@ -47,7 +48,7 @@ public class FullScreenBarsTest {
     @Rule public final SettingsContextRule settings = new SettingsContextRule();
 
     private static final int VIEWER = 7101, BAR = 7102, REELS_TAB = 7103, HOME_TAB = 7104, OTHER_TAB = 7105,
-            INBOX = 7106, CHAT = 7107, TOP_BAR = 7108, SHEET_HOLDER = 7109, SHEET_CONTENT = 7110;
+            INBOX = 7106, CHAT = 7107, TOP_BAR = 7108, SHEET_HOLDER = 7109, SHEET_CONTENT = 7110, INBOX_BAR = 7111;
 
     /** The window's own size: a view is only on screen as far as the window goes. */
     private int W, H;
@@ -68,6 +69,7 @@ public class FullScreenBarsTest {
         Settings.GLASS_TAB_BAR_FLOAT.resetToDefault();
         FullScreenBars.idForTests(FullScreenBars.INBOX, INBOX);
         FullScreenBars.idForTests(FullScreenBars.CHAT, CHAT);
+        FullScreenBars.idForTests(FullScreenBars.INBOX_BAR, INBOX_BAR);
         FullScreenBars.idForTests(FullScreenBars.VIEWER, VIEWER);
         FullScreenBars.idForTests(FullScreenBars.TAB_BAR, BAR);
         FullScreenBars.idForTests(FullScreenBars.REELS_TAB, REELS_TAB);
@@ -97,6 +99,14 @@ public class FullScreenBarsTest {
         Settings.FULL_SCREEN_HIDES.resetToDefault();
         Settings.GLASS_TAB_BAR.resetToDefault();
         Settings.GLASS_TAB_BAR_FLOAT.resetToDefault();
+        // A height taken here for the pill would otherwise reach the next class's tests.
+        ReflectionHelpers.callStaticMethod(GlassTabBar.class, "resetForTests");
+        // So would a watcher a test stood in for, the window it resumed, a guess and a test bar, even
+        // where the test stopped before its own finally.
+        FullScreenBars.registeredForTests(false);
+        FullScreenBars.nowResumed(null);
+        FullScreenBars.resetHeightsForTests(null);
+        ReflectionHelpers.callStaticMethod(app.hushgram.extension.instagram.misc.BottomSpace.class, "forgetGuess");
     }
 
     private View tab(int id) {
@@ -683,6 +693,132 @@ public class FullScreenBarsTest {
     }
 
     /**
+     * A window left with no navigation bar at its foot, like the top half of a split screen, gets no
+     * height for one: the height Instagram offered before doesn't stand in for its 0 with the keyboard
+     * up, and the bars coming back give only the status bar's height back.
+     */
+    @Test public void aWindowWithNoNavigationBarGetsNoHeightForOne() {
+        List<String> told = new ArrayList<>();
+        FullScreenBars.resetHeightsForTests((listener, status, nav) -> told.add(listener + " " + status + " " + nav));
+        FullScreenBars.registeredForTests(true);
+        boolean[] up = {false};
+        FullScreenBars.keyboardForTests(() -> up[0]);
+        try {
+            Settings.FULL_SCREEN_REELS.save(true);
+            FullScreenBars.nowResumed(activity);
+            FullScreenBars.heightsAsked(activity, "profile");
+            heights(75, 135);
+            showViewer(W, H);
+            FullScreenBars.Session session = watch();
+            assertTrue(session.isHidden());
+            shadowOf(Looper.getMainLooper()).idle();
+            assertEquals(Arrays.asList("profile 75 135", "profile 0 0"), told);
+
+            FullScreenBars.navBarForTests(0);
+            up[0] = true;
+            assertEquals(0, FullScreenBars.barHeight(0));
+            assertEquals("nothing stands in for the 0 with the keyboard up", 0, FullScreenBars.navBarHeight(0));
+            session.watchKeyboard();
+            shadowOf(Looper.getMainLooper()).idle();
+            assertEquals("the keyboard gives no height back", 2, told.size());
+            up[0] = false;
+
+            root.removeView(viewer);
+            layout();
+            session.evaluate();
+            assertFalse(session.isHidden());
+            shadowOf(Looper.getMainLooper()).idle();
+            assertEquals("only the status bar's height comes back", "profile 75 0", told.get(told.size() - 1));
+        } finally {
+            FullScreenBars.registeredForTests(false);
+            FullScreenBars.resetHeightsForTests(null);
+        }
+    }
+
+    /**
+     * #196: a window that reports no navigation bar, as a Samsung with its gesture hint hidden does while
+     * Instagram keeps its guessed height, still gets back the height Instagram offered as it pauses.
+     */
+    @Test public void aWindowReportingNoNavigationBarIsStillOwedItsHeight() {
+        List<String> told = new ArrayList<>();
+        FullScreenBars.resetHeightsForTests((listener, status, nav) -> told.add(listener + " " + status + " " + nav));
+        FullScreenBars.registeredForTests(true);
+        try {
+            Settings.FULL_SCREEN_REELS.save(true);
+            FullScreenBars.nowResumed(activity);
+            FullScreenBars.heightsAsked(activity, "reels");
+            heights(75, 135);
+            showViewer(W, H);
+            assertTrue(watch().isHidden());
+            shadowOf(Looper.getMainLooper()).idle();
+            assertEquals(Arrays.asList("reels 75 135", "reels 0 0"), told);
+
+            FullScreenBars.navBarForTests(0);
+            assertArrayEquals("both heights Instagram offered", new int[] {75, 135}, FullScreenBars.heightsToGiveBack());
+        } finally {
+            FullScreenBars.registeredForTests(false);
+            FullScreenBars.resetHeightsForTests(null);
+        }
+    }
+
+    /**
+     * #633: where the phone reports no bar, a reel's seek bar keeps clear of the hidden bar's height, also
+     * with "Remove the empty space at the bottom" left out, so Instagram's guess is 0.
+     */
+    @Test public void aWindowReportingNoNavigationBarKeepsRoomForAHiddenOne() {
+        try {
+            ReflectionHelpers.callStaticMethod(app.hushgram.extension.instagram.misc.BottomSpace.class, "forgetGuess");
+            Settings.FULL_SCREEN_REELS.save(true);
+            showViewer(W, H);
+            assertTrue(watch().isHidden());
+            assertEquals(0, FullScreenBars.navBarHeight(63));
+            assertEquals("a window that can't say keeps the hidden bar's room", 63, FullScreenBars.unreportedNavHeight());
+
+            FullScreenBars.navBarForTests(0);
+            assertEquals("one that reports no bar keeps it too", 63, FullScreenBars.unreportedNavHeight());
+        } finally {
+            FullScreenBars.resetHeightsForTests(null);
+        }
+    }
+
+    /**
+     * A window just made isn't attached as it first resumes, and GlassTabBar names it in front before
+     * this class hears the resume. The window it opened over answers for its bar: over one with no bar at
+     * its foot, the height Instagram offered before doesn't stand in for a 0 with the keyboard up.
+     */
+    @Test public void aWindowNotYetAttachedTakesTheBarOfTheOneItOpenedOver() {
+        FullScreenBars.registeredForTests(true);
+        boolean[] up = {false};
+        FullScreenBars.keyboardForTests(() -> up[0]);
+        ActivityController<Activity> made = Robolectric.buildActivity(Activity.class).create();
+        try {
+            Settings.FULL_SCREEN_REELS.save(true);
+            FullScreenBars.nowResumed(activity);
+            FullScreenBars.heightsAsked(activity, "reels");
+            heights(75, 135);
+            showViewer(W, H);
+            assertTrue(watch().isHidden());
+
+            FullScreenBars.windowsOwnNavBarForTests();
+            android.view.WindowInsets insets = activity.getWindow().getDecorView().getRootWindowInsets();
+            assertNotNull("the window left is attached", insets);
+            int bottom = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                    ? insets.getInsetsIgnoringVisibility(android.view.WindowInsets.Type.navigationBars()).bottom
+                    : insets.getStableInsetBottom();
+            assertEquals("the test window has no bar at its foot", 0, bottom);
+            assertNull("the new one isn't attached yet", made.get().getWindow().getDecorView().getRootWindowInsets());
+            ReflectionHelpers.callStaticMethod(GlassTabBar.class, "nowInFront",
+                    ReflectionHelpers.ClassParameter.from(Activity.class, made.get()));
+            up[0] = true;
+            assertEquals("the window it opened over has no bar", 0, FullScreenBars.navBarHeight(0));
+        } finally {
+            made.destroy();
+            FullScreenBars.registeredForTests(false);
+            FullScreenBars.resetHeightsForTests(null);
+        }
+    }
+
+    /**
      * #203: with Full screen Home on, the first tab opened from Home (Messages, Profile) was built
      * while Home had the bars hidden, so it heard 0 and drew under the status bar until the next
      * switch. Its kept listener hears the real heights once the bars come back.
@@ -887,6 +1023,32 @@ public class FullScreenBarsTest {
 
         messagesView(INBOX, W, H);
         assertEquals(FullScreenBars.Screen.MESSAGES, screen());
+    }
+
+    /** A screen headed by your messages' own top bar, with a Compose list below it and no list id. */
+    private FrameLayout composeInbox(int height) {
+        FrameLayout screen = new FrameLayout(activity);
+        View top = new View(activity);
+        top.setId(INBOX_BAR);
+        screen.addView(top, new FrameLayout.LayoutParams(W, H / 12));
+        root.addView(screen, new FrameLayout.LayoutParams(W, height));
+        layout();
+        return screen;
+    }
+
+    /** #187: 454's messages list is Compose, so its top bar names the screen; a sliver or a hidden one doesn't. */
+    @Test public void theComposeMessagesListCountsByItsTopBar() {
+        FrameLayout inbox = composeInbox(H);
+        assertEquals(FullScreenBars.Screen.MESSAGES, screen());
+        Settings.FULL_SCREEN_MESSAGES.save(true);
+        assertTrue(watch().isHidden());
+
+        inbox.setVisibility(View.GONE);
+        layout();
+        assertEquals("left behind out of sight", FullScreenBars.Screen.OTHER, screen());
+        root.removeView(inbox);
+        composeInbox(H / 4);
+        assertEquals("a sliver of it", FullScreenBars.Screen.OTHER, screen());
     }
 
     /** #288: a reel opened from a chat is Reels, and the Messages switch leaves it alone. */

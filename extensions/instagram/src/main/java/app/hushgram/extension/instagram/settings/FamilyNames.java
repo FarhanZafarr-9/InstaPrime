@@ -24,6 +24,7 @@ public final class FamilyNames {
     public static final String RESTORE_TRUST = "Restore trust on re-signed builds";
     public static final String REMOVE_AD_ID = "Remove the advertising ID";
     public static final String REEL_WATCH_HISTORY = "Don't send reel watch history";
+    public static final String FEED_VIEW_HISTORY = "Don't send feed view history";
     public static final String STORY_AUTO_ADVANCE = "Stop Story auto-advance";
     public static final String STORY_TIME = "Show a story's exact time";
     public static final String STORY_MENTIONS = "See who a story mentions";
@@ -57,10 +58,12 @@ public final class FamilyNames {
     public static final String SETUP_POPUPS = "Skip the contacts and location popups";
     public static final String AD_DATA_REMINDER = "Skip the ad data reminder";
     public static final String PHOTO_LOCATIONS = "Keep photo locations from Instagram";
+    public static final String BLOCKED_SEARCH = "Search blocked accounts";
     public static final String THREAD_SEEN = "Read messages without the seen receipt";
     public static final String TYPING = "Hide that you're typing";
     public static final String ACTIVE_STATUS = "Hide your active status";
     public static final String LAST_ACTIVE = "Show when someone was last active";
+    public static final String SHORT_ACTIVE_NOW = "Shorter Active now";
     public static final String MESSAGES_LOCK = "Lock your messages";
     public static final String STORIES_TRAY = "Hide suggested stories";
     public static final String STORY_RING = "Story ring size";
@@ -84,6 +87,7 @@ public final class FamilyNames {
     public static final String SPLIT_NOTES_ROW = "Split the notes row";
     public static final String INBOX_SEARCH = "Hide the search bar in Messages";
     public static final String INBOX_SUGGESTIONS = "Hide suggested accounts in DMs";
+    public static final String NEW_MESSAGE = "Hide New message button and suggestions";
     public static final String INSTANTS = "Hide Instants";
     public static final String SHARE_SHEET = "Hide group buttons on the share sheet";
     public static final String REPOST_BUTTON = "Hide the Repost button";
@@ -118,6 +122,8 @@ public final class FamilyNames {
     public static final String PROFILE_BANNERS = "Hide profile banners";
     public static final String PROFILE_POSTS_LIST = "Profile posts as a list";
     public static final String PROFILE_GRID_JUMP = "Jump a profile's posts to a date";
+    public static final String PROFILE_REEL_SORT = "Sort reels on profiles";
+    public static final String PROFILE_FOLLOW_COUNTS = "Hide Followers and Following on profiles";
     public static final String COMMENT_COPY = "Copy comment";
     public static final String COMMENT_PHOTO = "Save comment photo";
     public static final String PROFILE_PICTURE = "Save profile picture";
@@ -129,11 +135,15 @@ public final class FamilyNames {
     public static final String COMMENT_SEARCH = "Search comments";
     public static final String FEED_FOLLOW = "Hide Follow on feed posts";
     public static final String EDITS_LABEL = "Hide Made with Edits";
+    public static final String FEED_HEADER_LINE = "Hide the line under names";
     public static final String FEED_SAVE = "Save in the post menu";
+    public static final String MENU_ITEMS = "Three-dot menu items";
     public static final String WATCH_AGAIN = "Watch again in the feed";
     public static final String ACTIVITY_BUBBLES = "Hide activity bubbles";
     public static final String HIDE_CAPTIONS = "Hide captions";
+    public static final String EXPAND_CAPTIONS = "Expand captions";
     public static final String FEED_AUDIO_ICON = "Hide the audio icon on posts";
+    public static final String FEED_AUTO_SCROLL = "Auto scroll in Home";
     public static final String HOME_TOP_BAR = "Keep Home's top bar";
     public static final String REEL_DECLUTTER = "Clean up Reels";
     public static final String KEEP_REELS_TOP_BAR = "Keep the Reels top bar";
@@ -148,7 +158,9 @@ public final class FamilyNames {
     public static final String CAPTION_WORD_REELS = "Hide reels by caption words";
     public static final String LOW_VIEW_REELS = "Hide reels with few views";
     public static final String KEEP_REEL_SPEED = "Keep the reel speed";
+    public static final String REEL_ABOVE_COMMENTS = "Control the reel above comments";
     public static final String REEL_LINKS = "Open reel links on that reel";
+    public static final String REEL_SCREEN_SLEEP = "Let the screen sleep when a reel stops";
     public static final String REEL_POST_TIME = "Show a reel's exact time";
     public static final String REEL_SEEK_BAR = "Keep a seek bar on Reels";
     public static final String REEL_BLUR_BARS = "Blur the bars around Reels";
@@ -186,14 +198,21 @@ public final class FamilyNames {
     public static final String ASK_BEFORE_CALL = "Ask before a call";
     public static final String KINDNESS_REMINDER = "Hide the Community Standards reminder";
     public static final String CALL_BLOCKER = "Call blocker";
+    public static final String CALL_RECORDER = "Record calls";
     public static final String MESSAGE_BOX = "Message box buttons";
     public static final String PLUS_MENU = "Chat plus menu";
     public static final String MESSAGE_ACTIONS = "Message action layout";
     public static final String MESSAGE_GESTURES = "Message tap menus";
     public static final String GLASS_CHAT = "Glass in chats";
+    public static final String CENTER_CHAT_NAME = "Center names in chats";
+    public static final String CHAT_BUBBLES = "Chat bubbles";
     public static final String ASK_BEFORE_LIKE = "Ask before a like";
     public static final String ASK_BEFORE_REFRESH = "Ask before a refresh";
     public static final String ASK_BEFORE_FOLLOW = "Ask before a follow";
+    public static final String SENT_FOLLOW_REQUESTS = "Sent follow requests";
     public static final String SAVE_TRAY = "Skip the collections tray";
     public static final String LIVE_SEEN = "View live anonymously";
+    public static final String VP9_VIDEO = "Ask for VP9 instead of AV1";
+    public static final String ONLINE_HISTORY = "Keep online history";
+    public static final String STORY_VIEWERS = "Keep story viewers";
 }

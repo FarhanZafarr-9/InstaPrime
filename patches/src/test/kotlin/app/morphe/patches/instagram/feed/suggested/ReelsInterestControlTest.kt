@@ -22,6 +22,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableClassDef
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
@@ -64,6 +65,26 @@ class ReelsInterestControlTest {
         assertHooked("stand-in", context, found)
     }
 
+    /** 456 dropped the marker: the footer's component key and the controls' layout name find the same method. */
+    @Test
+    fun anUnmarkedFooterIsFoundByItsStrings() {
+        val context = PatchContexts.of(classes(marked = false))
+        val found = context.findReelsInterestControl()
+
+        assertEquals(USE_CASE, found.type)
+        assertEquals("A02", found.name)
+        assertEquals("the store of the control", 10, found.storeAt)
+        assertEquals("the register it stores", 4, found.register)
+        found.write(context)
+        assertHooked("unmarked stand-in", context, found)
+    }
+
+    @Test
+    fun anUnmarkedFooterWithoutItsKeyFailsThePatch() = refused("found 0", classes(marked = false, footerKey = false))
+
+    @Test
+    fun anUnmarkedFooterAnsweringAnotherComponentFailsThePatch() = refused("found 0", classes(marked = false, controlsLayout = false))
+
     @Test
     fun noMarkedMethodFailsThePatch() = refused("found 0", classes(leaveOut = true))
 
@@ -105,15 +126,32 @@ class ReelsInterestControlTest {
         assertEquals("the builds besides the declared one", Fixtures.OTHER_BUILDS, checked)
     }
 
-    /** Every class holding the marker, so a second method holding it anywhere in the app would be there to find. */
+    /**
+     * Every class holding the marker, so a second method holding it anywhere in the app would be
+     * there to find, or on a build without it (456) every class loading the footer's key or the
+     * controls' layout name, with the pools they ask.
+     */
     private fun hooksTheReelsControl(bundle: File, label: String) {
-        val context = PatchContexts.of(FixtureDex.classesHolding(bundle, "android_purge_26_q3_$REELS_CONTROL_MARKER"))
+        val marked = FixtureDex.classesHolding(bundle, "android_purge_26_q3_$REELS_CONTROL_MARKER")
+        val classes = marked.ifEmpty {
+            val loading = FixtureDex.classesLoading(bundle, REELS_FOOTER_KEY) + FixtureDex.classesLoading(bundle, REELS_CONTROLS_LAYOUT)
+            FixtureDex.withStringPools(bundle, loading.distinctBy { it.type })
+        }
+        val context = PatchContexts.of(classes)
 
         val found = context.findReelsInterestControl()
-        // 453: LX/08YT;->A02 (285) stores v13 into its component's A0A at instruction 57 in every build.
+        // The place and register of the store move between builds (455's 386113969: LX/0Ciy;->A02
+        // stores v14 into LX/0F5b;->A0A), so both come from the stock store itself.
         assertEquals("$label: the use case", "A02", found.name)
-        assertEquals("$label: the store's place", 57, found.storeAt)
-        assertEquals("$label: the register it stores", 13, found.register)
+        val stock = context.classDefBy(found.type).methods.single {
+            it.name == found.name && it.parameterTypes.map(CharSequence::toString) == found.parameters
+        }.implementation!!.instructions.toList()
+        val stores = stock.indices.filter { at ->
+            val field = (stock[at] as? ReferenceInstruction)?.reference as? FieldReference
+            stock[at].opcode == Opcode.IPUT_OBJECT && field?.definingClass == found.returnType && field.type == found.controlType
+        }
+        assertEquals("$label: the store's place", listOf(found.storeAt), stores)
+        assertEquals("$label: the register it stores", (stock[found.storeAt] as TwoRegisterInstruction).registerA, found.register)
         found.write(context)
 
         assertHooked("$label ${found.type}->${found.name}", context, found)
@@ -171,12 +209,13 @@ class ReelsInterestControlTest {
          *   0 the fallback   1 the marker   5 the reel's control   7 none keeps the fallback
          *   10 the store of the control   11 another store   12 the return
          */
-        fun smali(variant: String): String {
+        fun smali(variant: String, marked: Boolean = true): String {
             val field = if (variant == "nostore") "A0A:Ljava/lang/Object;" else "A0A:$CONTROL"
             val other = if (variant == "twostores") "iput-object p2, v1, $COMPONENT->A0B:$CONTROL" else "iput-object p1, v1, $COMPONENT->A04:$STATE"
+            val marker = if (marked) "android_purge_26_q3_$REELS_CONTROL_MARKER" else "fixture"
             return """
                 move-object v4, p2
-                const-string v0, "android_purge_26_q3_$REELS_CONTROL_MARKER"
+                const-string v0, "$marker"
                 invoke-static {v0}, Lfixture/Purge;->A01(Ljava/lang/String;)V
                 new-instance v1, $COMPONENT
                 invoke-direct {v1}, $COMPONENT-><init>()V
@@ -192,7 +231,16 @@ class ReelsInterestControlTest {
             """.trimIndent()
         }
 
-        fun useCase(owner: String, variant: String, static: Boolean): ClassDef {
+        /** A method of [owner] loading [string] and returning, as a component's render or a footer's does. */
+        fun loading(owner: String, name: String, string: String): ImmutableMethod {
+            val method = MutableMethod(
+                ImmutableMethod(owner, name, emptyList(), "V", AccessFlags.PUBLIC.value, null, null, ImmutableMethodImplementation(2, emptyList(), null, null)),
+            )
+            method.addInstructionsWithLabels(0, "const-string v0, \"$string\"\nreturn-void")
+            return ImmutableMethod.of(method)
+        }
+
+        fun useCase(owner: String, variant: String, static: Boolean, marked: Boolean = true, footerKey: Boolean = true): ClassDef {
             val flags = AccessFlags.PRIVATE.value or AccessFlags.FINAL.value or (if (static) AccessFlags.STATIC.value else 0)
             val method = MutableMethod(
                 ImmutableMethod(
@@ -201,18 +249,32 @@ class ReelsInterestControlTest {
                 ),
             )
             // A static method has no this: its parameters are p0 and p1.
-            val code = if (static) smali(variant).replace("p1", "p0").replace("p2", "p1") else smali(variant)
+            val code = if (static) smali(variant, marked).replace("p1", "p0").replace("p2", "p1") else smali(variant, marked)
             method.addInstructionsWithLabels(0, code)
+            // The footer's render, loading its component key.
+            val render = if (marked || !footerKey) emptyList() else listOf(loading(owner, "A0p", REELS_FOOTER_KEY))
             return ImmutableClassDef(
                 owner, AccessFlags.PUBLIC.value or AccessFlags.FINAL.value, OBJECT, null, null, null, null,
-                listOf(ImmutableMethod.of(method)),
+                listOf(ImmutableMethod.of(method)) + render,
             )
         }
 
-        fun classes(leaveOut: Boolean = false, second: Boolean = false, static: Boolean = false, variant: String = "ok"): List<ClassDef> {
-            val found = if (leaveOut) emptyList() else listOf(useCase(USE_CASE, variant, static))
+        fun classes(
+            leaveOut: Boolean = false,
+            second: Boolean = false,
+            static: Boolean = false,
+            variant: String = "ok",
+            marked: Boolean = true,
+            footerKey: Boolean = true,
+            controlsLayout: Boolean = true,
+        ): List<ClassDef> {
+            val found = if (leaveOut) emptyList() else listOf(useCase(USE_CASE, variant, static, marked, footerKey))
             val other = if (second) listOf(useCase("Lfixture/OtherFooterUseCase;", "ok", false)) else emptyList()
-            return found + other + listOf(
+            val component = ImmutableClassDef(
+                COMPONENT, AccessFlags.PUBLIC.value, OBJECT, null, null, null, null,
+                listOf(loading(COMPONENT, "A0p", if (controlsLayout) REELS_CONTROLS_LAYOUT else "one_button")),
+            )
+            return found + other + component + listOf(
                 ImmutableClassDef("Lfixture/Unrelated;", AccessFlags.PUBLIC.value, OBJECT, null, null, null, null, emptyList()),
             )
         }

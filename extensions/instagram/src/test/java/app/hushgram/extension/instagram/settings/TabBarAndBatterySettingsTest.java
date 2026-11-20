@@ -84,6 +84,7 @@ public class TabBarAndBatterySettingsTest {
         Settings.GLASS_TAB_BAR_SLIDE.resetToDefault();
         Settings.GLASS_TAB_BAR_LIQUID.resetToDefault();
         Settings.GLASS_TAB_BAR_KEEP_SIZE.resetToDefault();
+        Settings.GLASS_TAB_BAR_HOLD_LENS.resetToDefault();
         Settings.GLASS_TAB_BAR_REFRACT.resetToDefault();
         Settings.GLASS_TAB_BAR_BLUR.resetToDefault();
         Settings.GLASS_TAB_BAR_HAPTIC_STYLE.resetToDefault();
@@ -100,6 +101,8 @@ public class TabBarAndBatterySettingsTest {
         Settings.GLASS_TAB_BAR_FLOAT.resetToDefault();
         Settings.SAVED_ON_PROFILE.resetToDefault();
         Settings.SAVED_FAST_SCROLL.resetToDefault();
+        Settings.HIDE_SAVED_NEW_COLLECTION.resetToDefault();
+        PatchFamily.savedNewCollectionForTests = null;
         Settings.STOP_HEARTBEAT.resetToDefault();
         Settings.STOP_UPLOAD_ALARM.resetToDefault();
         Settings.STOP_BACKGROUND_FETCH.resetToDefault();
@@ -122,7 +125,7 @@ public class TabBarAndBatterySettingsTest {
     @Test public void withoutThePatchesNoneOfTheirRowsShow() throws Exception {
         open();
         for (String key : List.of(Settings.GLASS_TAB_BAR.key, Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key, Settings.GLASS_TAB_BAR_OPACITY.key, Settings.GLASS_TAB_BAR_HEIGHT.key,
-                Settings.GLASS_TAB_BAR_CORNERS.key, Settings.GLASS_TAB_BAR_LIFT.key, Settings.GLASS_TAB_BAR_BLUR_RADIUS.key, Settings.GLASS_TAB_BAR_REELS_HIDE.key, Settings.SAVED_ON_PROFILE.key, Settings.SAVED_FAST_SCROLL.key, Settings.STOP_HEARTBEAT.key,
+                Settings.GLASS_TAB_BAR_CORNERS.key, Settings.GLASS_TAB_BAR_LIFT.key, Settings.GLASS_TAB_BAR_BLUR_RADIUS.key, Settings.GLASS_TAB_BAR_REELS_HIDE.key, Settings.SAVED_ON_PROFILE.key, Settings.SAVED_FAST_SCROLL.key, Settings.HIDE_SAVED_NEW_COLLECTION.key, Settings.STOP_HEARTBEAT.key,
                 Settings.STOP_UPLOAD_ALARM.key, Settings.STOP_BACKGROUND_FETCH.key, Settings.GLASS_TAB_BAR_HAPTIC_STRENGTH.key,
                 Settings.GLASS_TAB_BAR_TAP_SOUND.key, Settings.GLASS_TAB_BAR_TAP_SOUND_VOLUME.key)) {
             assertNull(key, row(key));
@@ -139,12 +142,14 @@ public class TabBarAndBatterySettingsTest {
         assertTrue(Settings.GLASS_TAB_BAR.rebootApp);
         assertEquals(Arrays.asList(Settings.GLASS_TAB_BAR, Settings.GLASS_TAB_BAR_BLUR, Settings.GLASS_TAB_BAR_FLOAT,
                 Settings.GLASS_TAB_BAR_HAPTICS, Settings.GLASS_TAB_BAR_HIDE_ON_SCROLL, Settings.GLASS_TAB_BAR_SLIDE,
-                Settings.GLASS_TAB_BAR_LIQUID, Settings.GLASS_TAB_BAR_KEEP_SIZE, Settings.GLASS_TAB_BAR_SHRINK_ON_SCROLL,
+                Settings.GLASS_TAB_BAR_LIQUID, Settings.GLASS_TAB_BAR_KEEP_SIZE, Settings.GLASS_TAB_BAR_HOLD_LENS,
+                Settings.GLASS_TAB_BAR_SHRINK_ON_SCROLL, Settings.GLASS_TAB_BAR_MATERIAL,
                 Settings.GLASS_TAB_BAR_REFRACT, Settings.GLASS_TAB_BAR_REELS_BEHIND, Settings.GLASS_TAB_BAR_TAP_SOUND),
                 PatchFamily.GLASS_TAB_BAR.switches);
         for (String key : List.of(Settings.GLASS_TAB_BAR_BLUR.key, Settings.GLASS_TAB_BAR_HAPTICS.key, Settings.GLASS_TAB_BAR_FLOAT.key,
                 Settings.GLASS_TAB_BAR_HIDE_ON_SCROLL.key, Settings.GLASS_TAB_BAR_SLIDE.key, Settings.GLASS_TAB_BAR_LIQUID.key,
-                Settings.GLASS_TAB_BAR_KEEP_SIZE.key, Settings.GLASS_TAB_BAR_SHRINK_ON_SCROLL.key, Settings.GLASS_TAB_BAR_REFRACT.key)) {
+                Settings.GLASS_TAB_BAR_KEEP_SIZE.key, Settings.GLASS_TAB_BAR_SHRINK_ON_SCROLL.key, Settings.GLASS_TAB_BAR_MATERIAL.key,
+                Settings.GLASS_TAB_BAR_REFRACT.key)) {
             assertNotNull(key, row(key));
         }
 
@@ -592,6 +597,41 @@ public class TabBarAndBatterySettingsTest {
     }
 
     /**
+     * #705: Glass lens under your finger is a switch right after Keep the pill full size, off to start, offered
+     * only with the liquid look on, since only its bubble has a lens, backed up, and read as the bar is built.
+     */
+    @Test public void glassLensUnderYourFingerSitsUnderTheLiquidLookAndStartsOff() throws Exception {
+        open(PatchFamily.GLASS_TAB_BAR);
+        SwitchPreference lens = (SwitchPreference) row(Settings.GLASS_TAB_BAR_HOLD_LENS.key);
+        assertNotNull(lens);
+        assertEquals("Glass lens under your finger", String.valueOf(lens.getTitle()));
+        assertEquals("Hold a finger on the liquid pill's bubble, or slide it across the tabs, and the bubble swells "
+                + "and bends what's behind it harder, like glass under a fingertip. It eases back when you let go. "
+                + "The bend needs Blur behind the tab bar and Android 13 or newer. Restart Instagram after changing it. "
+                + "Can slow down older phones.", String.valueOf(lens.getSummary()));
+        assertFalse(lens.isChecked());
+        assertFalse(Settings.GLASS_TAB_BAR_HOLD_LENS.defaultValue);
+        assertTrue(Settings.GLASS_TAB_BAR_HOLD_LENS.rebootApp);
+        PreferenceGroup section = sectionOf(page.getPreferenceScreen(), lens);
+        int keepAt = -1;
+        int lensAt = -1;
+        for (int i = 0; i < section.getPreferenceCount(); i++) {
+            String key = section.getPreference(i).getKey();
+            if (Settings.GLASS_TAB_BAR_KEEP_SIZE.key.equals(key)) keepAt = i;
+            if (Settings.GLASS_TAB_BAR_HOLD_LENS.key.equals(key)) lensAt = i;
+        }
+        assertTrue(keepAt >= 0);
+        assertEquals("right after Keep the pill full size", keepAt + 1, lensAt);
+        assertTrue(ConfigurationBackup.eligible().containsKey(Settings.GLASS_TAB_BAR_HOLD_LENS.key));
+
+        assertFalse("no glass bar, no bubble", Settings.GLASS_TAB_BAR_HOLD_LENS.isAvailable());
+        Settings.GLASS_TAB_BAR.save(true);
+        assertFalse("the standard pill has no bubble to grow", Settings.GLASS_TAB_BAR_HOLD_LENS.isAvailable());
+        Settings.GLASS_TAB_BAR_LIQUID.save(true);
+        assertTrue(Settings.GLASS_TAB_BAR_HOLD_LENS.isAvailable());
+    }
+
+    /**
      * Bend light at the edges (#369) is a switch right after the liquid look, off to start, offered
      * while the pill is blurred, liquid or not (#391), backed up, and read as the bar is built, so it
      * asks for a restart.
@@ -728,6 +768,30 @@ public class TabBarAndBatterySettingsTest {
         assertEquals(saved.getOrder() + 1, fast.getOrder());
         assertFalse(fast.isChecked());
         assertFalse(Settings.SAVED_FAST_SCROLL.rebootApp);
+    }
+
+    /** Hiding the + sits right under the fast scroll, starts off, and works without a restart (#762). */
+    @Test public void hideTheNewCollectionButtonStartsOffUnderTheFastScroll() throws Exception {
+        open(PatchFamily.SAVED_ON_PROFILE);
+        SwitchPreference fast = (SwitchPreference) row(Settings.SAVED_FAST_SCROLL.key);
+        SwitchPreference plus = (SwitchPreference) row(Settings.HIDE_SAVED_NEW_COLLECTION.key);
+        assertNotNull(plus);
+        assertEquals("Hide the New collection button", String.valueOf(plus.getTitle()));
+        assertEquals("Takes the + for a new collection off the top of Saved. Your collections stay.",
+                String.valueOf(plus.getSummary()));
+        assertSame(sectionOf(page.getPreferenceScreen(), fast), sectionOf(page.getPreferenceScreen(), plus));
+        assertEquals(fast.getOrder() + 1, plus.getOrder());
+        assertFalse(plus.isChecked());
+        assertFalse(Settings.HIDE_SAVED_NEW_COLLECTION.rebootApp);
+    }
+
+    /** A build where neither Saved screen's top bar matched keeps the bookmark and fast scroll, without the + switch. */
+    @Test public void withoutTheTopBarHookTheNewCollectionSwitchIsLeftOut() throws Exception {
+        PatchFamily.savedNewCollectionForTests = false;
+        open(PatchFamily.SAVED_ON_PROFILE);
+        assertNotNull(row(Settings.SAVED_ON_PROFILE.key));
+        assertNotNull(row(Settings.SAVED_FAST_SCROLL.key));
+        assertNull(row(Settings.HIDE_SAVED_NEW_COLLECTION.key));
     }
 
     @Test public void batteryHoldsAllThreeWakeUpSwitchesAndAllStartOff() throws Exception {
