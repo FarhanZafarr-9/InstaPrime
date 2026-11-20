@@ -7,10 +7,15 @@ import app.morphe.patches.instagram.FixtureDex
 import app.morphe.patches.instagram.misc.extension.EXTENSION_PACKAGE
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.iface.ClassDef
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.TypeReference
+import com.android.tools.smali.dexlib2.immutable.ImmutableClassDef
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -20,21 +25,33 @@ class NativePopupPresentationTest {
     @Test fun scopedPresentationAndEveryPopulationRoute() {
         val path = System.getenv("HUSHGRAM_GESTURE_APK")
         assumeTrue("HUSHGRAM_GESTURE_APK is unset", !path.isNullOrBlank())
-        // Original 454 fixture: presenters, shared gate and renderer only.
-        val classes = FixtureDex.classes(File(path!!), setOf("LX/0GKB;", "LX/0Gjr;", "LX/0NSr;", "LX/0Iof;", "LX/0LJp;", "LX/01SB;", "LX/01SD;", "LX/0hgO;", "LX/0Om0;", "LX/0I3u;")).values
+        val classes = popupSlice(File(path!!))
         val context = PatchContexts.of(classes)
         val plan = context.nativePopupPlan()
         assertEquals(3, plan.choices.size)
-        val inbox = plan.choices.single { it.method.definingClass == "LX/01SB;" }
+        val inbox = plan.choices.single { it.method == plan.inbox }
+        val gateMethod = classes.flatMap { it.methods }.single { method ->
+            method.returnType == "Z" && method.parameterTypes.map(Any::toString) ==
+                listOf("Lcom/instagram/common/session/UserSession;") && method.implementation?.instructions?.any {
+                (it as? WideLiteralInstruction)?.wideLiteral == 36329998780490487L
+            } == true
+        }
+        val gateType = gateMethod.definingClass
         val nativeGateReads = inbox.method.implementation!!.instructions.count {
             ((it as? ReferenceInstruction)?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference)
-                ?.definingClass == "LX/0Om0;"
+                ?.toString() == gateMethod.toString()
         }
         assertTrue("inbox has a native presentation gate", nativeGateReads > 0)
         assertEquals("every native inbox gate chooses popups", nativeGateReads, inbox.results.size)
         assertTrue(inbox.results.values.all { it })
-        assertEquals(4, plan.populations.size)
-        val gate = classes.single { it.type == "LX/0Om0;" }.methods.associate { it.toString() to it.code() }
+        assertTrue("all native population variants are checked", plan.populations.size >= 2)
+        val gate = classes.single { it.type == gateType }.methods.associate { it.toString() to it.code() }
+        val factory = plan.inbox.implementation!!.instructions.mapNotNull {
+            (it as? ReferenceInstruction)?.reference as? MethodReference
+        }.single { call -> call.parameterTypes.take(2).map(Any::toString) == listOf("Landroid/view/View;", "Landroid/view/View;") &&
+            classes.singleOrNull { it.type == call.definingClass }?.methods?.any { method ->
+                method.toString() == call.toString() && method.code().any { it.contains("->getLocationOnScreen(") }
+            } == true }
         context.applyNativePopupPlan(plan)
         val positioned = globalMutableClassDefBy(plan.primaryX.definingClass).methods.single { it.toString() == plan.primaryX.toString() }
         assertEquals(plan.primaryX.implementation!!.registerCount, positioned.implementation!!.registerCount)
@@ -42,10 +59,10 @@ class NativePopupPresentationTest {
             positioned.implementation!!.instructions.count {
                 ((it as? ReferenceInstruction)?.reference?.toString())?.endsWith("MessageMenuPosition;->primaryX(I)I") == true
             })
-        val popupBridge = globalMutableClassDefBy("LX/01SD;").methods.single { it.name == "instaprimeInboxPopup" }
+        val popupBridge = globalMutableClassDefBy(factory.definingClass).methods.single { it.name == "instaprimeInboxPopup" }
         assertTrue(popupBridge.code().any { it.contains("InboxPopup;->show(Landroid/view/View;Landroid/view/View;)Z") })
         assertTrue("original overlay remains available as fallback", popupBridge.code().any {
-            it.contains("LX/01SD;->A00(")
+            it.endsWith(":$factory")
         })
         val primary = globalMutableClassDefBy(plan.primary.definingClass).methods.single { it.name == plan.primary.name }
         assertEquals(1, primary.implementation!!.instructions.count {
@@ -81,8 +98,8 @@ class NativePopupPresentationTest {
                         val opcode = if (instruction.opcode == Opcode.INVOKE_VIRTUAL_RANGE) Opcode.INVOKE_STATIC_RANGE else Opcode.INVOKE_STATIC
                         "$opcode:$EXTENSION_PACKAGE/direct/MessageMenuPosition;->showMore(Landroid/widget/PopupWindow;Landroid/view/View;III)V"
                     }
-                    choice.method == plan.inbox && reference?.toString()?.startsWith("LX/01SD;->A00(") == true ->
-                        "${instruction.semanticOpcode()}:${reference.toString().replace("->A00(", "->instaprimeInboxPopup(")}"
+                    choice.method == plan.inbox && reference?.toString() == factory.toString() ->
+                        "${instruction.semanticOpcode()}:${reference.toString().replace("->${factory.name}(", "->instaprimeInboxPopup(")}"
                     else -> "${instruction.semanticOpcode()}:$reference"
                 }
             }
@@ -96,7 +113,7 @@ class NativePopupPresentationTest {
                     (instruction as OneRegisterInstruction).registerA)
             }
         }
-        for (method in globalMutableClassDefBy("LX/0Om0;").methods) assertEquals(gate[method.toString()], method.code())
+        for (method in globalMutableClassDefBy(gateType).methods) assertEquals(gate[method.toString()], method.code())
         for (original in plan.populations) {
             val method = globalMutableClassDefBy(original.definingClass).methods.single { it.toString() == original.toString() }
             assertEquals(original.implementation!!.registerCount, method.implementation!!.registerCount)
@@ -106,6 +123,48 @@ class NativePopupPresentationTest {
     }
 
     private fun Method.code() = implementation?.instructions?.map { "${it.opcode}:${(it as? ReferenceInstruction)?.reference}" }.orEmpty()
+
+    /** Semantic anchors survive Redex renaming between supported Instagram versions. */
+    private fun popupSlice(apk: File): Collection<ClassDef> {
+        val flags = setOf(36329998780490487L, 36322151875231018L)
+        val kept = FixtureDex.classesLoadingAny(apk, setOf("DirectInboxThreadDialogController",
+            "MessageActionsHelper", "reactionsCreationController must be initialized")) { owner ->
+            owner.superclass == "Landroid/widget/PopupWindow;" || owner.methods.any { method ->
+                method.implementation?.instructions?.any { (it as? WideLiteralInstruction)?.wideLiteral in flags } == true
+            }
+        }.associateBy { it.type }.toMutableMap()
+        val renderer = kept.values.single { it.superclass == "Landroid/widget/PopupWindow;" && it.methods.any { method ->
+            method.name == "<init>" && method.parameterTypes.map(Any::toString) == listOf("Landroid/content/Context;",
+                "Lcom/instagram/common/session/UserSession;", "Ljava/lang/Integer;", "Z")
+        } }.type
+        val presenters = kept.values.filter { owner -> owner.methods.any { method ->
+            method.name == "onViewCreated" && method.implementation?.instructions?.any {
+                ((it as? ReferenceInstruction)?.reference as? MethodReference)?.definingClass == renderer
+            } == true
+        } }
+        val created = presenters.flatMap { it.methods }.flatMap { method ->
+            method.implementation?.instructions?.filter { it.opcode == Opcode.NEW_INSTANCE }?.mapNotNull {
+                ((it as? ReferenceInstruction)?.reference as? TypeReference)?.type
+            }.orEmpty()
+        }.toSet()
+        val parents = mutableSetOf<String>()
+        FixtureDex.forEach(apk) { dex -> for (owner in dex.classes) {
+            if (owner.type in created && owner.fields.any { it.type == renderer }) {
+                kept[owner.type] = ImmutableClassDef.of(owner)
+                owner.superclass?.let(parents::add)
+            }
+        } }
+        val factories = kept.values.flatMap { it.methods }.filter {
+            "Lcom/instagram/model/direct/DirectThreadKey;" in it.parameterTypes.map(Any::toString)
+        }.flatMap { method -> method.implementation?.instructions?.mapNotNull {
+            ((it as? ReferenceInstruction)?.reference as? MethodReference)?.takeIf { call ->
+                call.parameterTypes.take(2).map(Any::toString) == listOf("Landroid/view/View;", "Landroid/view/View;") &&
+                    call.returnType.startsWith("L")
+            }
+        }.orEmpty() }.flatMap { listOf(it.definingClass, it.returnType) }.toSet()
+        kept.putAll(FixtureDex.classes(apk, parents + factories))
+        return kept.values
+    }
 
     private fun Instruction.semanticOpcode() = when (opcode) {
         Opcode.GOTO_16, Opcode.GOTO_32 -> Opcode.GOTO

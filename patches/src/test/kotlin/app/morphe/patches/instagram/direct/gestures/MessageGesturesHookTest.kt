@@ -157,14 +157,14 @@ class MessageGesturesHookTest {
             .filter { it.code().any { ins -> reference(ins) == "double_tap" } }
             .flatMap { it.parameterTypes.map(Any::toString) } }.filter { it.startsWith("LX/") }
         kept += FixtureDex.classes(bundle, (dependencies + messageTypes).filter { type -> kept.none { it.type == type } }.toSet()).values
-        val interfaces = kept.filter { owner -> owner.methods.any { it.name == "GQe" } &&
+        val interfaces = kept.filter { owner -> owner.methods.any { it.parameterTypes.isEmpty() && it.returnType == "V" } &&
             owner.methods.any { it.parameterTypes.map(Any::toString) == listOf("F", "F") } }.flatMap { it.interfaces }.toSet()
         FixtureDex.forEach(bundle) { dex -> for (owner in dex.classes) {
             if (kept.any { it.type == owner.type }) continue
             val timing = owner.fields.any { it.type in interfaces } || owner.methods.any { method -> method.code().any { ins ->
                 val call = (ins as? ReferenceInstruction)?.reference as? MethodReference
                 call?.definingClass == "Landroidx/compose/foundation/gestures/TapGestureDetectorKt;" ||
-                    (call?.definingClass in interfaces && call?.name == "GQe")
+                    (call?.definingClass in interfaces && call?.returnType == "V" && call.parameterTypes.isEmpty())
             } }
             if (timing) kept += ImmutableClassDef.of(owner)
         } }
