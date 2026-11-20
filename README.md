@@ -18,7 +18,7 @@ My contributions include the settings interface rework, chat popup styling and s
 
 I started this out of personal interest in interface design. It is not a critique of HushGram's original UI: everyone has their own preferences and likes different interfaces. I wanted to try a layout that suits mine, and I am sharing it for anyone who likes the same approach.
 
-The development checkout integrates HushGram 0.0.20 and subsequent main-branch changes. The published InstaPrime release remains v0.0.19 until a new bundle is validated and released. Add the InstaPrime source in Morphe to patch and install a supported Instagram build.
+InstaPrime 0.0.21 includes 196 patches for Instagram 456.0.0.53.78 and integrates the latest HushGram parent changes. Add the InstaPrime source in Morphe to patch and install the supported Instagram build.
 
 ## Updates and maintenance
 
@@ -87,17 +87,16 @@ The screenshot files are kept in [docs/screenshots/settings](docs/screenshots/se
 
 ## Patches and compatibility
 
-This checkout integrates upstream HushGram **0.0.20** and subsequent main-branch changes for Instagram. Features such as ad hiding, privacy controls, downloads, playback controls, and tab bar customization are inherited from upstream.
+This checkout integrates upstream HushGram **0.0.21** and subsequent main-branch changes for Instagram. Features such as ad hiding, privacy controls, downloads, playback controls, and tab bar customization are inherited from upstream.
 
 | Item | Inherited compatibility target |
 | --- | --- |
 | Android | Android 9 / API 28 or newer |
 | Instagram package | `com.instagram.android` |
-| Instagram version | `454.0.0.54.77` |
-| arm64-v8a build | `386014758` |
-| armeabi-v7a build | `386014757` |
-| x86 build | `386014759` |
-| x86_64 build | `386014760` |
+| Instagram version | `456.0.0.53.78` |
+| arm64-v8a build | `386214574` |
+| armeabi-v7a build | `386214562` |
+| x86 build | `386214575` |
 | Morphe Manager | `2.5.0` or newer |
 
 I inherited these compatibility targets from upstream; I have not independently repeated every upstream device test. See the [upstream guide](docs/upstream/README.md#supported-instagram-builds) and [upstream changelog](CHANGELOG.md) for the original feature and compatibility history. The changelog records HushGram's work; my changes are listed above.
@@ -320,7 +319,7 @@ The original HushGram releases and patch source remain available from [SysAdminD
 
 ## Development branch compatibility
 
-The current source targets Instagram **456.0.0.53.78** and includes the latest parent changes. The published InstaPrime **0.0.20** bundle remains for **454.0.0.54.77**; this merge does not publish a new bundle.
+The published [InstaPrime 0.0.21 release](https://github.com/FarhanZafarr-9/InstaPrime/releases/tag/v0.0.21%2Binstaprime.1) targets Instagram **456.0.0.53.78** and includes the latest parent changes. Release assets include the MPP, SBOM, build information and SHA-256 checksums. Focused native and UI checks passed with two native cases skipped; a full device walkthrough and full upstream gate were not performed.
 
 ## Build from source
 
