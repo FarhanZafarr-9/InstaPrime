@@ -96,7 +96,12 @@ public final class InboxHeaderButtons {
             }
             reserveSpace(view, icon, !hideCompose);
             if (hideCompose) {
-                if (!hidden || view.getVisibility() != View.GONE) visibility = view.getVisibility();
+                if (!hidden || view.getVisibility() != View.GONE) {
+                    visibility = view.getVisibility();
+                    // The parent's New message binder may already hide this same button.
+                    // Both controls share a setting, so unchecking it must restore the button.
+                    if (!hidden && visibility == View.GONE) visibility = View.VISIBLE;
+                }
                 hidden = true;
                 if (view.getVisibility() != View.GONE) view.setVisibility(View.GONE);
             } else if (hidden) {

@@ -21,6 +21,28 @@ import static org.junit.Assert.*;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = {28, 37})
 public class InboxHeaderButtonsTest {
+    @Test public void nativeHideAndComposeHideShareOneSettingAndRestoreTogether() {
+        assertSame(Settings.HIDE_DM_COMPOSE_BUTTON, Settings.HIDE_NEW_MESSAGE_BUTTON);
+        try (var host = Robolectric.buildActivity(Activity.class).setup().visible()) {
+            LinearLayout row = new LinearLayout(host.get());
+            ImageView compose = new ImageView(host.get());
+            row.addView(compose, new LinearLayout.LayoutParams(48, 48));
+            host.get().setContentView(row);
+            Object action = new Object();
+            InboxHeaderButtons.mark(action);
+            Settings.SETTINGS_BUTTON_IN_DM_HEADER.save(true);
+            Settings.HIDE_NEW_MESSAGE_BUTTON.save(true);
+            compose.setVisibility(View.GONE);
+            InboxHeaderButtons.bind(compose, action);
+            ShadowLooper.idleMainLooper();
+            assertEquals(2, row.getChildCount());
+            assertEquals(View.VISIBLE, row.getChildAt(0).getVisibility());
+            Settings.HIDE_NEW_MESSAGE_BUTTON.save(false);
+            compose.getViewTreeObserver().dispatchOnPreDraw();
+            assertEquals(View.VISIBLE, compose.getVisibility());
+        }
+    }
+
     @Rule public final SettingsContextRule settings = new SettingsContextRule();
     @Before public void ready() {
         BaseSettings.PAUSED.save(false);
