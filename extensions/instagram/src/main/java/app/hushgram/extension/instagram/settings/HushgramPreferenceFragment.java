@@ -1887,11 +1887,6 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
         return allowMutation(row, false);
     }
 
-    /** Read-only policy for the final worker transaction, after every provider stream closed. */
-    static boolean viewingHistoryChangeAllowed(Preference row) { return allowMutation(row, false); }
-
-    static boolean savedProfilesChangeAllowed(Preference row) { return allowMutation(row, false); }
-
     private static boolean asyncChangesAllowed() {
         return !SettingsLock.locked() && !MessagesLock.locked();
     }

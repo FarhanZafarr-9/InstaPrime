@@ -105,7 +105,7 @@ public final class CallButtons {
             if (hide) {
                 view.setVisibility(View.GONE);
                 hidden.put(view, Boolean.TRUE);
-                HookStatus.counted(FamilyNames.ASK_BEFORE_CALL, call ? HIDDEN : BLEND_HIDDEN);
+                HookStatus.counted(FamilyNames.ASK_BEFORE_CALL, CALL_KINDS.contains(kind) ? HIDDEN : BLEND_HIDDEN);
             } else if (hidden.remove(view) != null) {
                 view.setVisibility(View.VISIBLE);
             }
