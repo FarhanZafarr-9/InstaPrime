@@ -1115,7 +1115,8 @@ public class ChatPagerTest {
 
         assertTrue(ours.performClick());
         PopupMenu popup = ChatPopupMenu.latestForTests();
-        assertEquals(1, popup.getMenu().size());
+        assertEquals(2, popup.getMenu().size());
+        assertEquals("Export chat", popup.getMenu().getItem(0).getTitle().toString());
         Shadows.shadowOf(popup).getOnMenuItemClickListener().onMenuItemClick(popup.getMenu().getItem(0));
         ShadowLooper.idleMainLooper();
 
