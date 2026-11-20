@@ -24,7 +24,7 @@ import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.ClassDef
 import com.android.tools.smali.dexlib2.iface.Method
 import app.morphe.patches.instagram.misc.settings.MERGED_LOGO_BAR
-import app.morphe.patches.instagram.misc.extension.classesLoadingString
+import app.morphe.patcher.patch.mutableClassDefBy as globalMutableClassDefBy
 import app.morphe.patches.instagram.reels.tab.MAIN_FEED_ACTION_BAR
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
@@ -57,44 +57,64 @@ import javax.xml.parsers.DocumentBuilderFactory
  * theme util has styled a context.
  */
 class AccentThemeTest {
-    /** Run against any candidate base APK to see which screen or modifier changed. */
+    /** Release APKs may strip every Compose trace label; UI tags and native call shapes must suffice. */
     @Test
+    @Suppress("DEPRECATION") // Shared discovery helpers still take the legacy context.
     fun suppliedApkKeepsInboxAndActivityRowHooks() {
         val path = System.getenv("HUSHGRAM_ROW_FIXTURE_APK")
         assumeTrue("Set HUSHGRAM_ROW_FIXTURE_APK to the original Instagram APK to check row hooks.", !path.isNullOrBlank())
         val apk = File(path!!)
-        assertTrue("Row fixture must be a readable base APK or APKS: $apk",
-            apk.isFile && apk.canRead() && apk.extension in setOf("apk", "apks"))
+        assertTrue("Row fixture must be readable: $apk", apk.isFile && apk.canRead())
         val classes = mutableListOf<ClassDef>()
         FixtureDex.forEach(apk) { dex -> classes.addAll(dex.classes) }
         assertTrue("${apk.name}: no DEX classes found", classes.isNotEmpty())
         val context = PatchContexts.of(classes)
-        val labels = threadRows + inboxPromptRow + activityRowContent
-        val owners = labels.associateWith { label -> context.classesLoadingString(label).map { it.type } }
-        val activityFeedOwners = context.classesLoadingString(activityFeedContent).map { it.type }
-
+        val threads = context.inboxRenderers()
+        assertEquals("Both inbox row layouts must be found", 2, threads.size)
+        val background = threads.flatMap { row -> row.code().mapNotNull { it.backgroundModifier() } }
+            .distinctBy { it.toString() }.single()
+        val activity = context.activityRowRenderer(background)
+            ?: throw AssertionError("Activity row renderer missing")
+        val feed = context.rowRenderers("activity_feed_list").single { it.returnType == "V" }
+        // Native click helpers remain unchanged; only copies used by the two inbox rows get our indication.
+        val clickCalls = threads.flatMap { it.code() }.mapNotNull {
+            ((it as? ReferenceInstruction)?.reference as? MethodReference)?.takeIf { ref ->
+                ref.returnType == background.returnType && ref.parameterTypes.any { arg ->
+                    arg.toString() == "Lkotlin/jvm/functions/Function0;"
+                }
+            }
+        }.distinctBy { it.toString() }
+        val nativeBodies = clickCalls.associate { ref ->
+            ref.toString() to globalMutableClassDefBy(ref.definingClass).methods.single { it.toString() == ref.toString() }
+                .code().map { it.toString() }
+        }
         context.tintInboxRowPresses()
         context.tintInboxRowBackgrounds()
-        val report = labels.mapIndexed { index, label ->
-            val types = owners.getValue(label)
-            val code = types.flatMap { type -> context.mutableClassDefBy(type).methods.flatMap { it.code() } }
-            val fills = code.count { it.callsNamed(ACCENT_THEME, "inboxRowBackground") }
-            val presses = code.count {
-                ((it as? ReferenceInstruction)?.reference as? MethodReference)?.name == "instaprimeInboxClickable"
+        val report = (threads + activity).map { original ->
+            val method = globalMutableClassDefBy(original.definingClass).methods.single { it.toString() == original.toString() }
+            val fills = method.code().count { it.callsNamed(ACCENT_THEME, "inboxRowBackground") }
+            val presses = method.code().count {
+                val ref = (it as? ReferenceInstruction)?.reference as? MethodReference
+                ref?.name in setOf("instaprimeInboxClickable", "instaprimeInboxClickDelegate")
             }
-            val needsPress = index < threadRows.size
-            (fills > 0 && (!needsPress || presses == 1)) to
-                "$label: owners=${types.ifEmpty { listOf("none") }}, fills=$fills, presses=$presses"
+            assertEquals("$original must retain exactly one scoped fill", 1, fills)
+            if (original in threads) assertEquals("$original must retain its press hook", 1, presses)
+            "$original: fills=$fills, presses=$presses"
         }
-        val feed = activityFeedOwners.flatMap { type -> context.mutableClassDefBy(type).methods.flatMap { it.code() } }
-        val viewport = feed.count { it.callsNamed(ACCENT_THEME, "activityFeedBackground") }
-        val summary = report.joinToString("\n") { it.second } +
-            "\n$activityFeedContent: owners=${activityFeedOwners.ifEmpty { listOf("none") }}, viewport=$viewport"
-        println("${apk.name} row hooks:\n$summary")
-        assertTrue("${apk.name}: row coverage changed. Thread rows need one press hook and every row needs a fill hook.\n$summary",
-            report.all { it.first } && viewport == 1)
+        for (ref in clickCalls) {
+            val native = globalMutableClassDefBy(ref.definingClass).methods.single { it.toString() == ref.toString() }
+            assertEquals("Shared native click helper must remain untouched: $ref", nativeBodies.getValue(ref.toString()),
+                native.code().map { it.toString() })
+        }
+        val feedOwner = globalMutableClassDefBy(feed.definingClass)
+        val bridge = feedOwner.methods.single { it.name == "instaprimeActivityListBackground" }
+        assertEquals(1, bridge.code().count { it.callsNamed(ACCENT_THEME, "activityFeedBackground") })
+        val patchedFeed = feedOwner.methods.single { it.toString() == feed.toString() }
+        assertEquals(1, patchedFeed.code().count { it.callsNamed(feed.definingClass, bridge.name) })
+        assertTrue("456's explicit native shape must be retained",
+            background.parameterTypes.size != 3 || bridge.code().any { it.opcode == Opcode.SGET_OBJECT })
+        println("${apk.name} row hooks:\n${report.joinToString("\n")}\nActivity viewport=1")
     }
-
     /** The patch's copies of AccentColor's blues and AccentHue's colors are the extension's own. */
     @Test
     fun theTablesAreTheExtensionsOwn() {

@@ -23,6 +23,7 @@ if (!(Test-Path -LiteralPath $Apk -PathType Leaf)) { throw "Original APK not fou
 Write-Host "Original Instagram fixture: $Apk"
 $env:HUSHGRAM_GESTURE_APK = (Resolve-Path -LiteralPath $Apk).Path
 $env:HUSHGRAM_MESSAGE_FIXTURE_APK = $env:HUSHGRAM_GESTURE_APK
+$env:HUSHGRAM_ROW_FIXTURE_APK = $env:HUSHGRAM_GESTURE_APK
 if (!$env:JAVA_HOME -and (Test-Path 'C:\Program Files\Java\jdk-21.0.5+11')) {
     $env:JAVA_HOME = 'C:\Program Files\Java\jdk-21.0.5+11'
 }
@@ -42,7 +43,8 @@ $gradleOptions = @('--max-workers=1')
 if ($Offline) { $gradleOptions += '--offline' }
 Invoke-GradleBuild -ProjectDir $repo -Tasks (@(':patches:test',
     '--tests', '*MessageGesturesHookTest', '--tests', '*ChatPlusMenuHookTest',
-    '--tests', '*NativeSnackbarHookTest', '--tests', '*NativePopupPresentationTest', '--tests', '*InboxHeaderButtonsHookTest') + $gradleOptions)
+    '--tests', '*NativeSnackbarHookTest', '--tests', '*NativePopupPresentationTest', '--tests', '*InboxHeaderButtonsHookTest',
+    '--tests', '*AccentThemeTest.suppliedApkKeepsInboxAndActivityRowHooks') + $gradleOptions)
 if ($LASTEXITCODE -ne 0) { throw 'Native hook checks failed; stopped before the MPP build.' }
 Invoke-GradleBuild -ProjectDir $repo -Tasks (@(':extensions:instagram:testDebugUnitTest',
     '--tests', '*ChatPopupMenuTest', '--tests', '*StyledPopupNativeTest',
