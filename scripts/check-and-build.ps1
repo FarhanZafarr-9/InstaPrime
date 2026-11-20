@@ -2,7 +2,8 @@
 [CmdletBinding()]
 param(
     [string]$Apk,
-    [switch]$Build
+    [switch]$Build,
+    [switch]$Offline
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
@@ -37,12 +38,13 @@ if (Test-Path -LiteralPath $credentials) {
     }
 }
 . (Join-Path $PSScriptRoot 'build-jobs.ps1')
-Invoke-GradleBuild -ProjectDir $repo -Tasks @(':patches:test',
+$gradleOptions = @('--max-workers=1')
+if ($Offline) { $gradleOptions += '--offline' }
+Invoke-GradleBuild -ProjectDir $repo -Tasks (@(':patches:test',
     '--tests', '*MessageGesturesHookTest', '--tests', '*ChatPlusMenuHookTest',
-    '--tests', '*NativeSnackbarHookTest', '--tests', '*NativePopupPresentationTest', '--tests', '*InboxHeaderButtonsHookTest',
-    '--max-workers=1', '--offline')
+    '--tests', '*NativeSnackbarHookTest', '--tests', '*NativePopupPresentationTest', '--tests', '*InboxHeaderButtonsHookTest') + $gradleOptions)
 if ($LASTEXITCODE -ne 0) { throw 'Native hook checks failed; stopped before the MPP build.' }
-Invoke-GradleBuild -ProjectDir $repo -Tasks @(':extensions:instagram:testDebugUnitTest',
+Invoke-GradleBuild -ProjectDir $repo -Tasks (@(':extensions:instagram:testDebugUnitTest',
     '--tests', '*ChatPopupMenuTest', '--tests', '*StyledPopupNativeTest',
     '--tests', '*NativeSnackbarTest', '--tests', '*ProfileStatusBarTest', '--tests', '*ScreenColorsAccessibilityTest',
     '--tests', '*InboxHeaderButtonsTest', '--tests', '*NewMessageButtonTest',
@@ -50,11 +52,10 @@ Invoke-GradleBuild -ProjectDir $repo -Tasks @(':extensions:instagram:testDebugUn
     '--tests', '*TabStartTest', '--tests', '*TabOrderTest', '--tests', '*HideHomeTabTest',
     '--tests', '*SavedProfilesSettingsTest', '--tests', '*ChatPagerTest',
     '--tests', '*ProfileExtrasTest', '--tests', '*ProfilePictureTest',
-    '--tests', '*MessageGesturesTest', '--tests', '*MessageActionsTest', '--tests', '*PlusMenuTest',
-    '--max-workers=1', '--offline')
+    '--tests', '*MessageGesturesTest', '--tests', '*MessageActionsTest', '--tests', '*PlusMenuTest') + $gradleOptions)
 if ($LASTEXITCODE -ne 0) { throw 'Popup/UI checks failed; stopped before the MPP build.' }
 if ($Build) {
-    Invoke-GradleBuild -ProjectDir $repo -Tasks @(':patches:buildAndroid', '--max-workers=1', '--offline')
+    Invoke-GradleBuild -ProjectDir $repo -Tasks (@(':patches:buildAndroid') + $gradleOptions)
     if ($LASTEXITCODE -ne 0) { throw 'MPP build failed.' }
     Write-Host 'MPP ready in patches\build\release.'
 }
