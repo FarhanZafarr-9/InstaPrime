@@ -50,7 +50,8 @@ class LaunchScreenPatchTest {
         assertEquals("@style/$INSTAGRAM_LAUNCH_THEME", added.getAttribute("parent"))
         assertEquals(
             listOf(SPLASH_ICON to "@drawable/$LAUNCH_MARK", SPLASH_BRANDING to "@null",
-                SPLASH_ICON_BACKGROUND to "@android:color/transparent"),
+                SPLASH_ICON_BACKGROUND to "@android:color/transparent",
+                SPLASH_BACKGROUND to SETTINGS_DARK_SPLASH_BACKGROUND),
             added.elements("item").map { it.getAttribute("name") to it.textContent },
         )
         assertEquals(

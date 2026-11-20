@@ -50,6 +50,9 @@ internal const val SPLASH_BRANDING = "android:windowSplashScreenBrandingImage"
 internal const val SPLASH_BACKGROUND = "android:windowSplashScreenBackground"
 internal const val SPLASH_ICON_BACKGROUND = "android:windowSplashScreenIconBackgroundColor"
 
+/** ScreenColors' dark page with its fallback wallpaper tones; available before app code runs. */
+internal const val SETTINGS_DARK_SPLASH_BACKGROUND = "#ff222029"
+
 /** The version of [LAUNCH_THEME] filled with one AccentHue's color, as LaunchScreen names it. */
 internal fun launchTheme(hue: String): String = "${LAUNCH_THEME}_$hue"
 
@@ -104,8 +107,8 @@ private fun Element.items(): List<Element> {
 
 /**
  * Adds [LAUNCH_THEME] to one decoded styles.xml: [INSTAGRAM_LAUNCH_THEME] with [LAUNCH_MARK] as the
- * launch screen's icon and no branding image, so "from Meta" goes too. Everything else, the
- * background color and its dark version among it, comes from Instagram's theme. Then one version of it
+ * launch screen's icon and no branding image, so "from Meta" goes too. The default background
+ * uses the settings page's fallback dark tone. Then one version of it
  * for each of [LAUNCH_FILLS], named by [launchTheme], with that color as the background in both
  * themes. Refuses unless Instagram's theme is there and none of these are.
  */
@@ -130,6 +133,7 @@ internal fun addLaunchTheme(styles: Document) {
     add(LAUNCH_THEME, "@style/$INSTAGRAM_LAUNCH_THEME", listOf(
         SPLASH_ICON to "@drawable/$LAUNCH_MARK", SPLASH_BRANDING to "@null",
         SPLASH_ICON_BACKGROUND to "@android:color/transparent",
+        SPLASH_BACKGROUND to SETTINGS_DARK_SPLASH_BACKGROUND,
     ))
     for ((hue, color) in LAUNCH_FILLS) add(launchTheme(hue), "@style/$LAUNCH_THEME", listOf(SPLASH_BACKGROUND to color))
 }
