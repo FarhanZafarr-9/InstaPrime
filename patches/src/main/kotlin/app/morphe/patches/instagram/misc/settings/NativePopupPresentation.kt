@@ -12,7 +12,6 @@ import app.morphe.patcher.patch.PatchException
 import app.morphe.patches.instagram.misc.extension.EXTENSION_PACKAGE
 import app.morphe.patches.instagram.misc.extension.classesCallingInto
 import app.morphe.patches.instagram.misc.extension.classesHolding
-import app.morphe.patches.instagram.misc.extension.classesLoading
 import app.morphe.patches.instagram.misc.extension.freeLocalsAt
 import app.morphe.patches.instagram.misc.extension.parameterRegisterNumber
 import app.morphe.patches.instagram.misc.extension.requireParameterIntact
@@ -31,40 +30,44 @@ import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 
-private const val POPUP_FLAG = 36329998780490487L
 private const val PROFILE_SHEET_FLAG = 36322151875231018L
 private const val WINDOW = "Landroid/widget/PopupWindow;"
 private const val SESSION = "Lcom/instagram/common/session/UserSession;"
 internal data class NativePopupChoice(val method: Method, val results: Map<Int, Boolean>)
 internal data class NativePopupPlan(val choices: List<NativePopupChoice>, val populations: List<Method>,
-    val primary: Method, val primaryAt: Int, val more: Method, val inbox: Method, val primaryX: Method)
+    val primary: Method, val primaryAt: Int, val more: Method, val inbox: Method, val primaryX: Method,
+    val gate: MethodReference)
 
 @Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.
 internal fun BytecodePatchContext.nativePopupPlan(): NativePopupPlan {
     fun refuse(why: String): Nothing = throw PatchException("Native popup presentation: $why")
-    val gate = classesLoading(POPUP_FLAG).flatMap { it.methods }.singleOrNull { method ->
-        method.returnType == "Z" && method.parameterTypes.map(Any::toString) == listOf(SESSION) &&
-            method.popupCode().any { (it as? WideLiteralInstruction)?.wideLiteral == POPUP_FLAG }
-    } ?: refuse("no unique shared native popup gate")
-    val profiles = classesLoading(PROFILE_SHEET_FLAG).flatMap { it.methods }.filter {
+    fun sessionGates(method: Method) = method.popupCode().mapNotNull { it.popupCall() }.filter {
+        it.returnType == "Z" && it.parameterTypes.map(Any::toString) == listOf(SESSION)
+    }.associateBy { it.toString() }
+    val moreCandidates = classesHolding("MessageActionsHelper").flatMap { it.methods }.filter { it.returnType == "V" }
+    val inboxCandidates = classesHolding("DirectInboxThreadDialogController").flatMap { it.methods }.filter {
+        it.returnType == "V" && "Lcom/instagram/model/direct/DirectThreadKey;" in it.parameterTypes.map(Any::toString)
+    }
+    val shared = moreCandidates.flatMap { more ->
+        val calls = sessionGates(more)
+        inboxCandidates.flatMap { inbox -> sessionGates(inbox).keys.intersect(calls.keys).map { gate ->
+            Triple(more, inbox, calls.getValue(gate))
+        } }
+    }.distinctBy { "${it.first}|${it.second}|${it.third}" }
+    val (more, inbox, gate) = shared.singleOrNull() ?: refuse("no unique shared native popup gate")
+    val profile = classesCallingInto(gate.definingClass).filter { owner -> owner.fields.any {
+        it.type == "Lcom/instagram/profile/fragment/UserDetailFragment;"
+    } }.flatMap { it.methods }.singleOrNull {
         it.returnType == "V" && it.parameterTypes.map(Any::toString) == listOf("Landroid/view/View;") &&
             it.popupCode().any { ins -> ins.popupCall()?.toString() == gate.toString() }
-    }
-    val profile = profiles.singleOrNull() ?: refuse("no unique profile presenter")
-    val more = classesHolding("MessageActionsHelper").flatMap { it.methods }.singleOrNull {
-        it.returnType == "V" && it.popupCode().any { ins -> ins.popupCall()?.toString() == gate.toString() }
-    } ?: refuse("no unique message More presenter")
-    val inbox = classesHolding("DirectInboxThreadDialogController").flatMap { it.methods }.singleOrNull {
-        it.returnType == "V" && "Lcom/instagram/model/direct/DirectThreadKey;" in it.parameterTypes.map(Any::toString) &&
-            it.popupCode().any { ins -> ins.popupCall()?.toString() == gate.toString() }
-    } ?: refuse("no unique inbox chat-hold presenter")
+    } ?: refuse("no unique profile presenter")
     val choices = listOf(profile, more, inbox).map { method ->
         val code = method.popupCode()
         val results = code.indices.filter { code[it].popupCall()?.toString() == gate.toString() }.associate { at ->
             if (code.getOrNull(at + 1)?.opcode != Opcode.MOVE_RESULT) refuse("native popup gate result changed")
             at + 1 to true
         }.toMutableMap()
-        if (method == profile) {
+        if (method == profile && code.any { (it as? WideLiteralInstruction)?.wideLiteral == PROFILE_SHEET_FLAG }) {
             val flag = code.indices.single { (code[it] as? WideLiteralInstruction)?.wideLiteral == PROFILE_SHEET_FLAG }
             val call = (flag + 1 until minOf(code.size, flag + 8)).firstOrNull {
                 code[it].popupCall()?.returnType == "Z" && code.getOrNull(it + 1)?.opcode == Opcode.MOVE_RESULT
@@ -97,7 +100,7 @@ internal fun BytecodePatchContext.nativePopupPlan(): NativePopupPlan {
         it.returnType == "I" && it.parameterTypes.map(Any::toString) ==
             listOf("Landroid/view/View;", "Landroidx/slidingpanelayout/widget/SlidingPaneLayout;")
     }.distinctBy { it.toString() }.singleOrNull() ?: refuse("no unique primary horizontal position")
-    return NativePopupPlan(choices, populations, primary, primaryAt, more, inbox, primaryX)
+    return NativePopupPlan(choices, populations, primary, primaryAt, more, inbox, primaryX, gate)
 }
 
 @Suppress("DEPRECATION") // Legacy shared-helper boundary; lookups use the global API.

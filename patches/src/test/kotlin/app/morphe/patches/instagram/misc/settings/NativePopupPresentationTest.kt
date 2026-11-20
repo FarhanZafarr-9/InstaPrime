@@ -12,7 +12,6 @@ import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableClassDef
@@ -30,12 +29,7 @@ class NativePopupPresentationTest {
         val plan = context.nativePopupPlan()
         assertEquals(3, plan.choices.size)
         val inbox = plan.choices.single { it.method == plan.inbox }
-        val gateMethod = classes.flatMap { it.methods }.single { method ->
-            method.returnType == "Z" && method.parameterTypes.map(Any::toString) ==
-                listOf("Lcom/instagram/common/session/UserSession;") && method.implementation?.instructions?.any {
-                (it as? WideLiteralInstruction)?.wideLiteral == 36329998780490487L
-            } == true
-        }
+        val gateMethod = plan.gate
         val gateType = gateMethod.definingClass
         val nativeGateReads = inbox.method.implementation!!.instructions.count {
             ((it as? ReferenceInstruction)?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference)
@@ -126,13 +120,19 @@ class NativePopupPresentationTest {
 
     /** Semantic anchors survive Redex renaming between supported Instagram versions. */
     private fun popupSlice(apk: File): Collection<ClassDef> {
-        val flags = setOf(36329998780490487L, 36322151875231018L)
         val kept = FixtureDex.classesLoadingAny(apk, setOf("DirectInboxThreadDialogController",
             "MessageActionsHelper", "reactionsCreationController must be initialized")) { owner ->
-            owner.superclass == "Landroid/widget/PopupWindow;" || owner.methods.any { method ->
-                method.implementation?.instructions?.any { (it as? WideLiteralInstruction)?.wideLiteral in flags } == true
-            }
+            owner.superclass == "Landroid/widget/PopupWindow;"
         }.associateBy { it.type }.toMutableMap()
+        fun gates(marker: String) = kept.values.filter { owner -> owner.methods.any { FixtureDex.loads(it, marker, kept) } }
+            .flatMap { it.methods }.flatMap { method -> method.implementation?.instructions?.mapNotNull {
+                ((it as? ReferenceInstruction)?.reference as? MethodReference)?.takeIf { call ->
+                    call.returnType == "Z" && call.parameterTypes.map(Any::toString) == listOf("Lcom/instagram/common/session/UserSession;")
+                }
+            }.orEmpty() }.associateBy { it.toString() }
+        val moreGates = gates("MessageActionsHelper")
+        val common = moreGates.keys.intersect(gates("DirectInboxThreadDialogController").keys)
+        val gateTypes = common.map { moreGates.getValue(it).definingClass }.toSet()
         val renderer = kept.values.single { it.superclass == "Landroid/widget/PopupWindow;" && it.methods.any { method ->
             method.name == "<init>" && method.parameterTypes.map(Any::toString) == listOf("Landroid/content/Context;",
                 "Lcom/instagram/common/session/UserSession;", "Ljava/lang/Integer;", "Z")
@@ -149,6 +149,11 @@ class NativePopupPresentationTest {
         }.toSet()
         val parents = mutableSetOf<String>()
         FixtureDex.forEach(apk) { dex -> for (owner in dex.classes) {
+            val profile = owner.fields.any { it.type == "Lcom/instagram/profile/fragment/UserDetailFragment;" } &&
+                owner.methods.any { method -> method.returnType == "V" &&
+                    method.parameterTypes.map(Any::toString) == listOf("Landroid/view/View;") &&
+                    method.implementation?.instructions?.any { ((it as? ReferenceInstruction)?.reference?.toString()) in common } == true }
+            if (owner.type in gateTypes || profile) kept[owner.type] = ImmutableClassDef.of(owner)
             if (owner.type in created && owner.fields.any { it.type == renderer }) {
                 kept[owner.type] = ImmutableClassDef.of(owner)
                 owner.superclass?.let(parents::add)
