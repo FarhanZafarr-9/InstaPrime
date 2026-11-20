@@ -50,21 +50,30 @@ internal const val SPLASH_BRANDING = "android:windowSplashScreenBrandingImage"
 internal const val SPLASH_BACKGROUND = "android:windowSplashScreenBackground"
 internal const val SPLASH_ICON_BACKGROUND = "android:windowSplashScreenIconBackgroundColor"
 
-/** ScreenColors' dark page with its fallback wallpaper tones; available before app code runs. */
-internal const val SETTINGS_DARK_SPLASH_BACKGROUND = "#ff222029"
-
 /** The version of [LAUNCH_THEME] filled with one AccentHue's color, as LaunchScreen names it. */
 internal fun launchTheme(hue: String): String = "${LAUNCH_THEME}_$hue"
 
 /**
  * The colors the launch screen can be filled with (#528), by the AccentHue each stands for: Instagram's
- * blue, every fixed color and Material You's wallpaper tone. Android draws that screen from the theme
+ * blue, every fixed color and Material You's dark wallpaper tone. Android draws that screen from the theme
  * alone, before HushGram can change any color, so a typed color has no theme of its own and the
  * extension picks the nearest of these.
  */
-internal val LAUNCH_FILLS: Map<String, String> = linkedMapOf("BLUE" to "#ff0095f6") +
-    ACCENT_PALETTES.filter { it.name != CUSTOM }.associate { it.name to "#ff%06x".format(it.shades.getValue(AccentRole.FILL)) } +
-    (WALLPAPER to systemColor(AccentRole.FILL))
+internal val LAUNCH_FILLS: Map<String, String> = linkedMapOf("BLUE" to settingsDarkSplashFill(0x85a1ff)) +
+    ACCENT_PALETTES.filter { it.name != CUSTOM }.associate {
+        it.name to settingsDarkSplashFill(it.shades.getValue(AccentRole.LINK_ON_DARK))
+    } + (WALLPAPER to "@android:color/system_neutral1_900")
+
+/** ScreenColors' dark-page mix with its fallback neutral tone; native splash themes cannot run that runtime mix. */
+private fun settingsDarkSplashFill(accent: Int): String {
+    fun channel(shift: Int): Int {
+        val neutral = (0x211f26 shr shift) and 0xff
+        val tint = (accent shr shift) and 0xff
+        val page = ((neutral * 60 / 100) * 87 + tint * 13) / 100
+        return page * 80 / 100
+    }
+    return "#ff%02x%02x%02x".format(channel(16), channel(8), channel(0))
+}
 
 internal const val LAUNCH_SCREEN = "$EXTENSION_PACKAGE/misc/LaunchScreen;"
 internal const val INSTAGRAM_LOGO = "$LAUNCH_SCREEN->instagramLogo(I)I"
@@ -108,7 +117,7 @@ private fun Element.items(): List<Element> {
 /**
  * Adds [LAUNCH_THEME] to one decoded styles.xml: [INSTAGRAM_LAUNCH_THEME] with [LAUNCH_MARK] as the
  * launch screen's icon and no branding image, so "from Meta" goes too. The default background
- * uses the settings page's fallback dark tone. Then one version of it
+ * stays inherited from Instagram, including Pure black's launcher-theme override. Then one version of it
  * for each of [LAUNCH_FILLS], named by [launchTheme], with that color as the background in both
  * themes. Refuses unless Instagram's theme is there and none of these are.
  */
@@ -133,7 +142,6 @@ internal fun addLaunchTheme(styles: Document) {
     add(LAUNCH_THEME, "@style/$INSTAGRAM_LAUNCH_THEME", listOf(
         SPLASH_ICON to "@drawable/$LAUNCH_MARK", SPLASH_BRANDING to "@null",
         SPLASH_ICON_BACKGROUND to "@android:color/transparent",
-        SPLASH_BACKGROUND to SETTINGS_DARK_SPLASH_BACKGROUND,
     ))
     for ((hue, color) in LAUNCH_FILLS) add(launchTheme(hue), "@style/$LAUNCH_THEME", listOf(SPLASH_BACKGROUND to color))
 }

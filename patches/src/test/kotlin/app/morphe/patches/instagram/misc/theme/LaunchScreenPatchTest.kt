@@ -50,8 +50,7 @@ class LaunchScreenPatchTest {
         assertEquals("@style/$INSTAGRAM_LAUNCH_THEME", added.getAttribute("parent"))
         assertEquals(
             listOf(SPLASH_ICON to "@drawable/$LAUNCH_MARK", SPLASH_BRANDING to "@null",
-                SPLASH_ICON_BACKGROUND to "@android:color/transparent",
-                SPLASH_BACKGROUND to SETTINGS_DARK_SPLASH_BACKGROUND),
+                SPLASH_ICON_BACKGROUND to "@android:color/transparent"),
             added.elements("item").map { it.getAttribute("name") to it.textContent },
         )
         assertEquals(
@@ -62,7 +61,7 @@ class LaunchScreenPatchTest {
 
     /**
      * #528: one filled theme for each hue the extension can name, over HushGram's, holding only the
-     * fill: Instagram's blue, each palette's fill, and the wallpaper's accent from Android itself.
+     * fill: a dark settings-like tone for each palette and Android's dark wallpaper neutral.
      */
     @Test
     fun eachHueGetsAThemeHoldingOnlyItsFill() {
@@ -78,9 +77,14 @@ class LaunchScreenPatchTest {
             assertEquals(hue, "@style/$LAUNCH_THEME", theme.getAttribute("parent"))
             assertEquals(hue, listOf(SPLASH_BACKGROUND to fill), theme.elements("item").map { it.getAttribute("name") to it.textContent })
         }
-        assertEquals("#ff0095f6", LAUNCH_FILLS["BLUE"])
-        assertEquals("#ff2a6f68", LAUNCH_FILLS["PINE"])
-        assertEquals("@android:color/system_accent1_500", LAUNCH_FILLS[WALLPAPER])
+        assertEquals("#ff1a1c29", LAUNCH_FILLS["BLUE"])
+        assertEquals("#ff171c1d", LAUNCH_FILLS["PINE"])
+        assertEquals("@android:color/system_neutral1_900", LAUNCH_FILLS[WALLPAPER])
+        for ((hue, fill) in LAUNCH_FILLS.filterKeys { it != WALLPAPER }) {
+            val rgb = fill.removePrefix("#ff").toInt(16)
+            assertTrue("$hue splash must stay dark: $fill",
+                listOf(16, 8, 0).all { shift -> ((rgb shr shift) and 0xff) < 0x40 })
+        }
     }
 
     @Test
