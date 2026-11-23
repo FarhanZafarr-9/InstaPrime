@@ -44,7 +44,8 @@ if ($Offline) { $gradleOptions += '--offline' }
 Invoke-GradleBuild -ProjectDir $repo -Tasks (@(':patches:test',
     '--tests', '*MessageGesturesHookTest', '--tests', '*ChatPlusMenuHookTest',
     '--tests', '*NativeSnackbarHookTest', '--tests', '*NativePopupPresentationTest', '--tests', '*InboxHeaderButtonsHookTest',
-    '--tests', '*AccentThemeTest.suppliedApkKeepsInboxAndActivityRowHooks') + $gradleOptions)
+    '--tests', '*AccentThemeTest.suppliedApkKeepsInboxAndActivityRowHooks',
+    '--tests', '*ChatBackgroundTest.theHookIsInTheExtension', '--tests', '*ChatBackgroundTest.everyWayOntoTheCallGoesThroughTheHook') + $gradleOptions)
 if ($LASTEXITCODE -ne 0) { throw 'Native hook checks failed; stopped before the MPP build.' }
 Invoke-GradleBuild -ProjectDir $repo -Tasks (@(':extensions:instagram:testDebugUnitTest',
     '--tests', '*ChatPopupMenuTest', '--tests', '*StyledPopupNativeTest',
@@ -54,7 +55,11 @@ Invoke-GradleBuild -ProjectDir $repo -Tasks (@(':extensions:instagram:testDebugU
     '--tests', '*TabStartTest', '--tests', '*TabOrderTest', '--tests', '*HideHomeTabTest',
     '--tests', '*SavedProfilesSettingsTest', '--tests', '*ChatPagerTest',
     '--tests', '*ProfileExtrasTest', '--tests', '*ProfilePictureTest',
-    '--tests', '*MessageGesturesTest', '--tests', '*MessageActionsTest', '--tests', '*PlusMenuTest') + $gradleOptions)
+    '--tests', '*MessageGesturesTest', '--tests', '*MessageActionsTest', '--tests', '*PlusMenuTest',
+    '--tests', '*AccentThemeTest.composeReadsTheClassicStyleBeforeAnyScreenIsStyled',
+    '--tests', '*AccentThemeTest.aChatsPageBlackBackgroundTakesThePageShade',
+    '--tests', '*AccentThemeTest.aChatsPageBlackHeaderTakesThePageShade',
+    '--tests', '*NewRowDotsTest') + $gradleOptions)
 if ($LASTEXITCODE -ne 0) { throw 'Popup/UI checks failed; stopped before the MPP build.' }
 if ($Build) {
     Invoke-GradleBuild -ProjectDir $repo -Tasks (@(':patches:buildAndroid') + $gradleOptions)
