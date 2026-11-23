@@ -752,13 +752,10 @@ public final class AccentTheme {
         return surfaces == null ? color : 0xff000000 | surfaces[0] & 0xffffff;
     }
 
-    /** Only native solid chat surfaces: the pinned strip uses the page, the input pill a raised shade. */
-    public static int chatSurfaceShade(int color, boolean raised) {
-        if (color >>> 24 != 0xff) return color;
-        int rgb = color & 0xffffff;
-        int[] surfaces = surfaceStep(rgb) >= 0 || dspDarkStep(rgb) >= 0 ? paintedSurfaces()
-                : lightStep(rgb) >= 0 ? paintedLightSurfaces() : null;
-        return surfaces == null ? color : 0xff000000 | surfaces[raised ? 1 : 0] & 0xffffff;
+    /** The chosen app surface, scoped by the caller to the pinned strip or input pill. Zero means no override. */
+    public static int chatSurfaceShade(Context context, boolean raised) {
+        int[] surfaces = showsDark(context) ? paintedSurfaces() : paintedLightSurfaces();
+        return surfaces == null ? 0 : 0xff000000 | surfaces[raised ? 1 : 0] & 0xffffff;
     }
 
     /**

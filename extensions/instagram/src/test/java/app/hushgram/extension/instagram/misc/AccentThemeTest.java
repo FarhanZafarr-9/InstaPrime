@@ -1200,6 +1200,7 @@ public class AccentThemeTest {
         return value;
     }
     @Test
+    @Config(qualifiers = "night")
     public void chatInputTintPreservesItsShapeAndRestoresTheNativeDrawable() {
         AccentTheme.darkSurfacesForTests(new int[]{0xff101b2d, 0xff182030, 0xff203040});
         Settings.CLASSIC_COLORS.save(true);
@@ -1239,7 +1240,8 @@ public class AccentThemeTest {
     }
 
     @Test
-    public void chatSurfaceTintKeepsGradientsAndCustomChatColors() {
+    @Config(qualifiers = "night")
+    public void chatSurfaceTintLeavesGradientsAndUsesAppShadeForPinnedFills() {
         AccentTheme.darkSurfacesForTests(new int[]{0xff101b2d, 0xff182030, 0xff203040});
         Settings.CLASSIC_COLORS.save(true);
         try {
@@ -1250,7 +1252,8 @@ public class AccentThemeTest {
             ColorDrawable changedInPlace = (ColorDrawable) pinned.getBackground();
             changedInPlace.setColor(0xff654321);
             app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(pinned, false);
-            assertTrue(changedInPlace == pinned.getBackground());
+            assertTrue(changedInPlace != pinned.getBackground());
+            assertEquals(0xff101b2d, ((ColorDrawable) pinned.getBackground()).getColor());
             assertEquals(0xff654321, changedInPlace.getColor());
             GradientDrawable gradient = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                     new int[]{0xff000000, 0xff191c1f});
@@ -1260,7 +1263,38 @@ public class AccentThemeTest {
             ColorDrawable custom = new ColorDrawable(0xff123456);
             pinned.setBackground(custom);
             app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(pinned, false);
-            assertTrue(custom == pinned.getBackground());
+            assertTrue(custom != pinned.getBackground());
+            assertEquals(0xff101b2d, ((ColorDrawable) pinned.getBackground()).getColor());
+            assertEquals(0xff123456, custom.getColor());
+        } finally {
+            Settings.CLASSIC_COLORS.resetToDefault();
+            AccentTheme.darkSurfacesForTests(null);
+        }
+    }
+    @Test
+    @Config(qualifiers = "night")
+    public void chatInputImageUsesTheAppShadeAndRestoresItsNativeTint() {
+        AccentTheme.darkSurfacesForTests(new int[]{0xff101b2d, 0xff182030, 0xff203040});
+        Settings.CLASSIC_COLORS.save(true);
+        try {
+            android.widget.ImageView input = new android.widget.ImageView(RuntimeEnvironment.getApplication());
+            GradientDrawable nativePill = new GradientDrawable();
+            nativePill.setColor(0xff4b2d55);
+            nativePill.setCornerRadius(24f);
+            input.setImageDrawable(nativePill);
+            android.content.res.ColorStateList original = android.content.res.ColorStateList.valueOf(0xff654321);
+            input.setImageTintMode(android.graphics.PorterDuff.Mode.MULTIPLY);
+            input.setImageTintList(original);
+            app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(input, true);
+            assertEquals(0xff182030, input.getImageTintList().getDefaultColor());
+            assertEquals(android.graphics.PorterDuff.Mode.SRC_IN, input.getImageTintMode());
+            assertTrue(nativePill == input.getDrawable());
+            assertEquals(0xff4b2d55, nativePill.getColor().getDefaultColor());
+            assertEquals(24f, nativePill.getCornerRadius(), 0f);
+            Settings.CLASSIC_COLORS.save(false);
+            app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(input, true);
+            assertTrue(original == input.getImageTintList());
+            assertEquals(android.graphics.PorterDuff.Mode.MULTIPLY, input.getImageTintMode());
         } finally {
             Settings.CLASSIC_COLORS.resetToDefault();
             AccentTheme.darkSurfacesForTests(null);

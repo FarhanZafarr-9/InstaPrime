@@ -2,6 +2,8 @@
 package app.hushgram.extension.instagram.direct;
 
 import android.app.Activity;
+import android.content.res.ColorStateList;
+import android.graphics.PorterDuff;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -11,17 +13,20 @@ import android.graphics.drawable.ShapeDrawable;
 import android.os.SystemClock;
 import android.view.View;
 import android.view.ViewTreeObserver;
+import android.widget.ImageView;
 import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.WeakHashMap;
 import app.hushgram.extension.instagram.download.TextGrab;
 import app.hushgram.extension.instagram.misc.AccentTheme;
+import app.hushgram.extension.shared.diagnostics.HookStatus;
 
 /** Scope recoloring to an opened chat's native pinned strip and solid input pill. */
 public final class ChatAccentSurfaces {
     static final String PINNED = "pinned_message_container";
     private static final Map<View, WeakReference<Watcher>> watchers = new WeakHashMap<>();
     private static final Map<View, Tint> tints = new WeakHashMap<>();
+    private static final Map<ImageView, ImageTint> imageTints = new WeakHashMap<>();
     private ChatAccentSurfaces() { }
 
     public static void follow(View header) {
@@ -29,6 +34,7 @@ public final class ChatAccentSurfaces {
         if (previous != null && previous.get() != null) return;
         Watcher watcher = new Watcher(header);
         watchers.put(header, new WeakReference<>(watcher));
+        HookStatus.counted("Chat accent surfaces", "header watcher attached");
         header.addOnAttachStateChangeListener(watcher);
         if (header.isAttachedToWindow()) watcher.onViewAttachedToWindow(header);
     }
@@ -64,6 +70,11 @@ public final class ChatAccentSurfaces {
 
     public static void paint(View view, boolean raised) {
         if (view == null) return;
+        int color = AccentTheme.chatSurfaceShade(view.getContext(), raised);
+        if (raised && view instanceof ImageView && ((ImageView) view).getDrawable() != null) {
+            paintImage((ImageView) view, color);
+            return;
+        }
         Tint previous = tints.get(view);
         if (previous != null && view.getBackground() == previous.painted
                 && !Integer.valueOf(previous.color).equals(solid(fill(previous.painted, 0)))) {
@@ -73,9 +84,8 @@ public final class ChatAccentSurfaces {
         Drawable original = previous != null && view.getBackground() == previous.painted
                 ? previous.original : view.getBackground();
         Integer nativeColor = solid(fill(original, 0));
-        if (nativeColor == null) { tints.remove(view); return; }
-        int color = AccentTheme.chatSurfaceShade(nativeColor, raised);
-        if (color == nativeColor) {
+        if (nativeColor == null || nativeColor >>> 24 != 0xff) return;
+        if (color == 0 || color == nativeColor) {
             if (previous != null && view.getBackground() == previous.painted) view.setBackground(original);
             tints.remove(view);
             return;
@@ -92,11 +102,45 @@ public final class ChatAccentSurfaces {
         else return;
         tints.put(view, new Tint(original, copy, color));
         view.setBackground(copy);
+        HookStatus.counted("Chat accent surfaces", raised ? "input background recolored" : "pinned strip recolored");
     }
 
     private static void restore(View view) {
+        if (view instanceof ImageView) paintImage((ImageView) view, 0);
         Tint tint = tints.remove(view);
         if (tint != null && view.getBackground() == tint.painted) view.setBackground(tint.original);
+    }
+
+    /** The live input background is an IgImageView's image; tint only that dedicated surface. */
+    private static void paintImage(ImageView view, int color) {
+        ImageTint prior = imageTints.get(view);
+        if (color == 0 || app.hushgram.extension.instagram.feed.GlassTopBar.boxShowing(view)) {
+            if (prior != null) {
+                if (view.getImageTintList() == prior.applied) {
+                    view.setImageTintList(prior.original);
+                    view.setImageTintMode(prior.mode);
+                }
+                imageTints.remove(view);
+            }
+            return;
+        }
+        if (prior != null && prior.color == color && view.getImageTintList() == prior.applied) return;
+        ColorStateList original = prior == null ? view.getImageTintList() : prior.original;
+        PorterDuff.Mode mode = prior == null ? view.getImageTintMode() : prior.mode;
+        ColorStateList applied = ColorStateList.valueOf(color);
+        imageTints.put(view, new ImageTint(original, mode, applied, color));
+        view.setImageTintMode(PorterDuff.Mode.SRC_IN);
+        view.setImageTintList(applied);
+        HookStatus.counted("Chat accent surfaces", "input image tinted");
+    }
+
+    private static final class ImageTint {
+        final ColorStateList original, applied;
+        final PorterDuff.Mode mode;
+        final int color;
+        ImageTint(ColorStateList original, PorterDuff.Mode mode, ColorStateList applied, int color) {
+            this.original = original; this.mode = mode; this.applied = applied; this.color = color;
+        }
     }
 
     private static final class Tint {
@@ -133,9 +177,11 @@ public final class ChatAccentSurfaces {
                     scannedAt = now;
                     Activity activity = TextGrab.ownerOf(owner, null);
                     if (activity == null) return true;
-                    int listId = GlassChat.id(activity, GlassChat.MESSAGE_LIST);
-                    View list = listId == 0 ? null : decor.findViewById(listId);
-                    if (list == null || !list.isShown()) return true;
+                    View host = GlassChat.messageHost(activity, decor);
+                    if (host == null) return true;
+                    if (host.getId() == GlassChat.id(activity, GlassChat.COMPOSE_MESSAGES)) {
+                        HookStatus.counted("Chat accent surfaces", "visible Compose message host");
+                    }
                     int pinId = GlassChat.id(activity, PINNED);
                     View nextPin = pinId == 0 ? null : decor.findViewById(pinId);
                     View nextPill = GlassChat.findMessageBox(activity);
@@ -146,8 +192,8 @@ public final class ChatAccentSurfaces {
                 View pin = pinned.get(), input = pill.get();
                 if (pin != null && pin.isShown()) paint(pin, false);
                 if (input != null && input.isShown()) paint(input, true);
-            } catch (RuntimeException ignored) {
-                // Unknown view/drawable variants keep Instagram's appearance.
+            } catch (RuntimeException failure) {
+                HookStatus.threw("Chat accent surfaces", "surface refresh", failure);
             }
             return true;
         }
