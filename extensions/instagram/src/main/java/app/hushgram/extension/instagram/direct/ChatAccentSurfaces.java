@@ -68,6 +68,14 @@ public final class ChatAccentSurfaces {
         return null;
     }
 
+    /** A filled composer row is drawn above the background image, even when that image is visible. */
+    static View inputSurface(View pill) {
+        if (!(pill instanceof ImageView)) return pill;
+        View row = GlassChat.pillRow(pill);
+        Integer color = row == null ? null : solid(fill(row.getBackground(), 0));
+        return color != null && color >>> 24 == 0xff ? row : pill;
+    }
+
     public static void paint(View view, boolean raised) {
         if (view == null) return;
         int color = AccentTheme.chatSurfaceShade(view.getContext(), raised);
@@ -184,7 +192,7 @@ public final class ChatAccentSurfaces {
                     }
                     int pinId = GlassChat.id(activity, PINNED);
                     View nextPin = pinId == 0 ? null : decor.findViewById(pinId);
-                    View nextPill = GlassChat.findMessageBox(activity);
+                    View nextPill = inputSurface(GlassChat.findMessageBox(activity));
                     if (pinned.get() != null && pinned.get() != nextPin) restore(pinned.get());
                     if (pill.get() != null && pill.get() != nextPill) restore(pill.get());
                     pinned = new WeakReference<>(nextPin); pill = new WeakReference<>(nextPill);
