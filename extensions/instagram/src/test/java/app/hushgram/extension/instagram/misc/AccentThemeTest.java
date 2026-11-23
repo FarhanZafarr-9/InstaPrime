@@ -1199,4 +1199,71 @@ public class AccentThemeTest {
         value.data = argb;
         return value;
     }
+    @Test
+    public void chatInputTintPreservesItsShapeAndRestoresTheNativeDrawable() {
+        AccentTheme.darkSurfacesForTests(new int[]{0xff101b2d, 0xff182030, 0xff203040});
+        Settings.CLASSIC_COLORS.save(true);
+        try {
+            View input = new View(RuntimeEnvironment.getApplication());
+            GradientDrawable nativePill = new GradientDrawable();
+            nativePill.setColor(0xff000000);
+            nativePill.setCornerRadius(24f);
+            nativePill.setStroke(2, 0xff555555);
+            input.setBackground(nativePill);
+            app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(input, true);
+            GradientDrawable tinted = (GradientDrawable) input.getBackground();
+            assertTrue(nativePill != tinted);
+            assertEquals(0xff182030, tinted.getColor().getDefaultColor());
+            assertEquals(24f, tinted.getCornerRadius(), 0f);
+            assertEquals(0xff000000, nativePill.getColor().getDefaultColor());
+            app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(input, true);
+            assertTrue("no drawable allocation on unchanged frames", tinted == input.getBackground());
+            Settings.CLASSIC_COLORS.save(false);
+            app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(input, true);
+            assertTrue(nativePill == input.getBackground());
+            Settings.CLASSIC_COLORS.save(true);
+            android.graphics.drawable.RippleDrawable ripple = new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(0x22ffffff), nativePill, new ColorDrawable(0xffffffff));
+            input.setBackground(ripple);
+            app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(input, true);
+            android.graphics.drawable.RippleDrawable tintedRipple =
+                    (android.graphics.drawable.RippleDrawable) input.getBackground();
+            assertTrue(ripple != tintedRipple);
+            assertEquals(0xff182030, ((GradientDrawable) tintedRipple.getDrawable(0)).getColor().getDefaultColor());
+            assertEquals(0xffffffff, ((ColorDrawable) tintedRipple.findDrawableByLayerId(android.R.id.mask)).getColor());
+            assertEquals(0xff000000, nativePill.getColor().getDefaultColor());
+        } finally {
+            Settings.CLASSIC_COLORS.resetToDefault();
+            AccentTheme.darkSurfacesForTests(null);
+        }
+    }
+
+    @Test
+    public void chatSurfaceTintKeepsGradientsAndCustomChatColors() {
+        AccentTheme.darkSurfacesForTests(new int[]{0xff101b2d, 0xff182030, 0xff203040});
+        Settings.CLASSIC_COLORS.save(true);
+        try {
+            View pinned = new View(RuntimeEnvironment.getApplication());
+            pinned.setBackground(new ColorDrawable(0xff000000));
+            app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(pinned, false);
+            assertEquals(0xff101b2d, ((ColorDrawable) pinned.getBackground()).getColor());
+            ColorDrawable changedInPlace = (ColorDrawable) pinned.getBackground();
+            changedInPlace.setColor(0xff654321);
+            app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(pinned, false);
+            assertTrue(changedInPlace == pinned.getBackground());
+            assertEquals(0xff654321, changedInPlace.getColor());
+            GradientDrawable gradient = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[]{0xff000000, 0xff191c1f});
+            pinned.setBackground(gradient);
+            app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(pinned, false);
+            assertTrue(gradient == pinned.getBackground());
+            ColorDrawable custom = new ColorDrawable(0xff123456);
+            pinned.setBackground(custom);
+            app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(pinned, false);
+            assertTrue(custom == pinned.getBackground());
+        } finally {
+            Settings.CLASSIC_COLORS.resetToDefault();
+            AccentTheme.darkSurfacesForTests(null);
+        }
+    }
 }
