@@ -59,7 +59,9 @@ Invoke-GradleBuild -ProjectDir $repo -Tasks (@(':extensions:instagram:testDebugU
     '--tests', '*AccentThemeTest.composeReadsTheClassicStyleBeforeAnyScreenIsStyled',
     '--tests', '*AccentThemeTest.aChatsPageBlackBackgroundTakesThePageShade',
     '--tests', '*AccentThemeTest.aChatsPageBlackHeaderTakesThePageShade',
-    '--tests', '*NewRowDotsTest') + $gradleOptions)
+    '--tests', '*NewRowDotsTest', '--tests', '*HeldMessageBlurTest',
+    '--tests', '*AccentThemeTest.chatInputTintPreservesItsShapeAndRestoresTheNativeDrawable',
+    '--tests', '*AccentThemeTest.chatSurfaceTintKeepsGradientsAndCustomChatColors') + $gradleOptions)
 if ($LASTEXITCODE -ne 0) { throw 'Popup/UI checks failed; stopped before the MPP build.' }
 if ($Build) {
     Invoke-GradleBuild -ProjectDir $repo -Tasks (@(':patches:buildAndroid') + $gradleOptions)
