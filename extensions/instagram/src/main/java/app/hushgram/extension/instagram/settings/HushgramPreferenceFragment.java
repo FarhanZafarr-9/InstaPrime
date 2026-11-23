@@ -1646,6 +1646,8 @@ public final class HushgramPreferenceFragment extends AbstractPreferenceFragment
                 for (Map.Entry<PreferenceCategory, List<Preference>> section : searchableRows.entrySet()) {
                     for (Preference row : section.getValue()) {
                         SettingsNavigation.Node destination = navigation.destination(row);
+                        if (Settings.SEARCH_CURRENT_SECTION.savedValue()
+                                && !SettingsNavigation.within(destination, page)) continue;
                         String path = destination == null ? "" : destination.title.toString();
                         String text = searchText(section.getKey().getTitle()) + " " + searchText(path) + " "
                                 + searchText(row.getTitle()) + " " + searchText(row.getSummary()) + " "

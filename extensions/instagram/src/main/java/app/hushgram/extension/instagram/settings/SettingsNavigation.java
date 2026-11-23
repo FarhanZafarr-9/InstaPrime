@@ -146,6 +146,14 @@ final class SettingsNavigation {
     Node find(String id) { return nodes.get(id); }
     Node destination(Preference row) { return destinations.get(row); }
 
+    static boolean within(Node destination, Node scope) {
+        if (scope == null) return true;
+        for (Node node = destination; node != null; node = node.parent) {
+            if (node == scope) return true;
+        }
+        return false;
+    }
+
     private void register(Context context, Node node, Consumer<Node> open, Consumer<Node> overview) {
         if (node.icon.equals(SettingsIcons.LAYOUT) && node.id.endsWith("::appearance")) {
             groupPage(context, node, L10n.t("App layout"), L10n.t("Branding"), keys(
@@ -273,7 +281,8 @@ final class SettingsNavigation {
         } else if (icon.equals(SettingsIcons.SETTINGS)) {
             bands(node, keys(Settings.NAVIGATION_SETTINGS_TARGET.key, Settings.PROFILE_MENU_LONG_PRESS.key,
                     Settings.SETTINGS_SHORTCUT.key, Settings.SETTINGS_LOGO_PRESS.key, Settings.HIDE_MENU_ROW.key),
-                    keys(Settings.SETTINGS_BLACK_LOOK.key, Settings.SETTINGS_LIGHT_LOOK.key, Settings.SETTINGS_INSTAGRAM_LOOK.key, Settings.SHOW_ENABLE_ALL.key));
+                    keys(Settings.SETTINGS_BLACK_LOOK.key, Settings.SETTINGS_LIGHT_LOOK.key, Settings.SETTINGS_INSTAGRAM_LOOK.key),
+                    keys(Settings.DESCRIPTIONS_BEHIND_INFO.key, Settings.SHOW_ENABLE_ALL.key, Settings.SEARCH_CURRENT_SECTION.key));
         } else if (icon.equals(SettingsIcons.FEED) && id.endsWith("::appearance")) {
             bands(node, keys(Settings.FULL_RESOLUTION_PHOTOS.key, Settings.ASK_FOR_LARGER_PHOTOS.key, Settings.FULL_SIZE_COVERS.key),
                     keys(Settings.HIDE_FEED_HEADER_LINE.key, Settings.KEEP_FEED_HEADER_PLACE.key, Settings.HOME_REELS_BELOW_NAME.key),
