@@ -271,6 +271,58 @@ public class HeldMessageBlurTest {
         assertFalse(blurred(header));
     }
 
+    @Test
+    @Config(sdk = 37)
+    public void anEarlyMissRetriesWhenTheFragmentTagArrives() {
+        hold(rows[1]);
+        Object screen = actions.getTag(TAG_ID);
+        actions.setTag(TAG_ID, null);
+        HeldMessageBlur.step(activity, 1_000L);
+        assertFalse(blurred(background));
+        actions.setTag(TAG_ID, screen);
+        HeldMessageBlur.step(activity, 1_000L + HeldMessageBlur.RETRY_MS);
+        HeldMessageBlur.step(activity, 1_000L + HeldMessageBlur.RETRY_MS + HeldMessageBlur.FADE_MS);
+        assertTrue(blurred(background));
+        assertFalse(blurred(rows[1]));
+    }
+
+    @Test
+    @Config(sdk = 37)
+    public void wrappedActionsFindTheFragmentAndKeepTheOverlaySharp() {
+        hold(rows[1]);
+        FrameLayout overlay = new FrameLayout(activity);
+        overlay.setTag(TAG_ID, actions.getTag(TAG_ID));
+        actions.setTag(TAG_ID, null);
+        root.removeView(frame);
+        overlay.addView(frame, new FrameLayout.LayoutParams(MATCH, MATCH));
+        root.addView(overlay, new FrameLayout.LayoutParams(MATCH, MATCH));
+        layout();
+        assertEquals(root, HeldMessageBlur.root(frame));
+        HeldMessageBlur.step(activity, 1_000L);
+        HeldMessageBlur.step(activity, 1_000L + HeldMessageBlur.FADE_MS);
+        assertTrue(blurred(header));
+        assertTrue(blurred(rows[0]));
+        assertFalse(blurred(rows[1]));
+        assertFalse(blurred(overlay));
+        assertFalse(blurred(actions));
+    }
+
+    @Test
+    @Config(sdk = 37)
+    public void retryWindowStopsAndClearingAllowsAnotherAttempt() {
+        hold(rows[1]);
+        Object screen = actions.getTag(TAG_ID);
+        actions.setTag(TAG_ID, null);
+        HeldMessageBlur.step(activity, 1_000L);
+        HeldMessageBlur.step(activity, 1_001L + HeldMessageBlur.RETRY_WINDOW_MS);
+        actions.setTag(TAG_ID, screen);
+        HeldMessageBlur.step(activity, 2_500L);
+        assertFalse(blurred(background));
+        HeldMessageBlur.clear();
+        HeldMessageBlur.step(activity, 3_000L);
+        assertTrue(blurred(background));
+    }
+
     /** The row covering most of the Rect is the held one, and the Rect is read from the first Rect field set. */
     @Test
     @Config(sdk = 37)

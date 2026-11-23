@@ -67,6 +67,8 @@ public final class HeldMessageBlur {
     /** How often the frame is looked for while none is known, so a feed isn't searched every frame. */
     static final long SEARCH_EVERY_MS = GlassChat.SEARCH_EVERY_MS;
     static final long FADE_MS = 160L;
+    static final long RETRY_MS = 64L;
+    static final long RETRY_WINDOW_MS = 1_000L;
     /** The blur's radius, in dp, once faded in. */
     static final float BLUR_DP = 14f;
     /** How much darker a dark screen gets behind the held message, and how much lighter a light one. */
@@ -75,9 +77,10 @@ public final class HeldMessageBlur {
 
     private static WeakReference<ViewGroup> frame = new WeakReference<>(null);
     private static long searchedAt = -SEARCH_EVERY_MS;
-    /** The actions screen's view the blur is for, and the one no row was found for, so it isn't looked at again. */
+    /** The actions screen being blurred and the one awaiting a bounded layout/tag retry. */
     private static WeakReference<View> heldFor = new WeakReference<>(null);
     private static WeakReference<View> missed = new WeakReference<>(null);
+    private static long retryAt, retryUntil;
     private static WeakReference<View> held = new WeakReference<>(null);
     /** The views given a render effect here, and the strength each was last given. */
     private static final Map<View, Float> blurred = Collections.synchronizedMap(new WeakHashMap<>());
@@ -122,9 +125,21 @@ public final class HeldMessageBlur {
             // Gone: the next message held gets its own look, even when Instagram shows it in the same view.
             heldFor = new WeakReference<>(null);
             missed = new WeakReference<>(null);
+            retryAt = retryUntil = 0L;
             if (fadeTo > 0f) fade(0f, now);
-        } else if (actions != heldFor.get() && actions != missed.get()) {
-            begin(activity, known, actions, now);
+        } else if (actions != heldFor.get()) {
+            if (actions != missed.get()) {
+                retryAt = now;
+                retryUntil = now + RETRY_WINDOW_MS;
+            }
+            if (now >= retryAt && now <= retryUntil) {
+                begin(activity, known, actions, now);
+                retryAt = now + RETRY_MS;
+            }
+            // The fragment tag and the list's layout can arrive after the actions' first frame.
+            if (actions != heldFor.get() && now < retryUntil) {
+                activity.getWindow().getDecorView().postInvalidateOnAnimation();
+            }
         }
         if (blurred.isEmpty()) return;
         float was = level;
@@ -173,24 +188,31 @@ public final class HeldMessageBlur {
         return actions != null && actions.isShown() ? actions : null;
     }
 
-    /** The view the whole chat draws under: the one holding the actions' frame. */
+    /** The nearest shared ancestor of the actions frame and the message list, including wrapped overlays. */
     @Nullable
     static ViewGroup root(View frame) {
-        ViewParent parent = frame.getParent();
-        return parent instanceof ViewGroup ? (ViewGroup) parent : null;
+        int listId = GlassChat.id(frame.getContext(), GlassChat.MESSAGE_LIST);
+        if (listId == 0) return null;
+        for (ViewParent parent = frame.getParent(); parent instanceof ViewGroup; parent = parent.getParent()) {
+            ViewGroup group = (ViewGroup) parent;
+            if (group.findViewById(listId) instanceof ViewGroup) return group;
+        }
+        return null;
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
     private static void begin(Activity activity, ViewGroup frame, View actions, long now) {
         View row = heldRow(activity, frame, actions);
         if (row == null) {
+            if (missed.get() != actions) HookStatus.counted(FamilyNames.GLASS_CHAT, COUNT_MISSES);
             missed = new WeakReference<>(actions);
-            HookStatus.counted(FamilyNames.GLASS_CHAT, COUNT_MISSES);
             return;
         }
         // Another message held while the last one's blur is on or fading: its row may be blurred, so start over
         // at the strength showing now.
         clearEffects();
+        missed = new WeakReference<>(null);
+        retryAt = retryUntil = 0L;
         heldFor = new WeakReference<>(actions);
         held = new WeakReference<>(row);
         HookStatus.invoked(FamilyNames.GLASS_CHAT);
@@ -244,7 +266,21 @@ public final class HeldMessageBlur {
     @SuppressWarnings("deprecation")
     static Rect heldRect(Activity activity, View actions) {
         int tag = GlassChat.id(activity, FRAGMENT_TAG);
-        Object screen = tag == 0 ? null : actions.getTag(tag);
+        if (tag == 0) return null;
+        // AndroidX tags the fragment's root, which need not be the inner actions container.
+        ViewGroup chat = root(actions);
+        for (View view = actions; view != null && view != chat; ) {
+            Rect found = argumentsRect(view.getTag(tag));
+            if (found != null) return found;
+            ViewParent parent = view.getParent();
+            view = parent instanceof View ? (View) parent : null;
+        }
+        return null;
+    }
+
+    @Nullable
+    @SuppressWarnings("deprecation") // Bundle's untyped getter is needed for Instagram's native model.
+    private static Rect argumentsRect(@Nullable Object screen) {
         if (screen == null) return null;
         Object arguments;
         try {
@@ -288,6 +324,12 @@ public final class HeldMessageBlur {
      */
     static void targets(ViewGroup root, View frame, View row, List<View> into) {
         Map<View, Boolean> path = new IdentityHashMap<>();
+        Map<View, Boolean> overlay = new IdentityHashMap<>();
+        for (View at = frame; at != null && at != root; ) {
+            overlay.put(at, Boolean.TRUE);
+            ViewParent parent = at.getParent();
+            at = parent instanceof View ? (View) parent : null;
+        }
         for (View at = row; at != null && at != root; ) {
             path.put(at, Boolean.TRUE);
             ViewParent parent = at.getParent();
@@ -303,6 +345,7 @@ public final class HeldMessageBlur {
                     if (child != row && child instanceof ViewGroup) next = (ViewGroup) child;
                     continue;
                 }
+                if (overlay.containsKey(child)) continue;
                 into.add(child);
             }
             at = next;
@@ -362,6 +405,8 @@ public final class HeldMessageBlur {
     /** Takes every render effect written here off at once, and forgets the held message. */
     static void clear() {
         clearEffects();
+        missed = new WeakReference<>(null);
+        retryAt = retryUntil = 0L;
         heldFor = new WeakReference<>(null);
         held = new WeakReference<>(null);
         level = 0f;
