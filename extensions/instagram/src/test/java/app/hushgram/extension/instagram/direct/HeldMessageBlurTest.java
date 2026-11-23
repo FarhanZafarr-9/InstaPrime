@@ -55,6 +55,7 @@ public class HeldMessageBlurTest {
     private static final int ACTIONS_ID = 0x7f000012;
     private static final int TAG_ID = 0x7f000013;
     private static final int LIST_ID = 0x7f000014;
+    private static final int COMPOSE_ID = 0x7f000015;
     private static final int MATCH = ViewGroup.LayoutParams.MATCH_PARENT;
 
     @Rule public final SettingsContextRule settings = new SettingsContextRule();
@@ -134,6 +135,7 @@ public class HeldMessageBlurTest {
         ids.put(HeldMessageBlur.ACTIONS, ACTIONS_ID);
         ids.put(HeldMessageBlur.FRAGMENT_TAG, TAG_ID);
         ids.put(GlassChat.MESSAGE_LIST, LIST_ID);
+        ids.put(GlassChat.COMPOSE_MESSAGES, COMPOSE_ID);
         GlassChat.idsForTests = ids;
         HeldMessageBlur.forget();
     }
@@ -321,6 +323,32 @@ public class HeldMessageBlurTest {
         HeldMessageBlur.clear();
         HeldMessageBlur.step(activity, 3_000L);
         assertTrue(blurred(background));
+    }
+
+    /** Reproduces the phone's hidden legacy list plus visible Compose host, without inventing native row views. */
+    @Test
+    @Config(sdk = 37)
+    public void composeMessagesBlurAroundTheHeldRegionWithTheLegacyListHidden() {
+        hold(rows[1]);
+        Rect original = HeldMessageBlur.heldRect(activity, actions);
+        list.setVisibility(View.GONE);
+        FrameLayout compose = new FrameLayout(activity);
+        compose.setId(COMPOSE_ID);
+        View internal = new View(activity);
+        compose.addView(internal, new FrameLayout.LayoutParams(MATCH, MATCH));
+        content.addView(compose, 0, new FrameLayout.LayoutParams(MATCH, MATCH));
+        layout();
+        assertEquals(compose, GlassChat.messageHost(activity, root));
+        HeldMessageBlur.step(activity, 1_000L);
+        HeldMessageBlur.step(activity, 1_000L + HeldMessageBlur.FADE_MS);
+        assertTrue(blurred(compose));
+        assertTrue(blurred(header));
+        assertFalse(blurred(internal));
+        assertFalse(blurred(frame));
+        assertEquals(HeldMessageBlur.clearRegion(compose, original), HeldMessageBlur.composeClearForTests());
+        HeldMessageBlur.clear();
+        assertFalse(blurred(compose));
+        assertNull(HeldMessageBlur.composeClearForTests());
     }
 
     /** The row covering most of the Rect is the held one, and the Rect is read from the first Rect field set. */

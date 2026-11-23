@@ -84,6 +84,20 @@ public final class GlassChat {
     static final String MESSAGE_BOX_BUTTON = "row_thread_composer_shortcut_viewgroup";
     /** The list of messages in it, run on under the header's glass (#684). */
     static final String MESSAGE_LIST = "message_list";
+    static final String COMPOSE_MESSAGES = "direct_thread_lazy_column_host";
+
+    /** Accounts can keep the old RecyclerView hidden while Compose draws the actual chat. */
+    static ViewGroup messageHost(Context context, View root) {
+        if (root == null) return null;
+        for (String name : new String[]{MESSAGE_LIST, COMPOSE_MESSAGES}) {
+            int resource = id(context, name);
+            View view = resource == 0 ? null : root.findViewById(resource);
+            if (view instanceof ViewGroup && view.isShown() && view.getWidth() > 0 && view.getHeight() > 0) {
+                return (ViewGroup) view;
+            }
+        }
+        return null;
+    }
     /** The story viewer, one person's page in it, which draws the story first, and the page's reply box. */
     static final String STORY_VIEWER = "reel_viewer_root";
     static final String STORY_PAGE = "reel_view_group";

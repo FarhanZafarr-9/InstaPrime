@@ -7,6 +7,11 @@ package app.hushgram.extension.instagram.direct;
 import android.app.Activity;
 import android.content.res.Configuration;
 import android.graphics.ColorMatrix;
+import android.graphics.Bitmap;
+import android.graphics.BlendMode;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Rect;
 import android.graphics.RenderEffect;
@@ -47,7 +52,9 @@ import app.hushgram.extension.shared.diagnostics.HookStatus;
  * of messages that covers most of that Rect stays sharp. Every other view the chat draws under its root gets a
  * blur and a light dim (a light wash on a light screen) through its render effect: the views beside the path
  * from the root down to the held row, and the other rows. The frame holding the reactions and actions is passed
- * over, so they stay sharp too. The blur fades in and out over {@link #FADE_MS}.
+ * over, so they stay sharp too. Compose chats have no row views: their host gets a region mask that
+ * combines the original held-message pixels with the blurred surrounding pixels. The mask contains
+ * geometry only, not a snapshot of the conversation. The blur fades in and out over {@link #FADE_MS}.
  *
  * <p>Off, Android before 12, no Rect or no row under it, paused or anything thrown: nothing blurs, and every
  * render effect written here is taken off again.
@@ -82,6 +89,9 @@ public final class HeldMessageBlur {
     private static WeakReference<View> missed = new WeakReference<>(null);
     private static long retryAt, retryUntil;
     private static WeakReference<View> held = new WeakReference<>(null);
+    private static WeakReference<View> composeHeld = new WeakReference<>(null);
+    private static Rect composeClear;
+    private static RenderEffect composeMask;
     /** The views given a render effect here, and the strength each was last given. */
     private static final Map<View, Float> blurred = Collections.synchronizedMap(new WeakHashMap<>());
     /** How far the blur has faded in, 0 to 1, where it was when the fade began, and where it's going. */
@@ -152,6 +162,7 @@ public final class HeldMessageBlur {
             for (View each : targets) {
                 if (!blurred.containsKey(each)) apply(each, level);
             }
+            if (row == composeHeld.get() && !blurred.containsKey(row)) apply(row, level);
         }
         if (level != was) {
             for (View each : new ArrayList<>(blurred.keySet())) apply(each, level);
@@ -191,11 +202,9 @@ public final class HeldMessageBlur {
     /** The nearest shared ancestor of the actions frame and the message list, including wrapped overlays. */
     @Nullable
     static ViewGroup root(View frame) {
-        int listId = GlassChat.id(frame.getContext(), GlassChat.MESSAGE_LIST);
-        if (listId == 0) return null;
         for (ViewParent parent = frame.getParent(); parent instanceof ViewGroup; parent = parent.getParent()) {
             ViewGroup group = (ViewGroup) parent;
-            if (group.findViewById(listId) instanceof ViewGroup) return group;
+            if (GlassChat.messageHost(frame.getContext(), group) != null) return group;
         }
         return null;
     }
@@ -211,6 +220,18 @@ public final class HeldMessageBlur {
         // Another message held while the last one's blur is on or fading: its row may be blurred, so start over
         // at the strength showing now.
         clearEffects();
+        if (row.getId() == GlassChat.id(activity, GlassChat.COMPOSE_MESSAGES)) {
+            composeClear = clearRegion(row, heldRect(activity, actions));
+            if (composeClear == null) return;
+            composeHeld = new WeakReference<>(row);
+            // Geometry only: no chat pixels are captured or stored in this alpha mask.
+            Bitmap mask = Bitmap.createBitmap(row.getWidth(), row.getHeight(), Bitmap.Config.ALPHA_8);
+            Paint paint = new Paint();
+            paint.setColor(Color.WHITE);
+            new Canvas(mask).drawRect(composeClear, paint);
+            composeMask = RenderEffect.createBitmapEffect(mask);
+            HookStatus.counted(FamilyNames.GLASS_CHAT, "Compose region blur prepared");
+        }
         missed = new WeakReference<>(null);
         retryAt = retryUntil = 0L;
         heldFor = new WeakReference<>(actions);
@@ -222,6 +243,7 @@ public final class HeldMessageBlur {
         List<View> targets = new ArrayList<>();
         targets(root, frame, row, targets);
         for (View each : targets) apply(each, level);
+        if (row == composeHeld.get()) apply(row, level);
         fade(1f, now);
     }
 
@@ -234,10 +256,23 @@ public final class HeldMessageBlur {
         Rect rect = heldRect(activity, actions);
         if (rect == null) return null;
         ViewGroup root = root(frame);
-        int listId = GlassChat.id(activity, GlassChat.MESSAGE_LIST);
-        View list = root == null || listId == 0 ? null : root.findViewById(listId);
-        if (!(list instanceof ViewGroup)) return null;
-        return rowOver((ViewGroup) list, rect);
+        ViewGroup list = GlassChat.messageHost(activity, root);
+        if (list == null) return null;
+        if (list.getId() == GlassChat.id(activity, GlassChat.COMPOSE_MESSAGES)) {
+            return clearRegion(list, rect) == null ? null : list;
+        }
+        return rowOver(list, rect);
+    }
+
+    /** The held bubble's bounds in the Compose surface's local pixels, clipped to that surface. */
+    @Nullable
+    static Rect clearRegion(View host, @Nullable Rect screenRect) {
+        if (screenRect == null || screenRect.isEmpty()) return null;
+        int[] origin = new int[2];
+        host.getLocationOnScreen(origin);
+        Rect local = new Rect(screenRect);
+        local.offset(-origin[0], -origin[1]);
+        return local.intersect(0, 0, host.getWidth(), host.getHeight()) ? local : null;
     }
 
     /** The child of [list] covering most of [rect], in screen pixels, or null when none covers any of it. */
@@ -280,7 +315,7 @@ public final class HeldMessageBlur {
 
     @Nullable
     @SuppressWarnings("deprecation") // Bundle's untyped getter is needed for Instagram's native model.
-    private static Rect argumentsRect(@Nullable Object screen) {
+    static Rect argumentsRect(@Nullable Object screen) {
         if (screen == null) return null;
         Object arguments;
         try {
@@ -357,7 +392,14 @@ public final class HeldMessageBlur {
         Float was = blurred.get(view);
         if (was != null && was == strength) return;
         blurred.put(view, strength);
-        view.setRenderEffect(effect(view, strength));
+        RenderEffect blur = effect(view, strength);
+        if (blur != null && view == composeHeld.get() && composeMask != null) {
+            RenderEffect sharp = RenderEffect.createBlendModeEffect(
+                    RenderEffect.createOffsetEffect(0f, 0f), composeMask, BlendMode.DST_IN);
+            RenderEffect outside = RenderEffect.createBlendModeEffect(blur, composeMask, BlendMode.DST_OUT);
+            blur = RenderEffect.createBlendModeEffect(outside, sharp, BlendMode.SRC_OVER);
+        }
+        view.setRenderEffect(blur);
     }
 
     /** The blur and the dim, or the light wash on a light screen, at [strength] of their full look. */
@@ -421,6 +463,9 @@ public final class HeldMessageBlur {
             }
         }
         blurred.clear();
+        composeHeld.clear();
+        composeClear = null;
+        composeMask = null;
     }
 
     /** Forgets the frame too, as the watched activity goes. */
@@ -441,4 +486,6 @@ public final class HeldMessageBlur {
         Float strength = blurred.get(view);
         return strength == null ? -1f : strength;
     }
+
+    static Rect composeClearForTests() { return composeClear == null ? null : new Rect(composeClear); }
 }
