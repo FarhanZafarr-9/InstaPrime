@@ -153,7 +153,13 @@ public final class ScreenColors {
             Context app = Utils.getContext();
             night = app != null && night(app);
         }
-        return night ? INSTAGRAM_DARK : INSTAGRAM_LIGHT;
+        Context context = Utils.getContext();
+        ScreenColors base = new ScreenColors(context, false, !night);
+        int materialAccent = night ? base.accent : tone(context, "system_accent1_600", 0xFF6750A4);
+        int onMaterialAccent = night ? base.onAccent : Color.WHITE;
+        return new ScreenColors(base.light, base.background, base.dialog, base.title, base.summary, base.hint,
+                materialAccent, materialAccent, base.switchOff, base.background, base.outline,
+                base.iconSurface, onMaterialAccent, base.error);
     }
 
     /**

@@ -96,12 +96,13 @@ final class SwitchThumb extends Drawable {
             // Size everything from the actual thumb bounds, including stroke and arrowhead.
             float r = radius * 0.5f;
             paint.setStrokeWidth(radius * 0.16f);
-            // Stop underneath the head so the rounded stroke cap cannot blunt its tip.
-            canvas.drawArc(x - r, y - r, x + r, y + r, 45, 258, false, paint);
+            // A flat cap joins the filled head without rounding over its tip.
+            paint.setStrokeCap(Paint.Cap.BUTT);
+            canvas.drawArc(x - r, y - r, x + r, y + r, 45, 270, false, paint);
             // The head follows the clockwise tangent at 315 degrees (down/right).
             float diagonal = (float) Math.sqrt(0.5);
             float endX = x + r * diagonal, endY = y - r * diagonal;
-            float tip = radius * 0.12f, back = radius * 0.22f, halfWidth = radius * 0.15f;
+            float tip = radius * 0.16f, back = radius * 0.16f, halfWidth = radius * 0.20f;
             Path arrow = new Path();
             arrow.moveTo(endX + diagonal * tip, endY + diagonal * tip);
             arrow.lineTo(endX - diagonal * back - diagonal * halfWidth,
