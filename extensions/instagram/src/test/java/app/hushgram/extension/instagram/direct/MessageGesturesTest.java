@@ -58,6 +58,15 @@ public class MessageGesturesTest {
         }
     }
 
+    @Test public void reactionTrayUsesTheHeldBubbleInsteadOfSymmetricAvatarSpace() {
+        android.graphics.Rect viewport = new android.graphics.Rect(0, 0, 1080, 2400);
+        assertEquals(217, MessageMenuPosition.reactionLeft(new android.graphics.Rect(674, 800, 1061, 900), viewport, 118, 844));
+        assertEquals(118, MessageMenuPosition.reactionLeft(new android.graphics.Rect(131, 800, 400, 900), viewport, 118, 844));
+        assertEquals(131, MessageMenuPosition.reactionLeft(new android.graphics.Rect(131, 800, 1061, 900), viewport, 118, 844));
+        assertEquals(118, MessageMenuPosition.reactionLeft(new android.graphics.Rect(), viewport, 118, 844));
+        assertEquals(780, MessageMenuPosition.insetPrimary(780, 300, 1080, 0));
+    }
+
     @Test public void primaryInsetsBothLeftCoordinatesAndRightEdgeOffsets() {
         assertEquals(12, MessageMenuPosition.insetPrimary(0, 300, 1080, 12));
         assertEquals(24, MessageMenuPosition.insetPrimary(24, 300, 1080, 12));

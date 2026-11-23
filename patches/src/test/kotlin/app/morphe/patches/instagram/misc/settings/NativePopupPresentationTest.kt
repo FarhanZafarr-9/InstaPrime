@@ -59,6 +59,13 @@ class NativePopupPresentationTest {
             it.endsWith(":$factory")
         })
         val primary = globalMutableClassDefBy(plan.primary.definingClass).methods.single { it.name == plan.primary.name }
+        assertEquals(1,
+            primary.implementation!!.instructions.count {
+                ((it as? ReferenceInstruction)?.reference?.toString())?.contains("MessageMenuPosition;->actionsCreated(") == true
+            })
+        assertTrue("receiver and root are captured before native parameter reuse",
+            ((primary.implementation!!.instructions.first() as? ReferenceInstruction)?.reference?.toString())
+                ?.contains("MessageMenuPosition;->actionsCreated(") == true)
         assertEquals(1, primary.implementation!!.instructions.count {
             ((it as? ReferenceInstruction)?.reference?.toString())?.contains("MessageMenuPosition;->remember(") == true
         })
