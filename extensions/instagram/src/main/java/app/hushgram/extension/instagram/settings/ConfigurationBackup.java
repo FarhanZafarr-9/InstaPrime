@@ -394,6 +394,7 @@ public final class ConfigurationBackup {
         settings.put(Settings.CATEGORY_GRID.key, Settings.CATEGORY_GRID);
         settings.put(Settings.DESCRIPTIONS_BEHIND_INFO.key, Settings.DESCRIPTIONS_BEHIND_INFO);
         settings.put(Settings.SHOW_ENABLE_ALL.key, Settings.SHOW_ENABLE_ALL);
+        settings.put(Settings.SEARCH_CURRENT_SECTION.key, Settings.SEARCH_CURRENT_SECTION);
         settings.put(Settings.SETTINGS_BLACK_LOOK.key, Settings.SETTINGS_BLACK_LOOK);
         settings.put(Settings.THEME_NATIVE_POPUPS.key, Settings.THEME_NATIVE_POPUPS);
         settings.put(Settings.HIDE_DM_COMPOSE_BUTTON.key, Settings.HIDE_DM_COMPOSE_BUTTON);

@@ -170,6 +170,10 @@ public class Settings extends BaseSettings {
     public static final BooleanSetting SHOW_ENABLE_ALL =
             new BooleanSetting("instaprime_show_enable_all", FALSE);
 
+    /** Search the current settings page and its descendants; home still searches everything. */
+    public static final BooleanSetting SEARCH_CURRENT_SECTION =
+            new BooleanSetting("instaprime_search_current_section", FALSE);
+
     /**
      * Optional black rows and dialogs (#455). InstaPrime keeps its wallpaper-derived tones by
      * default. A settings-page choice, read saved even during Pause.
@@ -187,8 +191,8 @@ public class Settings extends BaseSettings {
             new BooleanSetting("hushgram_settings_light_look", FALSE);
 
     /**
-     * Instagram's own look for HushGram's page (#797): flat rows, plain section names and
-     * Instagram's switch, in its colours, dark or light as Instagram is. It takes the place of the
+     * Instagram's own layout for HushGram's page (#797): flat rows, plain section names and
+     * Instagram's switch, in Material colours, dark or light as Instagram is. It takes the place of the
      * black and light looks while it's on. Off to start. A settings-page choice, read saved even
      * during Pause.
      */

@@ -53,6 +53,9 @@ final class EntryCategory {
             return true;
         });
         entry.addPreference(descriptions);
+        entry.addPreference(toggle(context, Settings.SEARCH_CURRENT_SECTION,
+                L10n.t("Search within the current section"),
+                L10n.t("Search only this section and its nested pages. Search from settings home still includes everything.")));
         SwitchPreference bulk = toggle(context, Settings.SHOW_ENABLE_ALL, L10n.t("Show Enable all controls"),
                 L10n.t("Offers one switch to change all available switches on a settings page."));
         bulk.setOnPreferenceChangeListener((preference, value) -> {
@@ -77,7 +80,7 @@ final class EntryCategory {
         });
         entry.addPreference(light);
         SwitchPreference instagram = toggle(context, Settings.SETTINGS_INSTAGRAM_LOOK, L10n.t("Instagram settings page"),
-                L10n.t("Plain rows, switches and colors like Instagram's own settings, dark or light as Instagram is. Takes the place of Black and Light settings page while it's on."));
+                L10n.t("Plain rows and switches like Instagram's own settings, using Material colors. Dark or light as Instagram is."));
         instagram.setOnPreferenceChangeListener((preference, value) -> {
             // Posted, so the page redraws with the value this change saves.
             Utils.runOnMainThread(page::applyLook);
