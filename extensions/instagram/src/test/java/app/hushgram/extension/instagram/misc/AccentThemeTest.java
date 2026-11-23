@@ -1248,12 +1248,12 @@ public class AccentThemeTest {
             View pinned = new View(RuntimeEnvironment.getApplication());
             pinned.setBackground(new ColorDrawable(0xff000000));
             app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(pinned, false);
-            assertEquals(0xff101b2d, ((ColorDrawable) pinned.getBackground()).getColor());
+            assertEquals(0xff1e2839, ((ColorDrawable) pinned.getBackground()).getColor());
             ColorDrawable changedInPlace = (ColorDrawable) pinned.getBackground();
             changedInPlace.setColor(0xff654321);
             app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(pinned, false);
             assertTrue(changedInPlace != pinned.getBackground());
-            assertEquals(0xff101b2d, ((ColorDrawable) pinned.getBackground()).getColor());
+            assertEquals(0xff1e2839, ((ColorDrawable) pinned.getBackground()).getColor());
             assertEquals(0xff654321, changedInPlace.getColor());
             GradientDrawable gradient = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                     new int[]{0xff000000, 0xff191c1f});
@@ -1264,7 +1264,7 @@ public class AccentThemeTest {
             pinned.setBackground(custom);
             app.hushgram.extension.instagram.direct.ChatAccentSurfaces.paint(pinned, false);
             assertTrue(custom != pinned.getBackground());
-            assertEquals(0xff101b2d, ((ColorDrawable) pinned.getBackground()).getColor());
+            assertEquals(0xff1e2839, ((ColorDrawable) pinned.getBackground()).getColor());
             assertEquals(0xff123456, custom.getColor());
         } finally {
             Settings.CLASSIC_COLORS.resetToDefault();

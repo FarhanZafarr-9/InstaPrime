@@ -754,8 +754,16 @@ public final class AccentTheme {
 
     /** The chosen app surface, scoped by the caller to the pinned strip or input pill. Zero means no override. */
     public static int chatSurfaceShade(Context context, boolean raised) {
-        int[] surfaces = showsDark(context) ? paintedSurfaces() : paintedLightSurfaces();
-        return surfaces == null ? 0 : 0xff000000 | surfaces[raised ? 1 : 0] & 0xffffff;
+        boolean dark = showsDark(context);
+        int[] surfaces = dark ? paintedSurfaces() : paintedLightSurfaces();
+        if (surfaces == null) return 0;
+        int color = 0xff000000 | surfaces[raised ? 1 : 0] & 0xffffff;
+        if (raised) return color;
+        // The pinned strip must remain distinguishable from the page it sits above.
+        int tint = dark ? 255 : 0;
+        return Color.rgb((Color.red(color) * 94 + tint * 6) / 100,
+                (Color.green(color) * 94 + tint * 6) / 100,
+                (Color.blue(color) * 94 + tint * 6) / 100);
     }
 
     /**
