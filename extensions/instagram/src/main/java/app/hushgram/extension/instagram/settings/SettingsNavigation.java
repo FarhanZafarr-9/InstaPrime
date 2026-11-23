@@ -159,7 +159,7 @@ final class SettingsNavigation {
         }
         if (node.icon.equals(SettingsIcons.REELS) && node.id.endsWith("::content")) {
             groupPage(context, node, L10n.t("Recommendations and thresholds"), L10n.t("Words, languages, and sounds"),
-                    keys(Settings.HIDE_CAPTION_WORD_REELS.key, Settings.HIDE_CAPTION_WORD_HOME.key,
+                    keys(Settings.HIDE_CAPTION_WORD_REELS.key, Settings.HIDE_CAPTION_WORD_HOME.key, Settings.HIDE_CAPTION_WORD_COMMENTS.key, Settings.HIDE_CAPTION_WORD_SEARCH.key,
                             Settings.REELS_BLOCKED_WORDS.key, Settings.HIDE_OTHER_LANGUAGE_REELS.key,
                             Settings.HIDE_OTHER_LANGUAGE_HOME.key, Settings.REELS_KEPT_LANGUAGES.key,
                             Settings.HIDE_SOUND_REELS.key, HushgramPreferenceFragment.HIDDEN_SOUNDS_ROW));
@@ -273,9 +273,10 @@ final class SettingsNavigation {
         } else if (icon.equals(SettingsIcons.SETTINGS)) {
             bands(node, keys(Settings.NAVIGATION_SETTINGS_TARGET.key, Settings.PROFILE_MENU_LONG_PRESS.key,
                     Settings.SETTINGS_SHORTCUT.key, Settings.SETTINGS_LOGO_PRESS.key, Settings.HIDE_MENU_ROW.key),
-                    keys(Settings.SETTINGS_BLACK_LOOK.key, Settings.SETTINGS_LIGHT_LOOK.key, Settings.SHOW_ENABLE_ALL.key));
+                    keys(Settings.SETTINGS_BLACK_LOOK.key, Settings.SETTINGS_LIGHT_LOOK.key, Settings.SETTINGS_INSTAGRAM_LOOK.key, Settings.SHOW_ENABLE_ALL.key));
         } else if (icon.equals(SettingsIcons.FEED) && id.endsWith("::appearance")) {
             bands(node, keys(Settings.FULL_RESOLUTION_PHOTOS.key, Settings.ASK_FOR_LARGER_PHOTOS.key, Settings.FULL_SIZE_COVERS.key),
+                    keys(Settings.HIDE_FEED_HEADER_LINE.key, Settings.KEEP_FEED_HEADER_PLACE.key, Settings.HOME_REELS_BELOW_NAME.key),
                     keys(Settings.SHOW_POST_TIME.key, Settings.SHOW_HIDDEN_LIKE_COUNTS.key, Settings.HIDE_CAPTIONS.key,
                             Settings.SKIP_COLLECTIONS_TRAY.key, Settings.HIDE_ACTIVITY_BUBBLES.key),
                     keys(Settings.FULL_SCREEN_HOME.key, Settings.KEEP_HOME_TOP_BAR.key, Settings.SEE_THROUGH_HOME_TOP_BAR.key));
@@ -294,12 +295,12 @@ final class SettingsNavigation {
             bands(node, keys(Settings.STOP_SWIPE_TO_CREATE.key, Settings.HOME_SWIPE_OPENS.key, Settings.STOP_TAB_SWIPING.key),
                     keys(Settings.ASK_BEFORE_LIKE.key, Settings.ASK_BEFORE_REFRESH.key));
         } else if (icon.equals(SettingsIcons.FEED) && id.endsWith("::video")) {
-            bands(node, keys(Settings.START_FEED_VIDEOS_WITH_SOUND.key, Settings.START_FEED_VIDEOS_MUTED.key,
+            bands(node, keys(Settings.START_FEED_VIDEOS_WITH_SOUND.key, Settings.START_FEED_VIDEOS_ON_SILENT.key, Settings.START_FEED_VIDEOS_MUTED.key,
                             Settings.HIDE_FEED_AUDIO_ICON.key),
                     keys(Settings.TAP_FEED_VIDEO_TO_PAUSE.key, Settings.FEED_TAPS_STAY_IN_FEED.key),
                     keys(Settings.FEED_AUTO_SCROLL.key, Settings.FEED_AUTO_SCROLL_SECONDS.key));
         } else if (icon.equals(SettingsIcons.FEED) && id.endsWith("::video-controls")) {
-            bands(node, keys(Settings.HOLD_FEED_VIDEO_FAST.key, Settings.HOLD_FEED_VIDEO_KEEP.key,
+            bands(node, keys(Settings.HOLD_FEED_VIDEO_FAST.key, Settings.HOLD_FEED_VIDEO_KEEP.key, Settings.HOLD_FEED_VIDEO_KEEP_LONG.key, Settings.HOLD_FEED_VIDEO_KEEP_NAME.key,
                             Settings.FEED_DOUBLE_TAP_SKIP.key, Settings.FEED_DOUBLE_TAP_SKIP_SECONDS.key),
                     keys(Settings.FEED_SEEK_BAR_ON_EDGE.key, Settings.SEEK_BAR_SHAPE.key,
                             Settings.FEED_SEEK_SHAPE.key, Settings.SEEK_PREVIEW.key),
@@ -310,10 +311,10 @@ final class SettingsNavigation {
                     keys(Settings.HIDE_DM_COMPOSE_BUTTON.key, Settings.SETTINGS_BUTTON_IN_DM_HEADER.key));
         } else if (icon.equals(SettingsIcons.CHATS) && id.endsWith("::controls")) {
             bands(node, keys(Settings.MESSAGE_TAP_ACTIONS.key, Settings.MESSAGE_TAP_REACTIONS.key,
-                            Settings.HIDE_MESSAGE_ACTIONS.key, Settings.MORE_MESSAGE_ACTIONS.key),
+                            Settings.HIDE_MESSAGE_ACTIONS.key, Settings.MORE_MESSAGE_ACTIONS.key, Settings.HELD_MESSAGE_BLUR.key),
                     keys(Settings.KEEP_IN_CHAT.key, Settings.HIDE_KINDNESS_REMINDER.key),
                     keys(Settings.HIDE_BLEND_BUTTON.key, Settings.CENTER_CHAT_NAME.key, Settings.HIDE_CHAT_BACK_BUTTON.key),
-                    keys(Settings.GLASS_CHAT.key, Settings.GLASS_CHAT_BOX_OPACITY.key,
+                    keys(Settings.GLASS_CHAT.key, Settings.GLASS_CHAT_BOX_OPACITY.key, Settings.GLASS_CHAT_BUTTONS.key,
                             Settings.GLASS_CHAT_TOP_BAR.key, Settings.GLASS_CHAT_TOP_BAR_OPACITY.key));
         } else if (icon.equals(SettingsIcons.PERSON) && id.endsWith("::relationships")) {
             bands(node, keys(Settings.SHOW_FRIENDSHIP_STATUS.key, Settings.FRIENDSHIP_STATUS_CHIP.key, Settings.FOLLOW_LABEL_PLACE.key),
@@ -326,7 +327,7 @@ final class SettingsNavigation {
                     Settings.TURN_OFF_DOUBLE_TAP_LIKE_ON_MESSAGES.key));
         } else if (icon.equals(SettingsIcons.REELS) && id.endsWith("::gestures")) {
             bands(node, keys(Settings.STOP_REELS_SCROLLING.key, Settings.REEL_SCROLL_FROM_PROFILE.key,
-                    Settings.REEL_SCROLL_FROM_SEARCH.key, Settings.REEL_SCROLL_FROM_AUDIO.key, Settings.REEL_SWIPE_TO_PROFILE.key));
+                    Settings.REEL_SCROLL_FROM_SEARCH.key, Settings.REEL_SCROLL_FROM_AUDIO.key, Settings.REEL_SWIPE_TO_PROFILE.key, Settings.REEL_LINK_TAB_BAR.key));
         } else if (icon.equals(SettingsIcons.REELS) && id.endsWith("::overlays")) {
             bands(node, keys(Settings.HIDE_REEL_CHIPS.key, Settings.HIDE_REEL_SEARCH_PILL.key,
                             Settings.HIDE_REEL_PRODUCT_PILLS.key, Settings.HIDE_REEL_POLL_PILLS.key),
@@ -436,7 +437,7 @@ final class SettingsNavigation {
                     Settings.FEED_DOUBLE_TAP_SKIP.key, Settings.FEED_DOUBLE_TAP_SKIP_SECONDS.key,
                     Settings.FEED_SEEK_BAR_ON_EDGE.key, Settings.SEEK_BAR_SHAPE.key, Settings.SEEK_PREVIEW.key,
                     Settings.WATCH_AGAIN_IN_FEED.key, Settings.HIDE_WATCH_MORE_REELS.key,
-                    Settings.HOLD_FEED_VIDEO_KEEP.key,
+                    Settings.HOLD_FEED_VIDEO_KEEP.key, Settings.HOLD_FEED_VIDEO_KEEP_LONG.key, Settings.HOLD_FEED_VIDEO_KEEP_NAME.key,
                     Settings.FEED_SEEK_TIME.key,
                     Settings.FEED_SEEK_TIME_LEFT.key,
                     Settings.FEED_SKIP_ARROWS.key,
@@ -457,7 +458,7 @@ final class SettingsNavigation {
                     Settings.LONG_PRESS_TO_ZOOM.key, Settings.LONG_PRESS_ZOOM_STAYS_OPEN.key, Settings.LONG_PRESS_FULL_SCREEN.key,
                     Settings.STOP_SWIPE_TO_MESSAGES.key,
                     Settings.SWIPE_LEFT_MESSAGES.key));
-            split(node, "video", L10n.t("Video playback"), keys(Settings.START_FEED_VIDEOS_WITH_SOUND.key,
+            split(node, "video", L10n.t("Video playback"), keys(Settings.START_FEED_VIDEOS_WITH_SOUND.key, Settings.START_FEED_VIDEOS_ON_SILENT.key,
                     Settings.TAP_FEED_VIDEO_TO_PAUSE.key, Settings.FEED_SEEK_BAR.key, Settings.FEED_SEEK_BUTTON.key,
                     Settings.FEED_SEEK_BAR_LOOK.key, Settings.PEEK_CAROUSEL_PAGES.key, Settings.CAROUSEL_ARROWS.key,
                     Settings.CAROUSEL_DOTS_PILL.key, Settings.CAROUSEL_PILL_LOOK.key, Settings.HIDE_FEED_AUDIO_ICON.key,
@@ -475,7 +476,7 @@ final class SettingsNavigation {
         }
         if (icon.equals(SettingsIcons.REELS)) {
             split(node, "words-sounds", L10n.t("Words, languages, and sounds"), keys(Settings.HIDE_CAPTION_WORD_REELS.key,
-                    Settings.HIDE_CAPTION_WORD_HOME.key, Settings.REELS_BLOCKED_WORDS.key,
+                    Settings.HIDE_CAPTION_WORD_HOME.key, Settings.HIDE_CAPTION_WORD_COMMENTS.key, Settings.HIDE_CAPTION_WORD_SEARCH.key, Settings.REELS_BLOCKED_WORDS.key,
                     Settings.HIDE_OTHER_LANGUAGE_REELS.key, Settings.HIDE_OTHER_LANGUAGE_HOME.key,
                     Settings.REELS_KEPT_LANGUAGES.key, Settings.HIDE_SOUND_REELS.key,
                     HushgramPreferenceFragment.HIDDEN_SOUNDS_ROW));
@@ -498,7 +499,7 @@ final class SettingsNavigation {
                     Settings.AUTO_SCROLL_IN_REEL_MENU.key));
             split(node, "content", L10n.t("Content filters"), keys(Settings.HIDE_FEED_REELS.key, Settings.HIDE_REELS_SUGGESTIONS.key,
                     Settings.HIDE_LIVE_REELS.key, Settings.HIDE_PAID_PARTNERSHIP_REELS.key, Settings.HIDE_AI_LABELED_REELS.key, Settings.HIDE_CAPTION_WORD_REELS.key,
-                    Settings.HIDE_CAPTION_WORD_HOME.key, Settings.HIDE_SOUND_REELS.key, Settings.REELS_BLOCKED_WORDS.key,
+                    Settings.HIDE_CAPTION_WORD_HOME.key, Settings.HIDE_CAPTION_WORD_COMMENTS.key, Settings.HIDE_CAPTION_WORD_SEARCH.key, Settings.HIDE_SOUND_REELS.key, Settings.REELS_BLOCKED_WORDS.key,
                     Settings.HIDE_OTHER_LANGUAGE_REELS.key, Settings.HIDE_OTHER_LANGUAGE_HOME.key, Settings.REELS_KEPT_LANGUAGES.key,
                     Settings.HIDE_LOW_VIEW_REELS.key, Settings.MIN_REEL_VIEWS.key, Settings.MIN_REEL_LIKES.key,
                     HushgramPreferenceFragment.HIDDEN_SOUNDS_ROW,
@@ -526,7 +527,7 @@ final class SettingsNavigation {
                     Settings.CHANGE_LIKE_ANIMATION.key, Settings.LIKE_ANIMATION.key, Settings.GROW_LIKE_HEART.key,
                     Settings.STOP_REELS_SCROLLING.key, Settings.REEL_SCROLL_FROM_PROFILE.key, Settings.REEL_SCROLL_FROM_SEARCH.key,
                     Settings.REEL_SCROLL_FROM_AUDIO.key, Settings.REEL_CAP.key, Settings.REEL_CAP_COUNT.key,
-                    Settings.REEL_CAP_BREAK.key, Settings.REEL_SWIPE_TO_PROFILE.key, Settings.SCROLL_BREAK.key, Settings.SCROLL_BREAK_LENGTH.key,
+                    Settings.REEL_CAP_BREAK.key, Settings.REEL_SWIPE_TO_PROFILE.key, Settings.REEL_LINK_TAB_BAR.key, Settings.SCROLL_BREAK.key, Settings.SCROLL_BREAK_LENGTH.key,
                     Settings.PINCH_CLEAR_MODE.key,
                     Settings.HIDE_CLEAR_MODE_EXIT_BUTTON.key));
             split(node, "actions", L10n.t("Downloads and actions"), keys(Settings.REEL_DOWNLOAD_BUTTON_ASKS.key, Settings.OPEN_REEL_LINKS_FIRST.key, Settings.DOWNLOAD_REELS.key, Settings.DOWNLOAD_REEL_COVER.key, Settings.DOWNLOAD_REEL_AUDIO.key, Settings.FIND_REEL_ORIGIN.key, Settings.FIND_REEL_ORIGIN_ON_TAP.key, Settings.REEL_NOT_INTERESTED_BUTTON.key, Settings.REEL_BLOCK_BUTTON.key, Settings.DONT_SEND_REEL_WATCH_HISTORY.key,
@@ -570,7 +571,7 @@ final class SettingsNavigation {
                     Settings.GLASS_STORY_REPLY_BOX.key, Settings.HIDE_STORY_FOLLOW.key,
                     Settings.STORY_BUTTONS_BY_THUMB.key));
             split(node, "suggestions", L10n.t("Suggestions and content"), keys(Settings.HIDE_SUGGESTED_STORIES.key, Settings.HIDE_STORY_REWINDS.key, Settings.HIDE_STORY_RECAPS.key, Settings.STOP_LOADING_STORIES.key, Settings.HIDE_MUSIC_CARD.key, Settings.HIDE_STORY_SUGGESTIONS.key, Settings.HIDE_ADD_YOURS_CARDS.key));
-            split(node, "playback", L10n.t("Playback and gestures"), keys(Settings.STORY_SEEK_BAR_POSITION.key, Settings.STORY_SEEK_BAR.key, Settings.STORY_SEEK_BAR_LOOK.key,
+            split(node, "playback", L10n.t("Playback and gestures"), keys(Settings.STORY_SEEK_BAR_POSITION.key, Settings.STORY_SEEK_BAR.key, Settings.STORY_SEEK_BAR_LOOK.key, Settings.STORY_SEEK_TIME.key, Settings.STORY_SEEK_TIME_LEFT.key,
                     Settings.BLOCK_STORY_AUTO_ADVANCE.key, Settings.LOOP_STORIES.key, Settings.START_STORIES_WITH_SOUND.key,
                     Settings.STOP_STORY_SWIPE_REPLY.key, Settings.KEEP_STORIES_PLAYING_ON_ZOOM.key, Settings.SMOOTH_STORY_OPEN.key));
             split(node, "privacy", L10n.t("Privacy and actions"), keys(Settings.VIEW_STORIES_ANONYMOUSLY.key, Settings.MARK_STORIES_SEEN.key, Settings.GRAY_OUT_WATCHED_STORIES.key, Settings.VIEW_LIVE_ANONYMOUSLY.key, Settings.SHOW_STORY_MENTIONS.key, Settings.DOWNLOAD_STORIES.key, Settings.UPLOAD_STORIES_AT_FULL_QUALITY.key,
@@ -586,7 +587,7 @@ final class SettingsNavigation {
                     Settings.STORY_RING_CUSTOM.key,
                     Settings.STORY_RING_CUSTOM_END.key,
                     Settings.STORY_RING_THICKNESS.key));
-            split(node, "viewer-controls", L10n.t("Viewer controls"), keys(Settings.STORY_SPEED_IN_MENU.key, Settings.STORY_SPEED_BUTTON.key,
+            split(node, "viewer-controls", L10n.t("Viewer controls"), keys(Settings.STORY_SPEED_IN_MENU.key, Settings.STORY_COPY_TEXT_IN_MENU.key, Settings.STORY_SPEED_BUTTON.key,
                     Settings.HIDE_STORY_REPLY_BOX.key,
                     Settings.HIDE_STORY_FOLLOW.key, Settings.SHOW_STORY_TIME.key, Settings.STORY_TIME_MODE.key,
                     Settings.DOWNLOAD_BUTTON_ON_STORIES.key, Settings.TEXT_BUTTON_ON_STORIES.key, Settings.MARK_LIVE_SEEN.key));
@@ -596,14 +597,14 @@ final class SettingsNavigation {
             split(node, "titles", L10n.t("Header titles and alignment"), keys(Settings.CENTER_HOME_LOGO.key,
                     Settings.CENTER_PROFILE_NAME.key, Settings.CENTER_SCREEN_TITLES.key, Settings.TITLES_AT_START.key));
             split(node, "tab-layout", L10n.t("Tab order and size"), keys(Settings.TAB_ORDER.key,
-                    Settings.START_TAB.key, Settings.TAB_BAR_LAYOUT.key, Settings.TAB_ICON_SIZE.key));
+                    Settings.START_TAB.key, Settings.TAB_BAR_LAYOUT.key, Settings.TAB_ICON_SIZE.key, Settings.FULL_SIZE_REELS_ICON.key));
             split(node, "glass-shape", L10n.t("Pill size and position"), keys(Settings.GLASS_TAB_BAR_HEIGHT.key,
                     Settings.GLASS_TAB_BAR_LIFT.key, Settings.GLASS_TAB_BAR_CORNERS.key,
                     Settings.GLASS_TAB_BAR_KEEP_SIZE.key));
             split(node, "feedback", L10n.t("Touch feedback and sound"), keys(Settings.GLASS_TAB_BAR_HAPTICS.key,
                     Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key, Settings.GLASS_TAB_BAR_HAPTIC_STRENGTH.key,
                     Settings.GLASS_TAB_BAR_TAP_SOUND.key, Settings.GLASS_TAB_BAR_TAP_SOUND_VOLUME.key));
-            split(node, "tabs", L10n.t("Tabs and order"), keys(Settings.HIDE_HOME_TAB.key, Settings.HIDE_REELS_TAB.key, Settings.SHOW_REELS_TAB.key, Settings.HIDE_SEARCH_TAB.key, Settings.HIDE_CREATE_TAB.key, Settings.HIDE_PROFILE_TAB.key, Settings.SHOW_MESSAGES_TAB.key, Settings.HIDE_MESSAGES_TAB.key, Settings.SHOW_ACTIVITY_TAB.key, Settings.TAB_ICON_SIZE.key, Settings.TAB_ORDER.key, Settings.START_TAB.key, Settings.TAB_BAR_LAYOUT.key));
+            split(node, "tabs", L10n.t("Tabs and order"), keys(Settings.HIDE_HOME_TAB.key, Settings.HIDE_REELS_TAB.key, Settings.SHOW_REELS_TAB.key, Settings.HIDE_SEARCH_TAB.key, Settings.HIDE_CREATE_TAB.key, Settings.HIDE_PROFILE_TAB.key, Settings.SHOW_MESSAGES_TAB.key, Settings.HIDE_MESSAGES_TAB.key, Settings.SHOW_ACTIVITY_TAB.key, Settings.TAB_ICON_SIZE.key, Settings.FULL_SIZE_REELS_ICON.key, Settings.TAB_ORDER.key, Settings.START_TAB.key, Settings.TAB_BAR_LAYOUT.key));
             split(node, "header", L10n.t("Header buttons and titles"), keys(Settings.HIDE_HOME_CREATE_BUTTON.key, Settings.HIDE_HOME_NOTIFICATIONS_BUTTON.key, Settings.SEARCH_BUTTON_ON_HOME.key, Settings.MESSAGES_BUTTON_ON_HOME.key, Settings.HIDE_HOME_MESSAGES_BUTTON.key, Settings.GHOST_BUTTON_ON_HOME.key, Settings.SETTINGS_BUTTON_ON_HOME.key, Settings.MENU_BUTTON_ON_HOME.key, Settings.HISTORY_BUTTON_ON_HOME.key, Settings.HEART_COUNT.key, Settings.CENTER_HOME_LOGO.key, Settings.CENTER_PROFILE_NAME.key, Settings.CENTER_SCREEN_TITLES.key, Settings.TITLES_AT_START.key,
                     Settings.HIDE_MESSAGES_BADGE.key));
             split(node, "behavior", L10n.t("Scrolling and visibility"), keys(Settings.GLASS_TAB_BAR_SHRINK_ON_SCROLL.key, Settings.GLASS_TAB_BAR_SLIDE.key, Settings.GLASS_TAB_BAR_HAPTICS.key, Settings.GLASS_TAB_BAR_HAPTIC_STYLE.key, Settings.GLASS_TAB_BAR_HIDE_ON_SCROLL.key, Settings.GLASS_TAB_BAR_REELS_HIDE.key,
@@ -643,12 +644,12 @@ final class SettingsNavigation {
                     Settings.FULL_SCREEN_MESSAGES.key, HushgramPreferenceFragment.PINNED_CHATS_ROW,
                     Settings.HIDE_NEW_MESSAGE_SUGGESTIONS.key));
             split(node, "controls", L10n.t("Chat appearance and behavior"), keys(Settings.KEEP_IN_CHAT.key, Settings.HIDE_KINDNESS_REMINDER.key, Settings.GLASS_CHAT.key,
-                    Settings.MESSAGE_TAP_ACTIONS.key, Settings.MESSAGE_TAP_REACTIONS.key, Settings.HIDE_MESSAGE_ACTIONS.key, Settings.MORE_MESSAGE_ACTIONS.key,
+                    Settings.MESSAGE_TAP_ACTIONS.key, Settings.MESSAGE_TAP_REACTIONS.key, Settings.HIDE_MESSAGE_ACTIONS.key, Settings.MORE_MESSAGE_ACTIONS.key, Settings.HELD_MESSAGE_BLUR.key,
                     Settings.ASK_BEFORE_CALL.key, Settings.HIDE_CALL_BUTTONS.key, Settings.HIDE_VIDEO_CALL_BUTTON.key,
                     Settings.HIDE_AUDIO_CALL_BUTTON.key, Settings.HIDE_BLEND_BUTTON.key,
                     Settings.GLASS_CHAT_TOP_BAR.key,
                     Settings.GLASS_CHAT_TOP_BAR_OPACITY.key,
-                    Settings.GLASS_CHAT_BOX_OPACITY.key,
+                    Settings.GLASS_CHAT_BOX_OPACITY.key, Settings.GLASS_CHAT_BUTTONS.key,
                     Settings.CENTER_CHAT_NAME.key,
                     Settings.HIDE_CHAT_BACK_BUTTON.key));
             split(node, "security", L10n.t("App and chat locks"), keys(Settings.LOCK_SAVED.key, Settings.LOCK_EACH_CHAT.key, Settings.LOCK_MESSAGES.key, Settings.LOCK_APP.key, Settings.DOUBLE_TAP_HIDDEN_CHATS.key, Settings.LOCK_AGAIN.key, Settings.UNLOCK_WITH.key, HushgramPreferenceFragment.CHANGE_PIN_ROW, HushgramPreferenceFragment.LOCKED_CHATS_ROW, HushgramPreferenceFragment.HIDDEN_CHATS_ROW,
@@ -658,7 +659,7 @@ final class SettingsNavigation {
                     Settings.HIDE_PLUS_BUTTON.key, Settings.HIDE_EMPTY_PLUS_MENU.key,
                     Settings.HIDE_PLUS_SAVED.key, Settings.HIDE_PLUS_AI_IMAGES.key, Settings.HIDE_PLUS_DRAW.key,
                     Settings.HIDE_PLUS_META_AI.key, Settings.HIDE_PLUS_LOCATION.key, Settings.MOVE_TO_PLUS_MENU.key));
-            split(node, "media-history", L10n.t("Shared media and history"), keys(Settings.SWIPE_CHAT_MEDIA.key, Settings.SWIPE_CHAT_REELS.key,
+            split(node, "media-history", L10n.t("Shared media and history"), keys(Settings.SWIPE_CHAT_MEDIA.key, Settings.SWIPE_CHAT_REELS.key, Settings.BLOCK_CHAT_REELS.key,
                     Settings.STOP_AFTER_CHAT_REELS.key, Settings.ONLY_RECEIVED_CHAT_REELS.key, Settings.MESSAGES_AFTER_CHAT_REELS.key,
                     Settings.JUMP_IN_CHAT.key, Settings.EXPORT_CHAT.key, Settings.MARK_VIEW_ONCE.key));
             remainder(node, L10n.t("Privacy and receipts"));
@@ -713,7 +714,7 @@ final class SettingsNavigation {
                     Settings.HIDDEN_PROFILE_TABS.key, Settings.SAVED_ON_PROFILE.key,
                     Settings.SAVED_FAST_SCROLL.key, Settings.PROFILE_POSTS_LIST.key, Settings.PROFILE_GRID_JUMP.key,
                     Settings.PROFILE_REEL_SORT.key,
-                    Settings.HIDE_SAVED_NEW_COLLECTION.key));
+                    Settings.HIDE_SAVED_NEW_COLLECTION.key, Settings.HIDE_SAVED_REELS_TAB.key, Settings.HIDE_EXPLORE_SAVED.key));
             remainder(node, L10n.t("Profile header"));
         }
     }
