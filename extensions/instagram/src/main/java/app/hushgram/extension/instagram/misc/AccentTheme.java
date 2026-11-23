@@ -729,6 +729,7 @@ public final class AccentTheme {
     public static void chatHeader(@Nullable View header) {
         try {
             HookStatus.invoked(FamilyNames.ACCENT_COLOR);
+            if (header != null) app.hushgram.extension.instagram.direct.ChatAccentSurfaces.follow(header);
             if (header == null || !(header.getBackground() instanceof ColorDrawable)) return;
             int color = ((ColorDrawable) header.getBackground()).getColor();
             int shade = chatShade(color);
@@ -749,6 +750,15 @@ public final class AccentTheme {
         int rgb = color & 0xffffff;
         int[] surfaces = surfaceStep(rgb) == 0 ? paintedSurfaces() : lightStep(rgb) == 0 ? paintedLightSurfaces() : null;
         return surfaces == null ? color : 0xff000000 | surfaces[0] & 0xffffff;
+    }
+
+    /** Only native solid chat surfaces: the pinned strip uses the page, the input pill a raised shade. */
+    public static int chatSurfaceShade(int color, boolean raised) {
+        if (color >>> 24 != 0xff) return color;
+        int rgb = color & 0xffffff;
+        int[] surfaces = surfaceStep(rgb) >= 0 || dspDarkStep(rgb) >= 0 ? paintedSurfaces()
+                : lightStep(rgb) >= 0 ? paintedLightSurfaces() : null;
+        return surfaces == null ? color : 0xff000000 | surfaces[raised ? 1 : 0] & 0xffffff;
     }
 
     /**

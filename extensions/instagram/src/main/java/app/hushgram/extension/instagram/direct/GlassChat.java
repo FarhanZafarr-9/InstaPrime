@@ -341,7 +341,7 @@ public final class GlassChat {
      * pill in its place: some of Instagram 456's message bars hide the picture and leave it there (#759).
      */
     @Nullable
-    private static View findMessageBox(Activity activity) {
+    static View findMessageBox(Activity activity) {
         int id = id(activity, MESSAGE_BOX);
         int source = id(activity, MESSAGES);
         View messages = id == 0 || source == 0 ? null : shownView(activity.getWindow().getDecorView(), source);
