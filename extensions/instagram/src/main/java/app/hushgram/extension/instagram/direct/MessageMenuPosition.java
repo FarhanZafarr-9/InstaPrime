@@ -57,7 +57,79 @@ public final class MessageMenuPosition {
     }
 
     private static int edgeGap(View view) {
-        return Math.round(12 * view.getResources().getDisplayMetrics().density);
+        // Extra edge gap disabled while validating message-anchored placement.
+        // return Math.round(12 * view.getResources().getDisplayMetrics().density);
+        return 0;
+    }
+
+    /** Align the tray to the held bubble, retaining native avatar space on incoming messages. */
+    static int reactionLeft(Rect bubble, Rect viewport, int nativeLeft, int width) {
+        if (bubble == null || bubble.isEmpty() || viewport.isEmpty() || width <= 0 || width > viewport.width()
+                || bubble.width() >= viewport.width() || bubble.right <= viewport.left || bubble.left >= viewport.right) {
+            return nativeLeft;
+        }
+        int right = Math.min(viewport.right, Math.max(nativeLeft + width, bubble.right));
+        return Math.max(viewport.left, Math.min(bubble.left, right - width));
+    }
+
+    /** Called from the verified native actions fragment, once its own view has been created. */
+    public static void actionsCreated(Object fragment, View root) {
+        try {
+            TrayAnchor anchor = new TrayAnchor(root, fragment);
+            root.getViewTreeObserver().addOnPreDrawListener(anchor);
+            root.addOnAttachStateChangeListener(anchor);
+            app.hushgram.extension.shared.diagnostics.HookStatus.counted("Message reaction tray", "native actions root captured");
+        } catch (RuntimeException ignored) {
+            // Unknown model/layout variants keep native placement.
+        }
+    }
+
+    private static final class TrayAnchor implements ViewTreeObserver.OnPreDrawListener, View.OnAttachStateChangeListener {
+        final WeakReference<View> root;
+        WeakReference<View> tray = new WeakReference<>(null);
+        final WeakReference<Object> fragment;
+        Rect bubble;
+        float shifted, lastTranslation;
+        TrayAnchor(View root, Object fragment) {
+            this.root = new WeakReference<>(root); this.fragment = new WeakReference<>(fragment);
+        }
+        @Override public boolean onPreDraw() {
+            try { align(); } catch (RuntimeException ignored) { }
+            return true;
+        }
+        private void align() {
+            View holder = root.get(), row = tray.get();
+            if (holder == null) return;
+            if (bubble == null) bubble = HeldMessageBlur.argumentsRect(fragment.get());
+            if (row == null) {
+                int id = GlassChat.id(holder.getContext(), "reactions_container");
+                row = id == 0 ? null : holder.findViewById(id);
+                if (row != null) { tray = new WeakReference<>(row); lastTranslation = row.getTranslationX(); }
+            }
+            if (bubble == null || row == null || !row.isShown() || row.getWidth() <= 0) return;
+            if (Math.abs(row.getTranslationX() - lastTranslation) > 0.5f) shifted = 0f;
+            Rect viewport = new Rect();
+            holder.getWindowVisibleDisplayFrame(viewport);
+            int[] location = new int[2]; row.getLocationOnScreen(location);
+            int nativeLeft = Math.round(location[0] - shifted);
+            int desired = reactionLeft(bubble, viewport, nativeLeft, row.getWidth());
+            float delta = desired - location[0];
+            if (Math.abs(delta) > 0.5f) {
+                row.setTranslationX(row.getTranslationX() + delta);
+                app.hushgram.extension.shared.diagnostics.HookStatus.counted("Message reaction tray", "tray aligned to held bubble");
+            }
+            shifted = desired - nativeLeft;
+            lastTranslation = row.getTranslationX();
+        }
+        @Override public void onViewAttachedToWindow(View view) { }
+        @Override public void onViewDetachedFromWindow(View view) {
+            if (view.getViewTreeObserver().isAlive()) view.getViewTreeObserver().removeOnPreDrawListener(this);
+            view.removeOnAttachStateChangeListener(this);
+            View row = tray.get();
+            if (row != null && Math.abs(row.getTranslationX() - lastTranslation) <= 0.5f) {
+                row.setTranslationX(lastTranslation - shifted);
+            }
+        }
     }
 
     static int submenuLeft(Rect anchor, Rect frame, int width, int gap) {

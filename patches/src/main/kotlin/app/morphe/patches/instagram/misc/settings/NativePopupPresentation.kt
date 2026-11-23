@@ -84,7 +84,8 @@ internal fun BytecodePatchContext.nativePopupPlan(): NativePopupPlan {
         it.parameterTypes.map(Any::toString) == listOf("Ljava/util/List;") && it.implementation != null }
     if (populations.size < 2) refuse("native popup population variants missing")
     val primary = classesHolding("reactionsCreationController must be initialized", "vibrator")
-        .flatMap { it.methods }.singleOrNull { it.name == "onViewCreated" && it.popupCode().any { ins ->
+        .flatMap { it.methods }.singleOrNull { it.name == "onViewCreated" && !AccessFlags.STATIC.isSet(it.accessFlags) &&
+            it.parameterTypes.map(Any::toString) == listOf("Landroid/view/View;", "Landroid/os/Bundle;") && it.popupCode().any { ins ->
             ins.popupCall()?.let { call -> call.definingClass == renderer.type &&
                 call.parameterTypes.map(Any::toString) == listOf("Ljava/util/List;") } == true
         } } ?: refuse("no unique primary message popup")
@@ -115,6 +116,9 @@ internal fun BytecodePatchContext.applyNativePopupPlan(plan: NativePopupPlan) {
     }
     primary.addInstructionsAtControlFlowLabel(plan.primaryAt + 1,
         "invoke-static/range {v$popupRegister .. v$popupRegister}, $position->remember(Landroid/widget/PopupWindow;)V")
+    // Capture receiver/root before native code can reuse their parameter registers. Layout is read at pre-draw.
+    primary.addInstructions(0,
+        "invoke-static/range {p0 .. p1}, $position->actionsCreated(Ljava/lang/Object;Landroid/view/View;)V")
     val primaryX = globalMutableClassDefBy(plan.primaryX.definingClass).methods.single { it.toString() == plan.primaryX.toString() }
     primaryX.popupCode().withIndex().filter { it.value.opcode == Opcode.RETURN }.asReversed().forEach { (at, instruction) ->
         val result = (instruction as OneRegisterInstruction).registerA
