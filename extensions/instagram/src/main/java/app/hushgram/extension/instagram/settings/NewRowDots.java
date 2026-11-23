@@ -42,6 +42,8 @@ final class NewRowDots {
 
     private final SharedPreferences store;
     private final Set<String> seen = new HashSet<>();
+    /** New rows actually painted during this visit; unopened/offscreen rows keep their badges. */
+    private final Set<String> drawn = new HashSet<>();
     /** Each navigation opener and all saved rows below that node. */
     private final Map<Preference, List<Preference>> openers = new HashMap<>();
     private final Map<PreferenceCategory, List<Preference>> pages;
@@ -152,7 +154,9 @@ final class NewRowDots {
 
     private void leave(List<Preference> rows) {
         int before = seen.size();
-        addKeys(rows);
+        for (Preference row : rows) {
+            if (counts(row) && drawn.contains(row.getKey())) seen.add(row.getKey());
+        }
         if (seen.size() != before) save();
     }
 
@@ -184,7 +188,11 @@ final class NewRowDots {
     /** Paints [row]'s dot, or takes the old one off, as the page that is showing says. */
     static void paint(View row, Preference preference, int accent) {
         TextView title = row.findViewById(android.R.id.title);
-        if (title != null) paint(row, freshRow(preference), accent);
+        if (title != null) {
+            NewRowDots dots = current;
+            if (dots != null && counts(preference) && dots.fresh(preference)) dots.drawn.add(preference.getKey());
+            paint(row, freshRow(preference), accent);
+        }
     }
 
     /** The same for a [title] that isn't under Android's title id, like a category chip's name. */
@@ -193,6 +201,7 @@ final class NewRowDots {
         try {
             NewRowDots dots = current;
             fresh = dots != null && dots.fresh(preference);
+            if (fresh && counts(preference)) dots.drawn.add(preference.getKey());
         } catch (RuntimeException failed) {
             // No dot.
         }

@@ -48,6 +48,7 @@ public enum PatchFamily {
     BUILD_EXPIRED_POPUP(FamilyNames.BUILD_EXPIRED_POPUP, "buildExpiredPopup", null,
             Settings.REMOVE_BUILD_EXPIRED_POPUP),
     RESTORE_TRUST(FamilyNames.RESTORE_TRUST, "restoreTrust", "the re-signed build fix"),
+    WITHOUT_PLAY_SERVICES(FamilyNames.WITHOUT_PLAY_SERVICES, "withoutPlayServices", "the Play services crash fix"),
     REMOVE_AD_ID(FamilyNames.REMOVE_AD_ID, "removeAdId", "the removed advertising ID permissions"),
     REEL_WATCH_HISTORY(FamilyNames.REEL_WATCH_HISTORY, "reelWatchHistory", null,
             Settings.DONT_SEND_REEL_WATCH_HISTORY),
@@ -75,10 +76,11 @@ public enum PatchFamily {
     STORY_FONTS(FamilyNames.STORY_FONTS, "storyFonts", null, Settings.STORY_FONTS, Settings.STORY_EMOJI),
     STORY_UPLOAD_QUALITY(FamilyNames.STORY_UPLOAD_QUALITY, "storyUploadQuality", null, Settings.UPLOAD_STORIES_AT_FULL_QUALITY),
     FEED_SOUND(FamilyNames.FEED_SOUND, "feedSound", null, Settings.START_FEED_VIDEOS_WITH_SOUND,
-            Settings.START_FEED_VIDEOS_MUTED),
+            Settings.START_FEED_VIDEOS_ON_SILENT, Settings.START_FEED_VIDEOS_MUTED),
     FEED_TAP_PAUSE(FamilyNames.FEED_TAP_PAUSE, "feedTapPause", null, Settings.TAP_FEED_VIDEO_TO_PAUSE,
             Settings.FEED_TAPS_STAY_IN_FEED),
-    FEED_HOLD_FAST(FamilyNames.FEED_HOLD_FAST, "feedHoldFast", null, Settings.HOLD_FEED_VIDEO_FAST, Settings.HOLD_FEED_VIDEO_KEEP),
+    FEED_HOLD_FAST(FamilyNames.FEED_HOLD_FAST, "feedHoldFast", null, Settings.HOLD_FEED_VIDEO_FAST, Settings.HOLD_FEED_VIDEO_KEEP,
+            Settings.HOLD_FEED_VIDEO_KEEP_LONG, Settings.HOLD_FEED_VIDEO_KEEP_NAME),
     FEED_SEEK_BAR(FamilyNames.FEED_SEEK_BAR, "feedSeekBar", null, Settings.FEED_SEEK_BAR, Settings.FEED_SEEK_BUTTON,
             Settings.FEED_DOUBLE_TAP_SKIP),
     LONG_PRESS_ZOOM(FamilyNames.LONG_PRESS_ZOOM, "longPressZoom", null, Settings.LONG_PRESS_TO_ZOOM,
@@ -113,7 +115,7 @@ public enum PatchFamily {
     KEEP_IN_CHAT(FamilyNames.KEEP_IN_CHAT, "keepInChat", null, Settings.KEEP_IN_CHAT),
     VIEW_ONCE_MARK(FamilyNames.VIEW_ONCE_MARK, "viewOnceMark", null, Settings.MARK_VIEW_ONCE),
     CHAT_REELS(FamilyNames.CHAT_REELS, "chatReels", null, Settings.SWIPE_CHAT_REELS, Settings.STOP_AFTER_CHAT_REELS,
-            Settings.ONLY_RECEIVED_CHAT_REELS, Settings.MESSAGES_AFTER_CHAT_REELS),
+            Settings.ONLY_RECEIVED_CHAT_REELS, Settings.MESSAGES_AFTER_CHAT_REELS, Settings.BLOCK_CHAT_REELS),
     CHAT_MEDIA_WALK(FamilyNames.CHAT_MEDIA_WALK, "chatMediaWalk", null, Settings.SWIPE_CHAT_MEDIA),
     CHAT_HISTORY(FamilyNames.CHAT_HISTORY, "chatHistory", null, Settings.JUMP_IN_CHAT, Settings.EXPORT_CHAT),
     PREVIEW_CHATS(FamilyNames.PREVIEW_CHATS, "previewChats", null, Settings.PREVIEW_CHATS),
@@ -129,7 +131,7 @@ public enum PatchFamily {
             Settings.HIDE_PLUS_DRAW, Settings.HIDE_PLUS_META_AI, Settings.HIDE_PLUS_LOCATION, Settings.MOVE_TO_PLUS_MENU),
     MESSAGE_ACTIONS(FamilyNames.MESSAGE_ACTIONS, "messageActions", null),
     MESSAGE_GESTURES(FamilyNames.MESSAGE_GESTURES, "messageGestures", null, Settings.MESSAGE_TAP_ACTIONS, Settings.MESSAGE_TAP_REACTIONS),
-    GLASS_CHAT(FamilyNames.GLASS_CHAT, "glassChat", null, Settings.GLASS_CHAT, Settings.GLASS_CHAT_TOP_BAR, Settings.GLASS_STORY_REPLY_BOX),
+    GLASS_CHAT(FamilyNames.GLASS_CHAT, "glassChat", null, Settings.GLASS_CHAT, Settings.GLASS_CHAT_TOP_BAR, Settings.GLASS_STORY_REPLY_BOX, Settings.GLASS_CHAT_BUTTONS, Settings.HELD_MESSAGE_BLUR),
     CENTER_CHAT_NAME(FamilyNames.CENTER_CHAT_NAME, "centerChatName", null, Settings.CENTER_CHAT_NAME),
     CHAT_BUBBLES(FamilyNames.CHAT_BUBBLES, "chatBubbles", null, Settings.CHAT_BUBBLES),
     ASK_BEFORE_LIKE(FamilyNames.ASK_BEFORE_LIKE, "askBeforeLike", null, Settings.ASK_BEFORE_LIKE),
@@ -190,7 +192,8 @@ public enum PatchFamily {
             Settings.FILL_REEL_SCREEN, Settings.FIT_REEL_SCREEN, Settings.FULL_SCREEN_HOME, Settings.FULL_SCREEN_MESSAGES,
             Settings.FILL_STORY_SCREEN),
     SAVED_ON_PROFILE(FamilyNames.SAVED_ON_PROFILE, "savedOnProfile", null, Settings.SAVED_ON_PROFILE,
-            Settings.SAVED_FAST_SCROLL, Settings.HIDE_SAVED_NEW_COLLECTION),
+            Settings.SAVED_FAST_SCROLL, Settings.HIDE_SAVED_NEW_COLLECTION, Settings.HIDE_SAVED_REELS_TAB,
+            Settings.HIDE_EXPLORE_SAVED),
     STOP_HEARTBEAT(FamilyNames.STOP_HEARTBEAT, "stopHeartbeat", null, Settings.STOP_HEARTBEAT,
             Settings.STOP_UPLOAD_ALARM, Settings.STOP_BACKGROUND_FETCH),
     REFRESH_RATE(FamilyNames.REFRESH_RATE, "refreshRate", null, Settings.HIGHEST_REFRESH_RATE),
@@ -250,7 +253,8 @@ public enum PatchFamily {
     FEED_FOLLOW(FamilyNames.FEED_FOLLOW, "feedFollow", null, Settings.HIDE_FEED_FOLLOW, Settings.HIDE_FEED_SUBSCRIBE),
     EDITS_LABEL(FamilyNames.EDITS_LABEL, "editsLabel", null, Settings.HIDE_EDITS_LABEL),
     FEED_HEADER_LINE(FamilyNames.FEED_HEADER_LINE, "feedHeaderLine", null, Settings.HIDE_FEED_HEADER_LINE,
-            Settings.HIDE_REEL_HEADER_LINE),
+            Settings.KEEP_FEED_HEADER_PLACE, Settings.HIDE_REEL_HEADER_LINE),
+    HOME_REELS_BELOW_NAME(FamilyNames.HOME_REELS_BELOW_NAME, "homeReelsBelowName", null, Settings.HOME_REELS_BELOW_NAME),
     FEED_SAVE(FamilyNames.FEED_SAVE, "feedSave", null, Settings.SAVE_IN_POST_MENU, Settings.HIDE_FEED_SAVE_BUTTON,
             Settings.HIDE_FEED_LIKE_BUTTON, Settings.HIDE_FEED_COUNTS, Settings.HIDE_LIKED_BY),
     MENU_ITEMS(FamilyNames.MENU_ITEMS, "menuItems", null),
@@ -292,7 +296,8 @@ public enum PatchFamily {
             Settings.CENTER_HOME_LOGO, Settings.CENTER_PROFILE_NAME, Settings.CENTER_SCREEN_TITLES,
             Settings.TITLES_AT_START, Settings.SHOW_REELS_TAB,
             Settings.SHOW_MESSAGES_TAB, Settings.MESSAGES_BUTTON_ON_HOME, Settings.SETTINGS_BUTTON_ON_HOME, Settings.MENU_BUTTON_ON_HOME, Settings.HISTORY_BUTTON_ON_HOME, Settings.HIDE_HOME_MESSAGES_BUTTON,
-            Settings.SHOW_ACTIVITY_TAB, Settings.HIDE_HOME_TAB, Settings.HIDE_MESSAGES_TAB, Settings.HIDE_MESSAGES_BADGE),
+            Settings.SHOW_ACTIVITY_TAB, Settings.HIDE_HOME_TAB, Settings.HIDE_MESSAGES_TAB, Settings.HIDE_MESSAGES_BADGE,
+            Settings.FULL_SIZE_REELS_ICON),
     REELS_SUGGESTIONS(FamilyNames.REELS_SUGGESTIONS, "reelsSuggestions", null, Settings.HIDE_REELS_SUGGESTIONS,
             Settings.HIDE_REELS_STORIES, Settings.HIDE_REELS_THREADS),
     PAID_PARTNERSHIP_REELS(FamilyNames.PAID_PARTNERSHIP_REELS, "paidPartnershipReels", null,
@@ -325,10 +330,11 @@ public enum PatchFamily {
             Settings.PLAY_ONE_REEL, Settings.REEL_CAP),
     SWIPE_TO_PROFILE(FamilyNames.SWIPE_TO_PROFILE, "swipeToProfile", null, Settings.REEL_SWIPE_TO_PROFILE),
     REEL_PROFILE_TAB_BAR(FamilyNames.REEL_PROFILE_TAB_BAR, "reelProfileTabBar", null, Settings.REEL_PROFILE_TAB_BAR),
+    REEL_LINK_TAB_BAR(FamilyNames.REEL_LINK_TAB_BAR, "reelLinkTabBar", null, Settings.REEL_LINK_TAB_BAR),
     REEL_ORIGIN(FamilyNames.REEL_ORIGIN, "reelOrigin", null, Settings.FIND_REEL_ORIGIN,
             Settings.FIND_REEL_ORIGIN_ON_TAP),
     STORY_DOWNLOAD(FamilyNames.STORY_DOWNLOAD, "storyDownload", null, Settings.DOWNLOAD_STORIES,
-            Settings.DOWNLOAD_BUTTON_ON_STORIES, Settings.TEXT_BUTTON_ON_STORIES),
+            Settings.DOWNLOAD_BUTTON_ON_STORIES, Settings.TEXT_BUTTON_ON_STORIES, Settings.STORY_COPY_TEXT_IN_MENU),
     VIDEO_DOWNLOAD(FamilyNames.VIDEO_DOWNLOAD, "videoDownload", null, Settings.DOWNLOAD_VIDEOS, Settings.DOWNLOAD_PHOTOS,
             Settings.POST_DETAILS, Settings.POST_MENU_BLOCK, Settings.POST_MENU_SPEED, Settings.DOWNLOAD_SKIP_SAVED, Settings.VIEWING_HISTORY,
             Settings.SAVE_CHAT_MEDIA_TO_TREE),
@@ -643,6 +649,40 @@ public enum PatchFamily {
         return SAVED_ON_PROFILE.inBuild() && SettingsStatus.savedNewCollection();
     }
 
+    /** Whether a test says this build hides Saved's Reels tab, instead of asking {@link SettingsStatus}. */
+    @Nullable
+    static volatile Boolean savedReelsTabForTests;
+
+    /**
+     * Whether this build can leave the Reels tab out of the tabbed Saved screen (#810). Saved on your
+     * profile goes in without it when the tabbed screen's tab list didn't match, so its switch isn't
+     * offered then.
+     */
+    public static boolean savedReelsTabInBuild() {
+        Boolean forced = savedReelsTabForTests;
+        if (forced != null) return forced;
+        Set<PatchFamily> families = inBuildForTests;
+        if (families != null) return families.contains(SAVED_ON_PROFILE);
+        return SAVED_ON_PROFILE.inBuild() && SettingsStatus.savedReelsTab();
+    }
+
+    /** Whether a test says this build hides the Search tab's Saved, instead of asking {@link SettingsStatus}. */
+    @Nullable
+    static volatile Boolean exploreSavedForTests;
+
+    /**
+     * Whether this build can leave the Saved bookmark off the top of the Search tab (#810). Saved on
+     * your profile goes in without it when the Search tab's top bar didn't match, so its switch isn't
+     * offered then.
+     */
+    public static boolean exploreSavedInBuild() {
+        Boolean forced = exploreSavedForTests;
+        if (forced != null) return forced;
+        Set<PatchFamily> families = inBuildForTests;
+        if (families != null) return families.contains(SAVED_ON_PROFILE);
+        return SAVED_ON_PROFILE.inBuild() && SettingsStatus.exploreSaved();
+    }
+
     /** Whether this build's Saved bookmark opens the tabbed Saved on All, instead of the collections grid. */
     public static boolean savedOnAllInBuild() {
         Set<PatchFamily> families = inBuildForTests;
@@ -719,6 +759,12 @@ public enum PatchFamily {
                 }
                 if (family == SAVED_ON_PROFILE && !savedNewCollectionInBuild()) {
                     lines.add("  Hide the New collection button: not in this build (neither Saved screen's top bar matched)");
+                }
+                if (family == SAVED_ON_PROFILE && !savedReelsTabInBuild()) {
+                    lines.add("  Hide the Reels tab in Saved: not in this build (Saved's tab list didn't match)");
+                }
+                if (family == SAVED_ON_PROFILE && !exploreSavedInBuild()) {
+                    lines.add("  Hide Saved on the Search tab: not in this build (the Search tab's top bar didn't match)");
                 }
                 if (family == FOLLOWING_FEED && !favoritesFeedInBuild()) {
                     lines.add("  Favorites from the tab bar: not in this build (Home's feed switch or the tab bar didn't match)");

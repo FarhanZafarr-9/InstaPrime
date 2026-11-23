@@ -334,6 +334,281 @@ public class FeedSeekBarTest {
         assertEquals(roomy + gap, ((FrameLayout.LayoutParams) button.getLayoutParams()).bottomMargin);
     }
 
+    /**
+     * A feed post as Instagram 456 lays it out (#794): the video's frame two levels under the post, and
+     * beside it a row along the video's bottom holding a tags button at the start and the sound button,
+     * in a group of its own, at the end.
+     */
+    private static final class Post {
+        final FrameLayout root;
+        final FrameLayout frame;
+        final View video;
+        final FrameLayout row;
+        final View tags;
+        final int sound = View.generateViewId();
+
+        Post(Activity activity) {
+            root = new FrameLayout(activity);
+            FrameLayout holder = new FrameLayout(activity);
+            frame = new FrameLayout(activity);
+            video = new View(activity);
+            frame.addView(video, new FrameLayout.LayoutParams(720, 400));
+            holder.addView(frame, new FrameLayout.LayoutParams(720, 400));
+            root.addView(holder, new FrameLayout.LayoutParams(720, 400));
+            FrameLayout overlay = new FrameLayout(activity);
+            row = new FrameLayout(activity);
+            tags = new View(activity);
+            FrameLayout.LayoutParams tagsAt = new FrameLayout.LayoutParams(64, 64, Gravity.START | Gravity.CENTER_VERTICAL);
+            tagsAt.setMarginStart(12);
+            row.addView(tags, tagsAt);
+            FrameLayout soundGroup = new FrameLayout(activity);
+            soundGroup.setClickable(true);
+            LinearLayout padded = new LinearLayout(activity);
+            View icon = new View(activity);
+            icon.setId(sound);
+            FeedSeekBar.idForTests(activity, FeedSeekBar.SOUND_BUTTON, sound);
+            padded.addView(icon, new LinearLayout.LayoutParams(48, 48));
+            soundGroup.addView(padded, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+            row.addView(soundGroup, new FrameLayout.LayoutParams(116, 88, Gravity.END));
+            overlay.addView(row, new FrameLayout.LayoutParams(720, 88, Gravity.BOTTOM));
+            root.addView(overlay, new FrameLayout.LayoutParams(720, 400));
+        }
+    }
+
+    private Post post() {
+        Post post = new Post(controller.get());
+        feed.addView(post.root, 0, new LinearLayout.LayoutParams(720, 400));
+        stand.plays(player, post.video);
+        idle();
+        assertEquals("laid out", 88, post.row.getHeight());
+        return post;
+    }
+
+    private static FrameLayout.LayoutParams buttonAt() {
+        View button = FeedSeekBar.buttonForTests();
+        assertNotNull("the video has a button", button);
+        return (FrameLayout.LayoutParams) button.getLayoutParams();
+    }
+
+    /**
+     * #794: while the bar shows, Instagram's row of tags and sound buttons is lifted clear of it, and the
+     * toggle sits in that row, past the tags button and level with both, so nothing covers anything.
+     */
+    @Test
+    public void theBarLiftsInstagramsButtonsAndTheToggleLinesUpWithThem() {
+        Post post = post();
+        Settings.FEED_SEEK_BAR.save(true);
+        Settings.FEED_SEEK_BUTTON.save(true);
+        FeedSeekBar.progress(player, 3000, 15000);
+        idle();
+        SeekBar bar = bar();
+        assertSame(post.frame, bar.getParent());
+        int lift = FeedSeekBar.barHeight(post.video, bar);
+        assertTrue(lift > 0);
+        assertEquals("the row sits over the bar", -lift, post.row.getTranslationY(), 0f);
+        assertEquals("the tags button keeps its place in the row", 0f, post.tags.getTranslationY(), 0f);
+        float density = post.video.getResources().getDisplayMetrics().density;
+        int size = Math.round(FeedSeekBar.BUTTON_DP * density);
+        int gap = Math.round(FeedSeekBar.BUTTON_GAP_DP * density);
+        FrameLayout.LayoutParams at = buttonAt();
+        assertEquals("past the tags button", 12 + 64 + gap, at.getMarginStart());
+        assertEquals("level with the row's buttons, lifted with them", 88 - 44 + lift - size / 2, at.bottomMargin);
+
+        assertTrue(FeedSeekBar.buttonForTests().performClick());
+        assertFalse(Settings.FEED_SEEK_BAR.savedValue());
+        assertEquals(View.GONE, bar.getVisibility());
+        assertEquals("with the bar hidden the row is back", 0f, post.row.getTranslationY(), 0f);
+        at = buttonAt();
+        assertEquals(12 + 64 + gap, at.getMarginStart());
+        assertEquals("still level with the row", 88 - 44 - size / 2, at.bottomMargin);
+
+        assertTrue(FeedSeekBar.buttonForTests().performClick());
+        assertEquals(-lift, post.row.getTranslationY(), 0f);
+        FeedSeekBar.progress(player, 4000, 15000);
+        tick();
+        assertEquals("lifted once, not again on each tick", -lift, post.row.getTranslationY(), 0f);
+    }
+
+    /**
+     * #711: with the time showing, Instagram's tags and sound buttons go up past it, so the time sits
+     * under the tags button and a touch on it can't land on tags. The time is smaller than the reels'
+     * 12sp. With the time off the row only clears the bar again.
+     */
+    @Test
+    public void theTimeSitsUnderInstagramsButtons() {
+        Post post = post();
+        // The tags button slid out wide over the middle of the video, low in its row.
+        FrameLayout.LayoutParams slidOut = (FrameLayout.LayoutParams) post.tags.getLayoutParams();
+        slidOut.width = 400;
+        slidOut.gravity = Gravity.START | Gravity.BOTTOM;
+        slidOut.bottomMargin = 2;
+        post.tags.setLayoutParams(slidOut);
+        idle();
+        Settings.FEED_SEEK_BAR.save(true);
+        Settings.FEED_SEEK_BUTTON.save(true);
+        Settings.FEED_SEEK_TIME.save(true);
+        FeedSeekBar.progress(player, 3000, 15000);
+        idle();
+        SeekBar bar = bar();
+        TextView time = FeedSeekBar.timeForTests();
+        assertNotNull(time);
+        float density = post.video.getResources().getDisplayMetrics().density;
+        float scaled = post.video.getResources().getDisplayMetrics().scaledDensity;
+        assertTrue("smaller than the reels' time", time.getTextSize() < 12f * scaled);
+        int barHeight = FeedSeekBar.barHeight(post.video, bar);
+        int gap = Math.round(FeedSeekBar.TIME_GAP_DP * density);
+        assertEquals("the time stays just over the bar", barHeight + gap,
+                ((FrameLayout.LayoutParams) time.getLayoutParams()).bottomMargin);
+        float lift = -post.row.getTranslationY();
+        assertTrue("the row goes up past the time, not just the bar", lift > barHeight);
+
+        int[] at = new int[2];
+        time.getLocationOnScreen(at);
+        int timeTop = at[1];
+        int timeLeft = at[0];
+        post.tags.getLocationOnScreen(at);
+        int tagsBottom = at[1] + post.tags.getHeight();
+        assertTrue("the tags button reaches over the time", at[0] + post.tags.getWidth() > timeLeft);
+        assertTrue("and ends above it: " + tagsBottom + " vs " + timeTop, tagsBottom + gap <= timeTop);
+        assertEquals("by no more than it needs", timeTop - gap, tagsBottom);
+        int size = Math.round(FeedSeekBar.BUTTON_DP * density);
+        assertEquals("the toggle goes up with the row", 2 + 32 + Math.round(lift) - size / 2, buttonAt().bottomMargin);
+
+        Settings.FEED_SEEK_TIME.save(false);
+        tick();
+        assertNull(FeedSeekBar.timeForTests());
+        assertEquals("with the time off the row only clears the bar", -barHeight, post.row.getTranslationY(), 0f);
+    }
+
+    /**
+     * A carousel's video as Instagram 456 lays it out (#711): the video's frame four wrappers, each its
+     * size, under the post's row, and beside them an overlay as big whose sound button sits in a small
+     * holder of its own in the bottom end corner, at the holder's top.
+     */
+    private static final class Carousel {
+        final FrameLayout root;
+        final View video;
+        final FrameLayout corner;
+        final View icon;
+
+        Carousel(Activity activity) {
+            root = new FrameLayout(activity);
+            FrameLayout frame = new FrameLayout(activity);
+            video = new View(activity);
+            frame.addView(video, new FrameLayout.LayoutParams(720, 400));
+            ViewGroup wrapped = frame;
+            for (int i = 0; i < 3; i++) {
+                FrameLayout wrapper = new FrameLayout(activity);
+                wrapper.addView(wrapped, new FrameLayout.LayoutParams(720, 400));
+                wrapped = wrapper;
+            }
+            root.addView(wrapped, new FrameLayout.LayoutParams(720, 400));
+            FrameLayout overlay = new FrameLayout(activity);
+            FrameLayout layer = new FrameLayout(activity);
+            corner = new FrameLayout(activity);
+            LinearLayout padded = new LinearLayout(activity);
+            padded.setGravity(Gravity.CENTER);
+            icon = new View(activity);
+            int sound = View.generateViewId();
+            icon.setId(sound);
+            FeedSeekBar.idForTests(activity, FeedSeekBar.SOUND_BUTTON, sound);
+            // 456 at 2x: a 116 x 88 corner, a 60 px group at its top, a 30 px icon. Shrunk here so the
+            // little room under the icon is less than the time needs, as it is on a phone.
+            padded.addView(icon, new LinearLayout.LayoutParams(16, 16));
+            corner.addView(padded, new FrameLayout.LayoutParams(24, 24, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
+            layer.addView(corner, new FrameLayout.LayoutParams(58, 30, Gravity.BOTTOM | Gravity.END));
+            overlay.addView(layer, new FrameLayout.LayoutParams(720, 400));
+            root.addView(overlay, new FrameLayout.LayoutParams(720, 400));
+        }
+    }
+
+    /**
+     * #711 on a carousel's video: its sound button, in a corner of the post's overlay rather than a row
+     * beside the video, goes up past the bar and the time too, and the toggle lines up with it at the
+     * start, where no button of Instagram's is.
+     */
+    @Test
+    public void aCarouselsSoundButtonGoesUpPastTheBarAndTheTime() {
+        Carousel post = new Carousel(controller.get());
+        feed.addView(post.root, 0, new LinearLayout.LayoutParams(720, 400));
+        stand.plays(player, post.video);
+        idle();
+        assertEquals("laid out", 30, post.corner.getHeight());
+        Settings.FEED_SEEK_BAR.save(true);
+        Settings.FEED_SEEK_BUTTON.save(true);
+        Settings.FEED_SEEK_TIME.save(true);
+        FeedSeekBar.progress(player, 3000, 15000);
+        idle();
+        SeekBar bar = bar();
+        TextView time = FeedSeekBar.timeForTests();
+        assertNotNull(time);
+        float density = post.video.getResources().getDisplayMetrics().density;
+        int barHeight = FeedSeekBar.barHeight(post.video, bar);
+        int gap = Math.round(FeedSeekBar.TIME_GAP_DP * density);
+        float lift = -post.corner.getTranslationY();
+        assertTrue("the sound button's corner goes up past the time, not just the bar: " + lift, lift > barHeight);
+
+        int[] at = new int[2];
+        time.getLocationOnScreen(at);
+        int timeTop = at[1];
+        post.icon.getLocationOnScreen(at);
+        assertEquals("the sound button ends a gap above the time", timeTop - gap, at[1] + post.icon.getHeight());
+
+        int size = Math.round(FeedSeekBar.BUTTON_DP * density);
+        FrameLayout.LayoutParams toggle = buttonAt();
+        assertEquals("the toggle keeps the start", Math.round(8 * density), toggle.getMarginStart());
+        assertEquals("level with the sound button, lifted with it", 30 - (4 + 8) + Math.round(lift) - size / 2, toggle.bottomMargin);
+
+        Settings.FEED_SEEK_TIME.save(false);
+        tick();
+        assertEquals("with the time off it only clears the bar", -barHeight, post.corner.getTranslationY(), 0f);
+        Settings.FEED_SEEK_BAR.save(false);
+        tick();
+        assertEquals("with the bar hidden it's back", 0f, post.corner.getTranslationY(), 0f);
+    }
+
+    /** #794: the row goes back where it was when the bar moves to another video or goes, and only then. */
+    @Test
+    public void instagramsButtonsGoBackWhenTheBarMovesOnOrGoes() {
+        Post post = post();
+        Settings.FEED_SEEK_BAR.save(true);
+        FeedSeekBar.progress(player, 3000, 15000);
+        int lift = FeedSeekBar.barHeight(post.video, bar());
+        assertEquals(-lift, post.row.getTranslationY(), 0f);
+
+        stand.plays(player, secondVideo);
+        FeedSeekBar.progress(player, 4000, 15000);
+        assertSame(second, bar().getParent());
+        assertEquals("the post the bar left has its buttons back", 0f, post.row.getTranslationY(), 0f);
+
+        stand.plays(player, post.video);
+        FeedSeekBar.progress(player, 5000, 15000);
+        assertEquals(-lift, post.row.getTranslationY(), 0f);
+        FeedSeekBar.resetForTests();
+        assertEquals("a bar taken away puts them back too", 0f, post.row.getTranslationY(), 0f);
+
+        FeedSeekBar.playerForTests(stand);
+        FeedSeekBar.idForTests(controller.get(), FeedSeekBar.SOUND_BUTTON, post.sound);
+        FeedSeekBar.progress(player, 6000, 15000);
+        assertEquals(-lift, post.row.getTranslationY(), 0f);
+        post.row.setTranslationY(-5f);
+        Settings.FEED_SEEK_BAR.save(false);
+        FeedSeekBar.progress(player, 7000, 15000);
+        assertEquals("a row Instagram moved itself stays where Instagram put it", -5f, post.row.getTranslationY(), 0f);
+    }
+
+    /** No row of buttons around the video, as on a post laid out some other way: the toggle keeps its corner. */
+    @Test
+    public void withoutInstagramsRowTheToggleKeepsItsCorner() {
+        Settings.FEED_SEEK_BAR.save(true);
+        Settings.FEED_SEEK_BUTTON.save(true);
+        FeedSeekBar.progress(player, 3000, 15000);
+        float density = firstVideo.getResources().getDisplayMetrics().density;
+        FrameLayout.LayoutParams at = buttonAt();
+        assertEquals(Math.round(8 * density), at.getMarginStart());
+        assertEquals(FeedSeekBar.barHeight(firstVideo, bar()) + Math.round(4 * density), at.bottomMargin);
+    }
+
     /** #472: like Instagram's own scrubber, the video pauses under the finger and plays on from where it lands. */
     @Test
     public void aDragPausesTheVideoThenSeeksItAndPlaysItOn() {

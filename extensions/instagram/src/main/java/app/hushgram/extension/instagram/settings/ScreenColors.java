@@ -9,6 +9,7 @@ package app.hushgram.extension.instagram.settings;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
@@ -20,6 +21,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.InsetDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
 import android.preference.Preference;
@@ -30,6 +32,7 @@ import android.preference.TwoStatePreference;
 import android.text.TextUtils;
 import android.util.SparseBooleanArray;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -54,6 +57,11 @@ import app.hushgram.extension.shared.settings.preference.ImmediateAction;
 /** Wallpaper-derived Material tonal surfaces for settings and runtime controls. */
 public final class ScreenColors {
     public final boolean light;
+    /**
+     * Instagram's own settings look (#797): rows flat on the page with no cards, plain section
+     * names and Instagram's pill switch.
+     */
+    public final boolean flat;
     /** The page, behind the title bar and every row. */
     public final int background;
     /** A dialog's surface. */
@@ -91,8 +99,15 @@ public final class ScreenColors {
     static final ScreenColors BLACK = new ScreenColors(true);
     /** The white page, cards and dialogs, for the light look while the settings show (#762). */
     static final ScreenColors LIGHT = new ScreenColors(false, true);
+    /** Instagram's own settings look on its light screens, while the settings show (#797). */
+    static final ScreenColors INSTAGRAM_LIGHT = instagram(false);
+    /** Instagram's own settings look on its dark screens, while the settings show (#797). */
+    static final ScreenColors INSTAGRAM_DARK = instagram(true);
     /** How many settings screens are up. The light look keeps to them. */
     private static final AtomicInteger SETTINGS_SCREENS = new AtomicInteger();
+    /** Whether the Instagram screen the settings last opened over was dark, or null before they first opened. */
+    @Nullable
+    private static volatile Boolean instagramNight;
 
     /**
      * The colours to paint with now: the screen's own, or the white ones while Light settings page
@@ -119,6 +134,56 @@ public final class ScreenColors {
         return mix(iconSurface, accent, strength);
     }
 
+    /** The colours the settings screen shows in, whether or not it's up yet: the shortcut's cover takes them. */
+    static ScreenColors settingsPage() {
+        if (!Utils.settingsReady()) return DEFAULT;
+        if (Settings.SETTINGS_INSTAGRAM_LOOK.savedValue()) return instagram();
+        if (Settings.SETTINGS_LIGHT_LOOK.savedValue()) return LIGHT;
+        Context context = Utils.getContext();
+        return context == null ? (Settings.SETTINGS_BLACK_LOOK.savedValue() ? BLACK : DEFAULT) : forScreen(context);
+    }
+
+    /**
+     * Instagram settings page's colours: dark when the Instagram screen the settings opened over
+     * was, else light. Before they first open, the app's own night mode decides.
+     */
+    static ScreenColors instagram() {
+        Boolean night = instagramNight;
+        if (night == null) {
+            Context app = Utils.getContext();
+            night = app != null && night(app);
+        }
+        return night ? INSTAGRAM_DARK : INSTAGRAM_LIGHT;
+    }
+
+    /**
+     * From the settings screen and the shortcut's cover, with the Instagram screen they show over,
+     * so Instagram settings page goes dark or light as Instagram is (#797). Instagram's own Dark
+     * mode setting reaches its screens, not always the app's context.
+     */
+    static void followNight(@Nullable Context context) {
+        if (context != null) instagramNight = night(context);
+    }
+
+    private static boolean night(Context context) {
+        return (context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    /** No screen seen yet. For tests. */
+    static void forgetNightForTests() {
+        instagramNight = null;
+    }
+
+    /**
+     * From the settings screen's onCreate, before it builds anything, and its onStart after a stop:
+     * the light look shows from here on. A dialog over one of Instagram's own screens, a story's
+     * mention list or a lock, keeps the dark colours it was made in.
+     */
+    static void settingsOpened() {
+        SETTINGS_SCREENS.incrementAndGet();
+    }
+
     private static int mix(int base, int tint, int strength) {
         return Color.rgb(
                 (Color.red(base) * (100 - strength) + Color.red(tint) * strength) / 100,
@@ -140,6 +205,7 @@ public final class ScreenColors {
 
     private ScreenColors(@Nullable Context context, boolean pureBlack, boolean light) {
         this.light = light;
+        flat = false;
         if (light) {
             background = Color.WHITE;
             dialog = Color.WHITE;
@@ -185,8 +251,44 @@ public final class ScreenColors {
         return id == 0 ? fallback : context.getColor(id);
     }
 
-    /** The unchecked thumb uses the on-surface token. */
+    /** Every colour given, for Instagram's own look. */
+    private ScreenColors(boolean light, int background, int dialog, int title, int summary, int hint, int heading,
+            int accent, int switchOff, int card, int outline, int iconSurface, int onAccent, int error) {
+        this.light = light;
+        this.flat = true;
+        this.background = background;
+        this.dialog = dialog;
+        this.title = title;
+        this.summary = summary;
+        this.hint = hint;
+        this.heading = heading;
+        this.accent = accent;
+        this.switchOff = switchOff;
+        this.card = card;
+        this.outline = outline;
+        this.iconSurface = iconSurface;
+        this.onAccent = onAccent;
+        this.error = error;
+    }
+
+    /**
+     * Instagram's own settings colours, from its Prism palette (#797): its page, text, greys and
+     * links, and its switch, near-black on white and near-white on dark. The rows sit on the page,
+     * so the card is the page. Where Instagram's grey fell under the bars the other looks clear,
+     * its accessible grey or the next shade stands in.
+     */
+    private static ScreenColors instagram(boolean night) {
+        if (night) {
+            return new ScreenColors(false, 0xFF0C1014, 0xFF191C1F, 0xFFF8F9F9, 0xFFA2AAB4, 0xFF8E95A0,
+                    0xFF8593FF, 0xFFF8F9F9, 0xFF6F7680, 0xFF0C1014, 0xFF2B3036, 0xFF25292E, 0xFF0C1014, 0xFFFFB4AB);
+        }
+        return new ScreenColors(true, Color.WHITE, Color.WHITE, 0xFF0C1014, 0xFF6A717A, 0xFF6F7680,
+                0xFF3849DA, 0xFF0C1014, 0xFF838993, Color.WHITE, 0xFFDBDFE4, 0xFFF3F5F7, Color.WHITE, 0xFFBA1A1A);
+    }
+
+    /** A switch's white thumb remains distinct from either track. Instagram's is white when off. */
     int offThumb() {
+        if (flat) return Color.WHITE;
         return title;
     }
 
@@ -266,7 +368,10 @@ public final class ScreenColors {
 
     /** Wallpaper-derived Material tones, refreshed when opening the screen. */
     public static ScreenColors forScreen(Context context) {
-        if (Utils.settingsReady() && SETTINGS_SCREENS.get() > 0 && Settings.SETTINGS_LIGHT_LOOK.savedValue()) return LIGHT;
+        if (Utils.settingsReady() && SETTINGS_SCREENS.get() > 0) {
+            if (Settings.SETTINGS_INSTAGRAM_LOOK.savedValue()) return instagram();
+            if (Settings.SETTINGS_LIGHT_LOOK.savedValue()) return LIGHT;
+        }
         return new ScreenColors(context,
                 Utils.settingsReady() && Settings.SETTINGS_BLACK_LOOK.savedValue());
     }
@@ -315,8 +420,9 @@ public final class ScreenColors {
         if (title != null) {
             title.setTextColor(dimmedWhenDisabled(this.title));
             title.setTextSize(TypedValue.COMPLEX_UNIT_SP,
-                    "hushgram_status".equals(preference.getKey()) ? 14 : 16);
-            title.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+                    "hushgram_status".equals(preference.getKey()) ? 14 : overview ? 15 : 16);
+            // Instagram's rows name themselves in its regular weight.
+            title.setTypeface(Typeface.create(flat ? "sans-serif" : "sans-serif-medium", Typeface.NORMAL));
             if (title.getParent() instanceof View) {
                 View text = (View) title.getParent();
                 text.setPadding(0, 0, 0, 0);
@@ -336,7 +442,17 @@ public final class ScreenColors {
             if (widget instanceof AnimatedSettingsSwitch) {
                 ((AnimatedSettingsSwitch) widget).setColors(this);
             }
-
+            if (!(widget instanceof AnimatedSettingsSwitch) || flat) {
+            int[][] states = {{-android.R.attr.state_enabled, android.R.attr.state_checked},
+                    {-android.R.attr.state_enabled}, {android.R.attr.state_checked}, {}};
+            Switch toggle = (Switch) widget;
+            toggle.setThumbDrawable(flat ? instagramThumb(row) : squareThumb(row));
+            toggle.setTrackDrawable(flat ? instagramTrack(row) : squareTrack(row));
+            toggle.setSwitchMinWidth(dp(row, flat ? INSTAGRAM_TRACK_WIDTH_DP : 40));
+            toggle.setSplitTrack(false);
+            toggle.setThumbTintList(new ColorStateList(states, new int[]{half(onAccent), half(offThumb()), onAccent, offThumb()}));
+            toggle.setTrackTintList(new ColorStateList(states, new int[]{half(accent), half(switchOff), accent, switchOff}));
+            }
         }
         paintChevron(row, preference);
         ImageView icon = row.findViewById(android.R.id.icon);
@@ -349,7 +465,8 @@ public final class ScreenColors {
             icon.setLayoutParams(imageSize);
             icon.setPadding(0, 0, 0, 0);
             icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-            icon.setImageTintList(dimmedWhenDisabled(heading));
+            // Instagram's settings draw their icons in the text's colour.
+            icon.setImageTintList(dimmedWhenDisabled(flat ? this.title : heading));
             icon.setBackground(null);
             if (icon.getParent() instanceof ViewGroup) {
                 ViewGroup frame = (ViewGroup) icon.getParent();
@@ -360,6 +477,68 @@ public final class ScreenColors {
             }
         }
         paintSurface(row, preference, opensCard(preference), closesCard(preference));
+    }
+
+    /** Instagram's switch (prism_switch_background_active and prism_switch_handle): a 52 by 32 pill. */
+    static final int INSTAGRAM_TRACK_WIDTH_DP = 52;
+    static final int INSTAGRAM_TRACK_HEIGHT_DP = 32;
+    /** Its round handle, 24 across, 4 in from the pill's edge. */
+    static final int INSTAGRAM_HANDLE_DP = 24;
+    /**
+     * The handle's side padding. Switch slides a thumb its width less this padding, so the handle
+     * counts as 20 wide: two of them and the track's padding fill the 52 pill, and it travels 20.
+     */
+    private static final int INSTAGRAM_HANDLE_SIDE_DP = 2;
+
+    private static Drawable squareThumb(View row) {
+        GradientDrawable thumb = new GradientDrawable();
+        thumb.setShape(GradientDrawable.RECTANGLE);
+        thumb.setCornerRadius(dp(row, 4));
+        thumb.setSize(dp(row, 20), dp(row, 20));
+        thumb.setColor(Color.WHITE);
+        return thumb;
+    }
+
+    private static Drawable squareTrack(View row) {
+        GradientDrawable track = new GradientDrawable();
+        track.setCornerRadius(dp(row, 6));
+        track.setSize(dp(row, 40), dp(row, 24));
+        track.setColor(Color.WHITE);
+        return track;
+    }
+
+    /**
+     * The round handle, kept at its own size in the middle of the pill's height so the pill shows
+     * around it. An InsetDrawable reported its inset as optical insets, and Switch trims its track
+     * by those, so the pill came out as tall as the handle with the handle over its end (#797). A
+     * layer of a set size reports none. The tint list reaches the handle through the layer.
+     */
+    private static Drawable instagramThumb(View row) {
+        GradientDrawable handle = new GradientDrawable();
+        handle.setShape(GradientDrawable.OVAL);
+        handle.setColor(Color.WHITE);
+        LayerDrawable thumb = new LayerDrawable(new Drawable[]{handle});
+        int size = dp(row, INSTAGRAM_HANDLE_DP);
+        thumb.setLayerSize(0, size, size);
+        thumb.setLayerGravity(0, Gravity.CENTER);
+        int side = dp(row, INSTAGRAM_HANDLE_SIDE_DP);
+        thumb.setPadding(side, 0, side, 0);
+        return thumb;
+    }
+
+    /** The pill, with side padding that makes the handle stop 4 short of either end. */
+    private static Drawable instagramTrack(View row) {
+        GradientDrawable pill = new GradientDrawable();
+        pill.setCornerRadius(dp(row, INSTAGRAM_TRACK_HEIGHT_DP / 2));
+        int width = dp(row, INSTAGRAM_TRACK_WIDTH_DP);
+        pill.setSize(width, dp(row, INSTAGRAM_TRACK_HEIGHT_DP));
+        pill.setColor(Color.WHITE);
+        LayerDrawable track = new LayerDrawable(new Drawable[]{pill});
+        // From the rounded pixel sizes, so two slid handles and this never come to more than the pill.
+        int slid = dp(row, INSTAGRAM_HANDLE_DP) - 2 * dp(row, INSTAGRAM_HANDLE_SIDE_DP);
+        int side = (width - 2 * slid) / 2;
+        track.setPadding(side, 0, side, 0);
+        return track;
     }
 
     /**
@@ -433,6 +612,10 @@ public final class ScreenColors {
      */
     void paintSurface(View row, Preference preference, boolean first, boolean last) {
         boolean overview = preference.getParent() instanceof PreferenceScreen;
+        if (flat) {
+            paintFlat(row, preference, overview);
+            return;
+        }
         boolean category = preference instanceof HushgramPreferenceFragment.Heading;
         boolean expanded = category && ((HushgramPreferenceFragment.Heading) preference).expanded;
         float top = dp(row, category || first ? 12 : 4);
@@ -471,6 +654,27 @@ public final class ScreenColors {
                 : "hushgram_status".equals(preference.getKey()) ? 56 : enableAll ? 64 : opensPage(preference) ? 68 : 60));
     }
 
+    /** Instagram's rows reach from edge to edge, with its 16 at each side. */
+    static final int FLAT_SIDE_DP = 16;
+
+    /**
+     * A row the way Instagram's settings draw one (#797): on the page itself, edge to edge, no card
+     * and no edge. The surface is still an inset under the ripple, so a keyboard's focus draws its
+     * outline round the row the same way, and nothing else.
+     */
+    private void paintFlat(View row, Preference preference, boolean overview) {
+        GradientDrawable surface = new GradientDrawable();
+        surface.setColor(card);
+        surface.setStroke(dp(row, 2), interactionOutline(Color.TRANSPARENT));
+        Drawable inset = new InsetDrawable(surface, 0);
+        row.setBackground(preference.isSelectable()
+                ? new RippleDrawable(interactionRipple(title), inset, null).mutate() : inset);
+        int vertical = overview ? 10 : 12;
+        row.setPaddingRelative(dp(row, FLAT_SIDE_DP), dp(row, vertical), dp(row, FLAT_SIDE_DP), dp(row, vertical));
+        row.setMinimumHeight(dp(row, "hushgram_view_toggle".equals(preference.getKey())
+                || "hushgram_grid_toggle".equals(preference.getKey()) ? 48 : 56));
+    }
+
     /** A section title. */
     void paintGroupLabel(View row) {
         paintHeading(row);
@@ -478,6 +682,17 @@ public final class ScreenColors {
 
     void paintHeading(View row) {
         TextView title = row.findViewById(android.R.id.title);
+        if (flat) {
+            if (title != null) {
+                title.setTextColor(summary);
+                title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+                title.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+                title.setLetterSpacing(0);
+                title.setAllCaps(false);
+            }
+            row.setPaddingRelative(dp(row, FLAT_SIDE_DP), dp(row, 20), dp(row, FLAT_SIDE_DP), dp(row, 8));
+            return;
+        }
         if (title != null) {
             title.setTextColor(heading);
             title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
@@ -975,12 +1190,6 @@ public final class ScreenColors {
         return (color & 0x00FFFFFF) | 0x80000000;
     }
 
-    static ScreenColors settingsPage() {
-        if (Utils.settingsReady() && Settings.SETTINGS_LIGHT_LOOK.savedValue()) return LIGHT;
-        Context context = Utils.settingsReady() ? Utils.getContext() : null;
-        return context == null ? DEFAULT : forScreen(context);
-    }
-    static void settingsOpened() { SETTINGS_SCREENS.incrementAndGet(); }
     static void settingsClosed() { SETTINGS_SCREENS.updateAndGet(open -> Math.max(0, open - 1)); }
     static void settingsClosedForTests() { SETTINGS_SCREENS.set(0); }
 }

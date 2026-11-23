@@ -82,10 +82,12 @@ public class NewRowDotsTest {
         assertTrue(NewRowDots.freshRow(y));
         NewRowDots.leftRows(root.rows);
         assertTrue(NewRowDots.freshRow(x));
+        render(a);
         NewRowDots.leftRows(one.rows);
         assertFalse(NewRowDots.freshRow(x));
         assertTrue(NewRowDots.freshRow(y));
         assertTrue(NewRowDots.freshRow(r));
+        render(b);
         NewRowDots.leftRows(two.rows);
         assertFalse(NewRowDots.freshRow(r));
     }
@@ -109,9 +111,18 @@ public class NewRowDotsTest {
 
     @Test public void seenKeysSurviveReopening() {
         unseen();
+        render(a);
         NewRowDots.leftRows(Arrays.asList(a));
         NewRowDots.stop();
         NewRowDots.start(controller.get(), pages);
+        assertFalse(NewRowDots.freshRow(a));
+        assertTrue(NewRowDots.freshRow(b));
+    }
+
+    @Test public void offscreenRowsStayNewWhenLeavingTheirPage() {
+        unseen();
+        render(a);
+        NewRowDots.leftRows(Arrays.asList(a, b));
         assertFalse(NewRowDots.freshRow(a));
         assertTrue(NewRowDots.freshRow(b));
     }

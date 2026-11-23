@@ -199,6 +199,9 @@ final class MessagesCategory {
                         L10n.t("While you swipe through a chat's reels, a banner says when the other person sent a message "
                                 + "after the reel on screen. Tap it to go back to the chat at that message. Works with Swipe "
                                 + "through a chat's reels on.")));
+                messages.addPreference(toggle(context, Settings.BLOCK_CHAT_REELS, L10n.t("Don't open reels from chats"),
+                        L10n.t("A reel someone shares in a chat stays closed when you tap it. Photos, videos and shared "
+                                + "posts still open.")));
             }
             if (build.contains(PatchFamily.CHAT_MEDIA_WALK)) {
                 messages.addPreference(toggle(context, Settings.SWIPE_CHAT_MEDIA, L10n.t("Swipe through a chat's photos and posts"),
@@ -293,6 +296,10 @@ final class MessagesCategory {
                         L10n.t("Top bar tint in chats")));
                 messages.addPreference(chatGlassTintRow(context, Settings.GLASS_CHAT_BOX_OPACITY,
                         L10n.t("Message bar tint")));
+                messages.addPreference(toggle(context, Settings.GLASS_CHAT_BUTTONS, L10n.t("Glass buttons in chats"),
+                        L10n.t("Turn it off for a plain blur with no round glass behind the buttons at the top of a chat.")));
+                messages.addPreference(toggle(context, Settings.HELD_MESSAGE_BLUR, L10n.t("Blur the chat behind a held message"),
+                        L10n.t("Hold a message and the rest of the chat blurs behind it and its reactions. Needs Android 12 or newer.")));
             }
             if (build.contains(PatchFamily.CENTER_CHAT_NAME)) {
                 messages.addPreference(toggle(context, Settings.CENTER_CHAT_NAME, L10n.t("Center names in chats"),

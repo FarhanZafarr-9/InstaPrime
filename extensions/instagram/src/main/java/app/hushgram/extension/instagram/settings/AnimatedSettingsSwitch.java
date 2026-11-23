@@ -133,6 +133,10 @@ final class AnimatedSettingsSwitch extends Switch {
 
     @Override protected void onDraw(Canvas canvas) {
         if (colors == null) return;
+        if (colors.flat) {
+            super.onDraw(canvas);
+            return;
+        }
         float progress = motion == null ? (isChecked() ? 1f : 0f) : motion.progress;
         float left = getLayoutDirection() == View.LAYOUT_DIRECTION_RTL ? getPaddingLeft()
                 : getWidth() - getPaddingRight() - dp(52);
